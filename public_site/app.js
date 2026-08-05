@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const latestReleaseUrl = "https://github.com/BatxRinth/BatxRinth/releases/latest";
   const userAgent = navigator.userAgent.toLowerCase();
 
-  let downloadUrl = latestReleaseUrl;
+  let downloadUrl = `${releaseBaseUrl}/BatxRinth_x64-setup.exe`;
   let labelText = "Download for Windows";
   let subText = "BatxRinth_x64-setup.exe (64-bit)";
 
