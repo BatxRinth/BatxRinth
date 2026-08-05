@@ -16,14 +16,41 @@ fn main() {
 }
 
 fn set_env() {
-    for (var_name, var_value) in
-        dotenvy::dotenv_iter().into_iter().flatten().flatten()
-    {
+    let mut vars = std::collections::HashMap::new();
+
+    // 1. Try loading .env or .env.prod
+    if let Ok(iter) = dotenvy::dotenv_iter() {
+        for (k, v) in iter.flatten() {
+            vars.insert(k, v);
+        }
+    }
+    if let Ok(iter) = dotenvy::from_filename_iter(".env.prod") {
+        for (k, v) in iter.flatten() {
+            vars.entry(k).or_insert(v);
+        }
+    }
+
+    // 2. Also incorporate environment variables passed from process environment
+    for (k, v) in env::vars() {
+        if k.starts_with("MODRINTH_") || k.starts_with("SHARED_INSTANCES_") {
+            vars.insert(k, v);
+        }
+    }
+
+    // 3. Fallback defaults if still missing
+    vars.entry("MODRINTH_URL".to_string()).or_insert_with(|| "https://modrinth.com/".to_string());
+    vars.entry("MODRINTH_API_BASE_URL".to_string()).or_insert_with(|| "https://api.modrinth.com/".to_string());
+    vars.entry("SHARED_INSTANCES_API_BASE_URL".to_string()).or_insert_with(|| "https://shared-instances.modrinth.com/".to_string());
+    vars.entry("MODRINTH_ARCHON_BASE_URL".to_string()).or_insert_with(|| "https://archon.modrinth.com/".to_string());
+    vars.entry("MODRINTH_API_URL".to_string()).or_insert_with(|| "https://api.modrinth.com/v2/".to_string());
+    vars.entry("MODRINTH_API_URL_V3".to_string()).or_insert_with(|| "https://api.modrinth.com/v3/".to_string());
+    vars.entry("MODRINTH_SOCKET_URL".to_string()).or_insert_with(|| "wss://api.modrinth.com/".to_string());
+    vars.entry("MODRINTH_LAUNCHER_META_URL".to_string()).or_insert_with(|| "https://launcher-meta.modrinth.com/".to_string());
+
+    for (var_name, var_value) in vars {
         if var_name == "DATABASE_URL" {
-            // The sqlx database URL is a build-time detail that should not be exposed to the crate
             continue;
         }
-
         println!("cargo::rustc-env={var_name}={var_value}");
     }
 }

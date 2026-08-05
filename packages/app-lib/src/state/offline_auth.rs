@@ -44,7 +44,10 @@ pub fn sanitize_offline_username(username: &str) -> Result<String, OfflineProfil
 
 pub fn generate_offline_player_uuid(username: &str) -> Uuid {
     let key = format!("OfflinePlayer:{}", username);
-    Uuid::new_v3(&Uuid::NIL, key.as_bytes())
+    let mut hash = md5::compute(key.as_bytes()).0;
+    hash[6] = (hash[6] & 0x0f) | 0x30; // Version 3 MD5
+    hash[8] = (hash[8] & 0x3f) | 0x80; // Variant RFC 4122
+    Uuid::from_bytes(hash)
 }
 
 pub fn create_offline_credentials(
@@ -63,6 +66,7 @@ pub fn create_offline_credentials(
         name: sanitized_name,
         skins: Vec::new(),
         capes: Vec::new(),
+        fetch_time: None,
     };
 
     Ok(Credentials {
