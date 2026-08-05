@@ -1,41 +1,35 @@
-import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
-
-export async function init_ads_window(overrideShown = false) {
-	return await invoke('plugin:ads|init_ads_window', {
-		overrideShown,
-		dpr: window.devicePixelRatio,
-	})
+export async function init_ads_window() {
+	return null
 }
 
 export async function show_ads_window() {
-	return await invoke('plugin:ads|show_ads_window', { dpr: window.devicePixelRatio })
+	return null
 }
 
-export async function hide_ads_window(reset) {
-	return await invoke('plugin:ads|hide_ads_window', { reset })
+export async function hide_ads_window() {
+	return null
 }
 
 export async function should_show_ads_consent_popup() {
-	return await invoke('plugin:ads|should_show_ads_consent_popup')
+	return false
 }
 
-export async function perform_ads_consent_action(action) {
-	return await invoke('plugin:ads|perform_ads_consent_action', { action })
+export async function perform_ads_consent_action() {
+	return null
 }
 
 export async function open_ads_consent_preferences() {
-	return await invoke('plugin:ads|open_ads_consent_preferences')
+	return null
 }
 
-export async function ads_consent_listener(callback) {
-	return await listen('ads-consent-required', (event) => callback(event.payload))
+export async function ads_consent_listener() {
+	return () => {}
 }
 
 export async function record_ads_click() {
-	return await invoke('plugin:ads|record_ads_click')
+	return null
 }
 
-export async function open_ads_link(path, origin) {
-	return await invoke('plugin:ads|open_link', { path, origin })
+export async function open_ads_link() {
+	return null
 }
