@@ -236,6 +236,8 @@ webauthn-rs = "0.5.5"
 webauthn-rs-proto = "0.5.5"
 webp = { version = "0.3.1", default-features = false }
 whoami = "1.6.1"
+windows = "=0.61.3"
+windows-core = "=0.61.2"
 winreg = "0.55.0"
 woothee = "0.13.0"
 xredis = { path = "packages/xredis" }
