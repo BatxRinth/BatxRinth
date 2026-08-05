@@ -57,7 +57,7 @@ jobs:
         run: |
           $tag = "${{ github.ref_name }}"
           if ([string]::IsNullOrEmpty($tag)) { $tag = "v1.0.0" }
-          $exePath = Get-ChildItem -Path "apps/app/target/release/bundle/nsis/*.exe" | Select-Object -First 1
+          $exePath = Get-ChildItem -Path "target/release/bundle/nsis/*.exe", "apps/app/target/release/bundle/nsis/*.exe", "target/release/*.exe" | Select-Object -First 1
           if ($exePath) {
             $destName = "BatxRinth_x64-setup.exe"
             Copy-Item $exePath.FullName -Destination $destName
@@ -65,4 +65,5 @@ jobs:
             gh release upload $tag $destName --clobber
           } else {
             Write-Host "No EXE found in nsis bundle"
+            exit 1
           }
