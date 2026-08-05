@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BatxRinth — Privacy-First, Ad-Free Minecraft Launcher</title>
+  <meta name="description" content="BatxRinth is an independent, advertisement-free, privacy-focused desktop launcher for Minecraft built with Rust, Tauri v2, and Vue 3.">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Background Glow & Mesh -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="#" class="brand">
+        <img src="logo.svg" alt="BatxRinth Logo" class="brand-logo">
+        <span class="brand-name">BatxRinth</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#privacy">Privacy & Security</a>
+        <a href="#download">Download</a>
+        <a href="https://github.com/BatxRinth/BatxRinth" target="_blank" rel="noopener" class="nav-github">
+          <svg class="github-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container hero-container">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        <span>Version 1.0.0 Released</span>
+      </div>
+      <h1 class="hero-title">
+        The Independent, <span class="text-gradient">Ad-Free</span> & <span class="text-gradient">Private</span> Minecraft Launcher
+      </h1>
+      <p class="hero-subtitle">
+        BatxRinth is built from the ground up for speed, security, and absolute user privacy. Powered by Rust, Tauri v2, and Vue 3.
+      </p>
+
+      <!-- Primary Auto-Detect Download -->
+      <div class="download-cta" id="download">
+        <a id="primary-download-btn" href="https://github.com/BatxRinth/BatxRinth/releases/download/v1.0.0/BatxRinth_x64-setup.exe" class="btn btn-primary btn-hero">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span class="btn-text">
+            <span class="btn-main" id="primary-btn-label">Download for Windows</span>
+            <span class="btn-sub" id="primary-btn-sub">BatxRinth_x64-setup.exe (64-bit)</span>
+          </span>
+        </a>
+      </div>
+
+      <!-- Secondary Downloads Platform Bar -->
+      <div class="platform-downloads">
+        <span class="platform-title">All Supported Platforms:</span>
+        <div class="platform-buttons">
+          <a href="https://github.com/BatxRinth/BatxRinth/releases/download/v1.0.0/BatxRinth_x64-setup.exe" class="platform-btn" data-os="windows">
+            <svg class="os-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-13.051-1.801"/></svg>
+            Windows (.exe)
+          </a>
+          <a href="https://github.com/BatxRinth/BatxRinth/releases/tag/v1.0.0" class="platform-btn" data-os="mac">
+            <svg class="os-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.31c.67-.82 1.12-1.97.99-3.11-.96.04-2.13.64-2.82 1.44-.61.71-1.15 1.88-.99 3.01 1.08.08 2.16-.52 2.82-1.34z"/></svg>
+            macOS (.dmg)
+          </a>
+          <a href="https://github.com/BatxRinth/BatxRinth/releases/tag/v1.0.0" class="platform-btn" data-os="linux">
+            <svg class="os-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+            Linux (.AppImage / .deb)
+          </a>
+        </div>
+      </div>
+
+      <!-- Preview Mockup Card -->
+      <div class="app-preview-wrapper">
+        <div class="app-preview-card">
+          <div class="window-header">
+            <div class="window-controls">
+              <span class="control red"></span>
+              <span class="control yellow"></span>
+              <span class="control green"></span>
+            </div>
+            <div class="window-title">BatxRinth Launcher — Independent & Ad-Free</div>
+          </div>
+          <div class="window-body">
+            <div class="preview-hero">
+              <img src="logo.svg" alt="BatxRinth" class="preview-logo">
+              <div class="preview-info">
+                <h2>Welcome to BatxRinth</h2>
+                <p>Private by default • Zero Telemetry • Offline Profiles Supported</p>
+                <div class="preview-tags">
+                  <span class="tag">Rust Powered</span>
+                  <span class="tag">Tauri v2</span>
+                  <span class="tag">Vue 3</span>
+                  <span class="tag">Microsoft OAuth PKCE</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feature Grid Section -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Why Choose BatxRinth?</h2>
+        <p class="section-subtitle">Designed for players and developers who demand total control and privacy.</p>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="card-icon font-icon">🛡️</div>
+          <h3 class="card-title">100% Ad-Free Interface</h3>
+          <p class="card-text">No sponsored placements, paid recommendations, ad webviews, or affiliate cookies. Clean performance without distractions.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon font-icon">🔒</div>
+          <h3 class="card-title">Privacy by Default</h3>
+          <p class="card-text">Zero background analytics, tracking pixels, device fingerprinting, or crash-report uploads. Your data stays on your machine.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon font-icon">🔑</div>
+          <h3 class="card-title">Official Microsoft Auth</h3>
+          <p class="card-text">Secure PKCE system-browser OAuth authorization directly with Microsoft endpoints. Secrets are encrypted and never logged.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon font-icon">💻</div>
+          <h3 class="card-title">Offline Local Testing Profiles</h3>
+          <p class="card-text">Built-in support for offline testing profiles with username sanitization, designed for local development and offline servers.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon font-icon">⚡</div>
+          <h3 class="card-title">High-Performance Core</h3>
+          <p class="card-text">Lightweight Rust core backend for fast startup times, low RAM usage, and instant modpack library resolution.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon font-icon">👾</div>
+          <h3 class="card-title">Discord Rich Presence</h3>
+          <p class="card-text">Optional game status integration with granular privacy controls. Show instance name, play time, or hide private worlds.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Privacy & Security Section -->
+  <section class="privacy-section" id="privacy">
+    <div class="container">
+      <div class="privacy-card">
+        <div class="privacy-content">
+          <h2>Network Activity Transparency</h2>
+          <p>BatxRinth only makes explicit, user-initiated outbound requests required for normal launcher operation:</p>
+          <ul class="privacy-list">
+            <li><strong>Game Metadata & Mods:</strong> Modrinth API and CDN downloads.</li>
+            <li><strong>Official Game Jars & Assets:</strong> Mojang and Minecraft asset servers.</li>
+            <li><strong>Mod Loader Manifests:</strong> Fabric, Forge, NeoForge, and Quilt metadata.</li>
+            <li><strong>Microsoft Authentication:</strong> Official Microsoft OAuth 2.0 endpoints.</li>
+            <li><strong>Updates:</strong> Direct release checks via GitHub Releases.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Legal Disclaimer Banner -->
+  <section class="disclaimer-section">
+    <div class="container">
+      <div class="disclaimer-box">
+        <strong>Legal & Non-Affiliation Notice:</strong><br>
+        BatxRinth is an independent community fork and is not affiliated with, sponsored by, or endorsed by Modrinth, Rinth, Inc., Microsoft Corporation, Mojang AB, or Discord, Inc.
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-container">
+      <div class="footer-brand">
+        <img src="logo.svg" alt="BatxRinth" class="footer-logo">
+        <span>BatxRinth Launcher</span>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/BatxRinth/BatxRinth" target="_blank" rel="noopener">GitHub Repository</a>
+        <a href="https://github.com/BatxRinth/BatxRinth/releases" target="_blank" rel="noopener">Release Notes</a>
+        <a href="https://github.com/BatxRinth/BatxRinth/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0 License</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
