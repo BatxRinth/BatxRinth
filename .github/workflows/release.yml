@@ -2,6 +2,8 @@ name: BatxRinth Release Builder
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
