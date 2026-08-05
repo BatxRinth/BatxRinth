@@ -9,6 +9,30 @@
 			<SpinnerIcon v-else class="animate-spin" />
 			{{ formatMessage(messages.signInToMinecraft) }}
 		</Button>
+		<div v-if="!showOfflineInput" class="flex justify-center">
+			<button
+				class="text-xs text-secondary hover:text-primary underline bg-transparent border-0 cursor-pointer py-1"
+				@click="showOfflineInput = true"
+			>
+				Use Offline Local Profile
+			</button>
+		</div>
+		<div v-else class="flex flex-col gap-2 p-2 bg-surface-2 rounded-lg">
+			<span class="text-xs text-secondary font-medium">Offline Username (3-16 chars):</span>
+			<div class="flex gap-2">
+				<input
+					v-model="offlineUsername"
+					type="text"
+					placeholder="Player"
+					maxlength="16"
+					class="text-sm px-2 py-1 flex-1 rounded bg-bg text-primary border border-solid border-surface-5 focus:outline-none"
+					@keyup.enter="loginOffline"
+				/>
+				<Button type="colored" color="brand" :disabled="loginDisabled || !offlineUsername.trim()" @click="loginOffline">
+					Sign In
+				</Button>
+			</div>
+		</div>
 	</div>
 	<Accordion
 		v-else
@@ -80,6 +104,29 @@
 					<PlusIcon />
 					{{ formatMessage(messages.addAccount) }}
 				</Button>
+				<button
+					v-if="!showOfflineInput"
+					class="text-xs text-secondary hover:text-primary underline bg-transparent border-0 cursor-pointer py-1 text-center"
+					@click="showOfflineInput = true"
+				>
+					+ Add Offline Local Profile
+				</button>
+				<div v-else class="flex flex-col gap-2 p-2 bg-surface-2 rounded-lg">
+					<span class="text-xs text-secondary font-medium">Offline Username (3-16 chars):</span>
+					<div class="flex gap-2">
+						<input
+							v-model="offlineUsername"
+							type="text"
+							placeholder="Player"
+							maxlength="16"
+							class="text-sm px-2 py-1 flex-1 rounded bg-bg text-primary border border-solid border-surface-5 focus:outline-none"
+							@keyup.enter="loginOffline"
+						/>
+						<Button type="colored" color="brand" :disabled="loginDisabled || !offlineUsername.trim()" @click="loginOffline">
+							Sign In
+						</Button>
+					</div>
+				</div>
 			</div>
 		</div>
 	</Accordion>
@@ -110,6 +157,7 @@ import { trackEvent } from '@/helpers/analytics'
 import {
 	get_default_user,
 	login as login_flow,
+	login_offline,
 	remove_user,
 	set_default_user,
 	users,
@@ -134,9 +182,35 @@ type MinecraftCredential = {
 	}
 }
 
-const accounts: Ref<MinecraftCredential[]> = ref([])
-const loginDisabled = ref(false)
-const defaultUser = ref<string | undefined>()
+const showOfflineInput = ref(false)
+const offlineUsername = ref('')
+
+async function login() {
+	loginDisabled.value = true
+	const loggedIn = await login_flow().catch(handleSevereError)
+
+	if (loggedIn) {
+		await setAccount(loggedIn)
+	}
+
+	trackEvent('AccountLogIn')
+	loginDisabled.value = false
+}
+
+async function loginOffline() {
+	if (!offlineUsername.value.trim()) return
+	loginDisabled.value = true
+	try {
+		const loggedIn = await login_offline(offlineUsername.value.trim()).catch(handleError)
+		if (loggedIn) {
+			await setAccount(loggedIn)
+			showOfflineInput.value = false
+			offlineUsername.value = ''
+		}
+	} finally {
+		loginDisabled.value = false
+	}
+}
 const equippedSkin = ref<Skin | null>(null)
 const headUrlCache = ref(new Map<string, string>())
 
@@ -226,18 +300,6 @@ async function setAccount(account: MinecraftCredential) {
 	await set_default_user(account.profile.id).catch(handleError)
 	await refreshValues()
 	emit('change')
-}
-
-async function login() {
-	loginDisabled.value = true
-	const loggedIn = await login_flow().catch(handleSevereError)
-
-	if (loggedIn) {
-		await setAccount(loggedIn)
-	}
-
-	trackEvent('AccountLogIn')
-	loginDisabled.value = false
 }
 
 async function logout(id: string) {

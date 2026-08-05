@@ -34,6 +34,14 @@ export async function login() {
 }
 
 /**
+ * Authenticate with an offline player profile.
+ * @param {string} username
+ */
+export async function login_offline(username) {
+	return await invoke('plugin:auth|login_offline', { username })
+}
+
+/**
  * Retrieves the default user
  * @return {Promise<UUID | undefined>}
  */
