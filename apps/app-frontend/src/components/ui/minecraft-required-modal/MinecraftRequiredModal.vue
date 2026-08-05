@@ -52,27 +52,43 @@
 				</div>
 				<div v-if="!showOfflineInput" class="flex justify-center mt-1">
 					<button
+						type="button"
 						class="text-xs text-secondary hover:text-primary underline bg-transparent border-0 cursor-pointer py-1"
 						@click="showOfflineInput = true"
 					>
 						Use Offline Local Profile (No Microsoft Account)
 					</button>
 				</div>
-				<div v-else class="flex flex-col gap-2 p-2 bg-surface-2 rounded-lg mt-1">
-					<span class="text-xs text-secondary font-medium">Offline Username (3-16 chars):</span>
-					<div class="flex gap-2">
-						<input
-							v-model="offlineUsername"
-							type="text"
-							placeholder="Player"
-							maxlength="16"
-							class="text-sm px-2 py-1 flex-1 rounded bg-bg text-primary border border-solid border-surface-5 focus:outline-none"
-							@keyup.enter="signInOffline"
-						/>
-						<Button type="colored" color="brand" :disabled="loadingSignIn || !offlineUsername.trim()" @click="signInOffline">
-							Sign In Offline
-						</Button>
+				<div v-else class="flex flex-col gap-2.5 p-3 bg-surface-2 rounded-xl border border-solid border-surface-5 mt-1 w-full box-border">
+					<div class="flex items-center justify-between">
+						<span class="text-xs text-secondary font-semibold">Offline Username</span>
+						<button
+							type="button"
+							class="text-xs text-secondary hover:text-primary bg-transparent border-0 cursor-pointer p-0 underline"
+							@click="showOfflineInput = false"
+						>
+							Cancel
+						</button>
 					</div>
+					<input
+						v-model="offlineUsername"
+						type="text"
+						placeholder="e.g. Steve"
+						maxlength="16"
+						class="w-full box-border text-sm px-3 py-2 rounded-lg bg-bg text-primary border border-solid border-surface-5 focus:outline-none focus:border-brand"
+						@keyup.enter="signInOffline"
+					/>
+					<Button
+						type="colored"
+						color="brand"
+						class="w-full justify-center"
+						:disabled="loadingSignIn || !offlineUsername.trim()"
+						@click="signInOffline"
+					>
+						<SpinnerIcon v-if="loadingSignIn" class="animate-spin" />
+						<LogInIcon v-else />
+						Sign In Offline
+					</Button>
 				</div>
 			</div>
 			<p class="m-0 text-center text-sm text-secondary">
@@ -89,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { MessagesSquareIcon, SpinnerIcon } from '@modrinth/assets'
+import { LogInIcon, MessagesSquareIcon, SpinnerIcon } from '@modrinth/assets'
 import { Button, ButtonLink, defineMessages, NewModal, useVIntl } from '@modrinth/ui'
 import { inject, type Ref, ref } from 'vue'
 

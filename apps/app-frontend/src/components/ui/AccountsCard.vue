@@ -1,10 +1,10 @@
 <template>
 	<div
 		v-if="accounts.length === 0"
-		class="flex flex-col gap-3 bg-button-bg border border-solid border-surface-5 rounded-xl p-3 mt-2"
+		class="flex flex-col gap-3 bg-button-bg border border-solid border-surface-5 rounded-xl p-3 mt-2 w-full box-border"
 	>
 		<span class="text-sm font-medium text-secondary">{{ formatMessage(messages.notSignedIn) }}</span>
-		<Button type="colored" color="brand" class="w-full" :disabled="loginDisabled" @click="login()">
+		<Button type="colored" color="brand" class="w-full justify-center" :disabled="loginDisabled" @click="login()">
 			<LogInIcon v-if="!loginDisabled" />
 			<SpinnerIcon v-else class="animate-spin" />
 			{{ formatMessage(messages.signInToMinecraft) }}
@@ -18,21 +18,36 @@
 			<PlusIcon />
 			Use Offline Local Profile
 		</Button>
-		<div v-else class="flex flex-col gap-2 p-2.5 bg-surface-2 rounded-lg border border-solid border-surface-5">
-			<span class="text-xs text-secondary font-semibold">Offline Username (3-16 chars):</span>
-			<div class="flex gap-2">
-				<input
-					v-model="offlineUsername"
-					type="text"
-					placeholder="Player"
-					maxlength="16"
-					class="text-sm px-2.5 py-1.5 flex-1 rounded bg-bg text-primary border border-solid border-surface-5 focus:outline-none focus:border-brand"
-					@keyup.enter="loginOffline"
-				/>
-				<Button type="colored" color="brand" :disabled="loginDisabled || !offlineUsername.trim()" @click="loginOffline">
-					Sign In
-				</Button>
+		<div v-else class="flex flex-col gap-2.5 p-3 bg-surface-2 rounded-xl border border-solid border-surface-5 w-full box-border">
+			<div class="flex items-center justify-between">
+				<span class="text-xs text-secondary font-semibold">Offline Username</span>
+				<button
+					type="button"
+					class="text-xs text-secondary hover:text-primary bg-transparent border-0 cursor-pointer p-0 underline"
+					@click="showOfflineInput = false"
+				>
+					Cancel
+				</button>
 			</div>
+			<input
+				v-model="offlineUsername"
+				type="text"
+				placeholder="e.g. Steve"
+				maxlength="16"
+				class="w-full box-border text-sm px-3 py-2 rounded-lg bg-bg text-primary border border-solid border-surface-5 focus:outline-none focus:border-brand"
+				@keyup.enter="loginOffline"
+			/>
+			<Button
+				type="colored"
+				color="brand"
+				class="w-full justify-center"
+				:disabled="loginDisabled || !offlineUsername.trim()"
+				@click="loginOffline"
+			>
+				<LogInIcon v-if="!loginDisabled" />
+				<SpinnerIcon v-else class="animate-spin" />
+				Sign In Offline
+			</Button>
 		</div>
 	</div>
 	<Accordion
@@ -98,7 +113,7 @@
 			<div class="flex flex-col gap-2 px-2 pt-2">
 				<Button
 					v-if="accounts.length > 0"
-					class="w-full !bg-button-bg !text-primary ![box-shadow:var(--shadow-button)]"
+					class="w-full !bg-button-bg !text-primary ![box-shadow:var(--shadow-button)] justify-center"
 					:disabled="loginDisabled"
 					@click="login()"
 				>
@@ -114,21 +129,36 @@
 					<PlusIcon />
 					Add Offline Local Profile
 				</Button>
-				<div v-else class="flex flex-col gap-2 p-2.5 bg-surface-2 rounded-lg border border-solid border-surface-5">
-					<span class="text-xs text-secondary font-semibold">Offline Username (3-16 chars):</span>
-					<div class="flex gap-2">
-						<input
-							v-model="offlineUsername"
-							type="text"
-							placeholder="Player"
-							maxlength="16"
-							class="text-sm px-2.5 py-1.5 flex-1 rounded bg-bg text-primary border border-solid border-surface-5 focus:outline-none focus:border-brand"
-							@keyup.enter="loginOffline"
-						/>
-						<Button type="colored" color="brand" :disabled="loginDisabled || !offlineUsername.trim()" @click="loginOffline">
-							Sign In
-						</Button>
+				<div v-else class="flex flex-col gap-2.5 p-3 bg-surface-2 rounded-xl border border-solid border-surface-5 w-full box-border">
+					<div class="flex items-center justify-between">
+						<span class="text-xs text-secondary font-semibold">Offline Username</span>
+						<button
+							type="button"
+							class="text-xs text-secondary hover:text-primary bg-transparent border-0 cursor-pointer p-0 underline"
+							@click="showOfflineInput = false"
+						>
+							Cancel
+						</button>
 					</div>
+					<input
+						v-model="offlineUsername"
+						type="text"
+						placeholder="e.g. Steve"
+						maxlength="16"
+						class="w-full box-border text-sm px-3 py-2 rounded-lg bg-bg text-primary border border-solid border-surface-5 focus:outline-none focus:border-brand"
+						@keyup.enter="loginOffline"
+					/>
+					<Button
+						type="colored"
+						color="brand"
+						class="w-full justify-center"
+						:disabled="loginDisabled || !offlineUsername.trim()"
+						@click="loginOffline"
+					>
+						<LogInIcon v-if="!loginDisabled" />
+						<SpinnerIcon v-else class="animate-spin" />
+						Sign In Offline
+					</Button>
 				</div>
 			</div>
 		</div>
