@@ -40,8 +40,13 @@ impl std::fmt::Display for SharedInstanceUnavailableReason {
     }
 }
 
+use crate::state::offline_auth::OfflineProfileError;
+
 #[derive(thiserror::Error, Debug)]
 pub enum ErrorKind {
+    #[error("Offline profile error: {0}")]
+    OfflineProfileError(#[from] OfflineProfileError),
+
     #[error("{0:?}")]
     Any(eyre::Report),
 
