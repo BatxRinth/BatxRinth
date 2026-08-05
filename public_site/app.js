@@ -26,4 +26,20 @@ document.addEventListener('DOMContentLoaded', () => {
     labelEl.textContent = labelText;
     subEl.textContent = subText;
   }
+
+  // Dynamically fetch latest version tag from GitHub API
+  fetch("https://api.github.com/repos/BatxRinth/BatxRinth/releases/latest")
+    .then(res => res.json())
+    .then(data => {
+      if (data && data.tag_name) {
+        const versionTagEl = document.getElementById('hero-version-tag');
+        if (versionTagEl) {
+          const cleanVersion = data.tag_name.replace(/^v/, '');
+          versionTagEl.textContent = `Version ${cleanVersion} Released`;
+        }
+      }
+    })
+    .catch(() => {
+      // Fallback kept at Version 1.0.0 Released
+    });
 });
