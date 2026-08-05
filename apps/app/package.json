@@ -1,5 +1,5 @@
 {
-	"name": "@modrinth/app",
+	"name": "@batxrinth/app",
 	"scripts": {
 		"tauri": "tauri",
 		"build": "tauri build",

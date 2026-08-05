@@ -40,7 +40,7 @@ jobs:
         run: pnpm install
 
       - name: Build BatxRinth Windows Application
-        run: pnpm turbo run build --filter=theseus_gui
+        run: pnpm turbo run build --filter=@batxrinth/app
 
       - name: Rename & Upload Windows Installer (.exe)
         env:
