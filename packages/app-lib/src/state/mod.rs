@@ -34,7 +34,6 @@ mod minecraft_auth;
 pub use self::minecraft_auth::*;
 
 pub mod offline_auth;
-pub use self::offline_auth::*;
 
 pub mod minecraft_skins;
 
