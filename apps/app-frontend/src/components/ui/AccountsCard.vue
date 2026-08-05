@@ -3,29 +3,30 @@
 		v-if="accounts.length === 0"
 		class="flex flex-col gap-3 bg-button-bg border border-solid border-surface-5 rounded-xl p-3 mt-2"
 	>
-		<span>{{ formatMessage(messages.notSignedIn) }}</span>
-		<Button type="colored" color="brand" :disabled="loginDisabled" @click="login()">
+		<span class="text-sm font-medium text-secondary">{{ formatMessage(messages.notSignedIn) }}</span>
+		<Button type="colored" color="brand" class="w-full" :disabled="loginDisabled" @click="login()">
 			<LogInIcon v-if="!loginDisabled" />
 			<SpinnerIcon v-else class="animate-spin" />
 			{{ formatMessage(messages.signInToMinecraft) }}
 		</Button>
-		<div v-if="!showOfflineInput" class="flex justify-center">
-			<button
-				class="text-xs text-secondary hover:text-primary underline bg-transparent border-0 cursor-pointer py-1"
-				@click="showOfflineInput = true"
-			>
-				Use Offline Local Profile
-			</button>
-		</div>
-		<div v-else class="flex flex-col gap-2 p-2 bg-surface-2 rounded-lg">
-			<span class="text-xs text-secondary font-medium">Offline Username (3-16 chars):</span>
+		<Button
+			v-if="!showOfflineInput"
+			type="outlined"
+			class="w-full !bg-surface-2 !text-primary border border-solid border-surface-5 hover:!bg-surface-3 cursor-pointer justify-center"
+			@click="showOfflineInput = true"
+		>
+			<PlusIcon />
+			Use Offline Local Profile
+		</Button>
+		<div v-else class="flex flex-col gap-2 p-2.5 bg-surface-2 rounded-lg border border-solid border-surface-5">
+			<span class="text-xs text-secondary font-semibold">Offline Username (3-16 chars):</span>
 			<div class="flex gap-2">
 				<input
 					v-model="offlineUsername"
 					type="text"
 					placeholder="Player"
 					maxlength="16"
-					class="text-sm px-2 py-1 flex-1 rounded bg-bg text-primary border border-solid border-surface-5 focus:outline-none"
+					class="text-sm px-2.5 py-1.5 flex-1 rounded bg-bg text-primary border border-solid border-surface-5 focus:outline-none focus:border-brand"
 					@keyup.enter="loginOffline"
 				/>
 				<Button type="colored" color="brand" :disabled="loginDisabled || !offlineUsername.trim()" @click="loginOffline">
@@ -104,22 +105,24 @@
 					<PlusIcon />
 					{{ formatMessage(messages.addAccount) }}
 				</Button>
-				<button
+				<Button
 					v-if="!showOfflineInput"
-					class="text-xs text-secondary hover:text-primary underline bg-transparent border-0 cursor-pointer py-1 text-center"
+					type="outlined"
+					class="w-full !bg-surface-2 !text-primary border border-solid border-surface-5 hover:!bg-surface-3 cursor-pointer justify-center"
 					@click="showOfflineInput = true"
 				>
-					+ Add Offline Local Profile
-				</button>
-				<div v-else class="flex flex-col gap-2 p-2 bg-surface-2 rounded-lg">
-					<span class="text-xs text-secondary font-medium">Offline Username (3-16 chars):</span>
+					<PlusIcon />
+					Add Offline Local Profile
+				</Button>
+				<div v-else class="flex flex-col gap-2 p-2.5 bg-surface-2 rounded-lg border border-solid border-surface-5">
+					<span class="text-xs text-secondary font-semibold">Offline Username (3-16 chars):</span>
 					<div class="flex gap-2">
 						<input
 							v-model="offlineUsername"
 							type="text"
 							placeholder="Player"
 							maxlength="16"
-							class="text-sm px-2 py-1 flex-1 rounded bg-bg text-primary border border-solid border-surface-5 focus:outline-none"
+							class="text-sm px-2.5 py-1.5 flex-1 rounded bg-bg text-primary border border-solid border-surface-5 focus:outline-none focus:border-brand"
 							@keyup.enter="loginOffline"
 						/>
 						<Button type="colored" color="brand" :disabled="loginDisabled || !offlineUsername.trim()" @click="loginOffline">
@@ -151,7 +154,7 @@ import {
 	useVIntl,
 } from '@modrinth/ui'
 import type { Ref } from 'vue'
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { trackEvent } from '@/helpers/analytics'
 import {
@@ -211,6 +214,10 @@ async function loginOffline() {
 		loginDisabled.value = false
 	}
 }
+
+const accounts: Ref<MinecraftCredential[]> = ref([])
+const loginDisabled = ref(false)
+const defaultUser = ref<string | undefined>()
 const equippedSkin = ref<Skin | null>(null)
 const headUrlCache = ref(new Map<string, string>())
 
@@ -262,7 +269,9 @@ defineExpose({
 	loginDisabled,
 })
 
-await refreshValues()
+onMounted(() => {
+	refreshValues().catch(() => {})
+})
 
 const selectedAccount = computed(() =>
 	accounts.value.find((account) => account.profile.id === defaultUser.value),

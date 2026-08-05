@@ -1766,12 +1766,10 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 		</div>
 		<div
 			class="app-sidebar mt-px shrink-0 flex flex-col border-0 border-l-[1px] border-[--brand-gradient-border] border-solid"
-			:class="{ 'has-plus': hasPlus }"
 		>
 			<div
 				v-overlay-scrollbars="sidebarOverlayScrollbarsOptions"
 				class="app-sidebar-scrollable flex-grow shrink relative"
-				:class="{ 'pb-12': !hasPlus }"
 				data-overlayscrollbars-initialize
 			>
 				<div id="sidebar-teleport-target" class="sidebar-teleport-content"></div>
@@ -1949,18 +1947,7 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 }
 
 .app-sidebar::after {
-	content: '';
-	position: absolute;
-	bottom: 250px;
-	left: 0;
-	right: 0;
-	height: 5rem;
-	background: var(--brand-gradient-fade-out-color);
-	pointer-events: none;
-}
-
-.app-sidebar.has-plus::after {
-	display: none;
+	display: none !important;
 }
 
 .disable-advanced-rendering {
