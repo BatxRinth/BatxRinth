@@ -1,46 +1,21 @@
 <script setup lang="ts">
-import { Settings2Icon } from '@modrinth/assets'
-import {
-	Button,
-	defineMessages,
-	injectNotificationManager,
-	injectPageContext,
-	Toggle,
-	useVIntl,
-} from '@modrinth/ui'
+import { defineMessages, Toggle, useVIntl } from '@modrinth/ui'
 import { ref, watch } from 'vue'
 
-import { open_ads_consent_preferences } from '@/helpers/ads.js'
-import { optInAnalytics, optOutAnalytics } from '@/helpers/analytics'
 import { get, set } from '@/helpers/settings.ts'
 
 const { formatMessage } = useVIntl()
-const { handleError } = injectNotificationManager()
-const { adConsentAvailable } = injectPageContext()
 const settings = ref(await get())
 
 const messages = defineMessages({
-	adsConsentTitle: {
-		id: 'app.ads-consent.title',
-		defaultMessage: 'Your privacy and how ads support Modrinth',
+	privacyTitle: {
+		id: 'app.settings.privacy.title',
+		defaultMessage: 'Privacy & Network Activity',
 	},
-	adsConsentIntro: {
-		id: 'app.settings.privacy.ads-consent.intro',
+	privacyGuarantee: {
+		id: 'app.settings.privacy.guarantee',
 		defaultMessage:
-			'Ads make Modrinth possible and fund creator payouts. Our partners may store or access cookies in the app to personalize ads and measure performance. You can opt out or manage your preferences below.',
-	},
-	adsConsentManage: {
-		id: 'app.ads-consent.manage',
-		defaultMessage: 'Manage preferences',
-	},
-	telemetryTitle: {
-		id: 'app.settings.privacy.telemetry.title',
-		defaultMessage: 'Telemetry',
-	},
-	telemetryDescription: {
-		id: 'app.settings.privacy.telemetry.description',
-		defaultMessage:
-			'Modrinth collects anonymized analytics and usage data to improve our user experience and customize your experience. By disabling this option, you opt out and your data will no longer be collected.',
+			'BatxRinth is private by default and entirely free of analytics, telemetry, and advertisements. No behavioral tracking data or device identifiers are collected or uploaded.',
 	},
 	discordRichPresenceTitle: {
 		id: 'app.settings.privacy.discord-rich-presence.title',
@@ -49,23 +24,13 @@ const messages = defineMessages({
 	discordRichPresenceDescription: {
 		id: 'app.settings.privacy.discord-rich-presence.description',
 		defaultMessage:
-			'Show Modrinth App as your current activity on Discord. This does not affect Rich Presence added to instances by mods. Requires an app restart.',
+			'Show BatxRinth as your current activity on Discord. Requires explicit opt-in and an app restart.',
 	},
 })
-
-async function manageAdsPreferences() {
-	await open_ads_consent_preferences().catch(handleError)
-}
 
 watch(
 	settings,
 	async () => {
-		if (settings.value.telemetry) {
-			optInAnalytics()
-		} else {
-			optOutAnalytics()
-		}
-
 		await set(settings.value)
 	},
 	{ deep: true },
@@ -73,34 +38,42 @@ watch(
 </script>
 
 <template>
-	<div v-if="adConsentAvailable">
+	<div>
 		<h2 class="m-0 text-lg font-semibold text-contrast">
-			{{ formatMessage(messages.adsConsentTitle) }}
+			{{ formatMessage(messages.privacyTitle) }}
 		</h2>
-		<div class="mt-2 flex flex-col gap-2.5 items-start">
-			<Button @click="manageAdsPreferences">
-				<Settings2Icon aria-hidden="true" />
-				{{ formatMessage(messages.adsConsentManage) }}
-			</Button>
-			<div>
-				{{ formatMessage(messages.adsConsentIntro) }}
-			</div>
-		</div>
+		<p class="m-0 mt-2 text-sm text-secondary">
+			{{ formatMessage(messages.privacyGuarantee) }}
+		</p>
 	</div>
 
-	<div class="mt-8 flex items-center justify-between gap-4">
-		<div>
-			<h2 class="m-0 text-lg font-semibold text-contrast">
-				{{ formatMessage(messages.telemetryTitle) }}
-			</h2>
-			<p class="m-0 mt-1">
-				{{ formatMessage(messages.telemetryDescription) }}
-			</p>
-		</div>
-		<Toggle id="opt-out-analytics" v-model="settings.telemetry" />
+	<div class="mt-6 rounded-lg bg-surface-elevated p-4">
+		<h3 class="m-0 mb-3 text-md font-medium text-contrast">Expected Outbound Network Requests</h3>
+		<ul class="m-0 flex flex-col gap-2 p-0 text-sm list-none text-secondary">
+			<li>
+				<strong class="text-contrast">Game Content & Metadata:</strong> User-initiated downloads
+				from Modrinth API and CDN.
+			</li>
+			<li>
+				<strong class="text-contrast">Minecraft Runtime & Assets:</strong> Game manifests, jars, and
+				asset libraries from Mojang & Minecraft servers.
+			</li>
+			<li>
+				<strong class="text-contrast">Mod Loaders & JRE:</strong> Loader manifests from Fabric,
+				Forge, NeoForge, Quilt, and Azul Java JRE downloads.
+			</li>
+			<li>
+				<strong class="text-contrast">Microsoft Authentication:</strong> Legitimate OAuth 2.0 & Xbox
+				Live authentication directly with Microsoft endpoints.
+			</li>
+			<li>
+				<strong class="text-contrast">Application Updates:</strong> Configured release checks
+				directly with GitHub Releases.
+			</li>
+		</ul>
 	</div>
 
-	<div class="mt-4 flex items-center justify-between gap-4">
+	<div class="mt-6 flex items-center justify-between gap-4">
 		<div>
 			<h2 class="m-0 text-lg font-semibold text-contrast">
 				{{ formatMessage(messages.discordRichPresenceTitle) }}
@@ -110,5 +83,11 @@ watch(
 			</p>
 		</div>
 		<Toggle id="disable-discord-rpc" v-model="settings.discord_rpc" />
+	</div>
+
+	<div class="mt-8 rounded-lg bg-surface-elevated p-4 text-xs text-secondary border border-border">
+		<strong class="text-contrast">Independent Fork Notice:</strong><br />
+		BatxRinth is an independent community fork and is not affiliated with or endorsed by Modrinth,
+		Rinth, Microsoft, Mojang, or Discord.
 	</div>
 </template>

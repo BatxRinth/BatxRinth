@@ -1,4 +1,4 @@
-import { posthog } from 'posthog-js'
+// BatxRinth Telemetry Guard: Telemetry & tracking are disabled by default.
 
 interface InstanceProperties {
 	loader: string
@@ -43,38 +43,14 @@ type AnalyticsEventMap = {
 
 export type AnalyticsEvent = keyof AnalyticsEventMap
 
-let initialized = false
-
-export const initAnalytics = () => {
-	if (initialized) return
-	posthog.init('phc_9Iqi6lFs9sr5BSqh9RRNRSJ0mATS9PSgirDiX3iOYJ', {
-		persistence: 'localStorage',
-		api_host: 'https://posthog.modrinth.com',
-	})
-	initialized = true
-}
-
-export const debugAnalytics = () => {
-	if (!initialized) return
-	posthog.debug()
-}
-
-export const optOutAnalytics = () => {
-	if (!initialized) return
-	posthog.opt_out_capturing()
-}
-
-export const optInAnalytics = () => {
-	initAnalytics()
-	posthog.opt_in_capturing()
-}
+export const initAnalytics = () => {}
+export const debugAnalytics = () => {}
+export const optOutAnalytics = () => {}
+export const optInAnalytics = () => {}
 
 type OptionalArgs<T> = Record<string, never> extends T ? [properties?: T] : [properties: T]
 
 export const trackEvent = <E extends AnalyticsEvent>(
-	eventName: E,
-	...args: OptionalArgs<AnalyticsEventMap[E]>
-) => {
-	if (!initialized) return
-	posthog.capture(eventName, args[0])
-}
+	_eventName: E,
+	..._args: OptionalArgs<AnalyticsEventMap[E]>
+) => {}

@@ -929,20 +929,17 @@
   "app.settings.operating-system.macos": {
     "message": "macOS"
   },
-  "app.settings.privacy.ads-consent.intro": {
-    "message": "Ads make Modrinth possible and fund creator payouts. Our partners may store or access cookies in the app to personalize ads and measure performance. You can opt out or manage your preferences below."
-  },
   "app.settings.privacy.discord-rich-presence.description": {
-    "message": "Show Modrinth App as your current activity on Discord. This does not affect Rich Presence added to instances by mods. Requires an app restart."
+    "message": "Show BatxRinth as your current activity on Discord. Requires explicit opt-in and an app restart."
   },
   "app.settings.privacy.discord-rich-presence.title": {
     "message": "Discord Rich Presence"
   },
-  "app.settings.privacy.telemetry.description": {
-    "message": "Modrinth collects anonymized analytics and usage data to improve our user experience and customize your experience. By disabling this option, you opt out and your data will no longer be collected."
+  "app.settings.privacy.guarantee": {
+    "message": "BatxRinth is private by default and entirely free of analytics, telemetry, and advertisements. No behavioral tracking data or device identifiers are collected or uploaded."
   },
-  "app.settings.privacy.telemetry.title": {
-    "message": "Telemetry"
+  "app.settings.privacy.title": {
+    "message": "Privacy & Network Activity"
   },
   "app.settings.resource-management.always-show-copy-details.description": {
     "message": "Show the Copy details action while an install is queued or running. It is always available for failed or interrupted installs."
@@ -1167,7 +1164,7 @@
     "message": "Sign In"
   },
   "app.skins.sign-in.description": {
-    "message": "Please sign into your Minecraft account to use the skin management features of the Modrinth app."
+    "message": "Please sign into your Minecraft account to use the skin management features of BatxRinth."
   },
   "app.skins.sign-in.rinthbot-alt": {
     "message": "Excited Modrinth Bot"

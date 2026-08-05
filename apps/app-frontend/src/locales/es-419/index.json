@@ -779,9 +779,6 @@
   "app.settings.privacy.discord-rich-presence.title": {
     "message": "Discord Rich Presence"
   },
-  "app.settings.privacy.telemetry.title": {
-    "message": "Telemetría"
-  },
   "app.settings.resource-management.app-directory.title": {
     "message": "Directorio de la aplicación"
   },

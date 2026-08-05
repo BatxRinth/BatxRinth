@@ -893,12 +893,6 @@
   "app.settings.operating-system.macos": {
     "message": "macOS"
   },
-  "app.settings.privacy.ads-consent.intro": {
-    "message": "Les publicités rendent Modrinth possible et financent les rémunérations des créateurs. Nos partenaires peuvent stocker des cookies ou y accéder au sein de l'application afin de personnaliser les publicités et de mesurer les performances. Vous pouvez refuser ou gérer vos préférences ci-dessous."
-  },
-  "app.settings.privacy.telemetry.title": {
-    "message": "Télémétrie"
-  },
   "app.settings.resource-management.always-show-copy-details.title": {
     "message": "Toujours afficher les détails de copie"
   },

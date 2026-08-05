@@ -770,12 +770,6 @@
   "app.settings.operating-system.macos": {
     "message": "macOS"
   },
-  "app.settings.privacy.ads-consent.intro": {
-    "message": "Reklamlar, Modrinth'i mümkün kılıyor ve içerik üreticilerine yapılan ödemeleri finanse ediyor. Partnerlerimiz, reklamları kişiselleştirmek ve performansı ölçmek amacıyla uygulama içinde çerez depolayabilir veya bunlara erişebilir. Aşağıdan tercihinizi yönetebilir veya vazgeçebilirsiniz."
-  },
-  "app.settings.privacy.telemetry.title": {
-    "message": "Telemetri"
-  },
   "app.settings.tabs.appearance": {
     "message": "Görünüm"
   },

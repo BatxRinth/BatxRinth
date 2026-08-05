@@ -926,20 +926,11 @@
   "app.settings.operating-system.macos": {
     "message": "macOS"
   },
-  "app.settings.privacy.ads-consent.intro": {
-    "message": "Werbung ermöglicht Modrinth und finanziert die Auszahlungen an die Ersteller. Unsere Partner speichern möglicherweise Cookies in der App oder greifen auf diese zu, um Werbung zu personalisieren und die Leistung zu messen. Du kannst dies unten deaktivieren oder deine Einstellungen verwalten."
-  },
   "app.settings.privacy.discord-rich-presence.description": {
     "message": "Zeige Modrinth App als deine aktuelle Aktivität auf Discord. Dies betrifft nicht Rich Presence die von Mods zu Instanzen hinzugefügt wird. Benötigt einen Neustart der App."
   },
   "app.settings.privacy.discord-rich-presence.title": {
     "message": "Discord Rich Presence"
-  },
-  "app.settings.privacy.telemetry.description": {
-    "message": "Modrinth sammelt anonymisierte Analyse- und Nutzungsdaten, um unsere Nutzererfahrung zu verbessern und deine Erfahrung anzupassen. Wenn du diese Option deaktivierst, entscheidest du dich dagegen und deine Daten werden nicht mehr gesammelt."
-  },
-  "app.settings.privacy.telemetry.title": {
-    "message": "Telemetrie"
   },
   "app.settings.resource-management.always-show-copy-details.description": {
     "message": "Zeigt die Aktion \"Details kopieren\" an, während eine Installation in der Warteschlange steht oder ausgeführt wird. Bei fehlgeschlagenen oder abgebrochenen Installationen ist sie immer verfügbar."

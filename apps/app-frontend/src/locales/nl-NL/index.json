@@ -926,9 +926,6 @@
   "app.settings.operating-system.macos": {
     "message": "macOS"
   },
-  "app.settings.privacy.ads-consent.intro": {
-    "message": "Advertenties maken Modrinth mogelijk en financieren de uitbetalingen aan makers. Onze partners kunnen cookies in de app opslaan of gebruiken om advertenties te personaliseren en de prestaties te meten. Je kunt je hieronder afmelden of je voorkeuren beheren."
-  },
   "app.settings.privacy.discord-rich-presence.description": {
     "message": "Laat Modrinth als jouw activiteit op Discord. Dit verandert niet activiteiten toegevoegd door mods."
   },

@@ -1,39 +1,62 @@
-# ![Modrinth Monorepo Cover](/.github/assets/monorepo_cover.png)
+# BatxRinth Desktop Launcher
 
-![Issues](https://img.shields.io/github/issues-raw/Modrinth/code?color=c78aff&label=issues&style=for-the-badge)
-![Pull Requests](https://img.shields.io/github/issues-pr-raw/Modrinth/code?color=c78aff&label=PRs&style=for-the-badge)
-![Contributors](https://img.shields.io/github/contributors/Modrinth/code?color=c78aff&label=contributors&style=for-the-badge)
-![Lines of Code](https://img.shields.io/endpoint?url=https://loctopus.creeperkatze.dev/github/modrinth/code/badge?style=flat&logoColor=white&color=c78aff&style=for-the-badge)
-![Commit Activity](https://img.shields.io/github/commit-activity/m/Modrinth/code?color=c78aff&label=commits&style=for-the-badge)
-![Last Commit](https://img.shields.io/github/last-commit/Modrinth/code?color=c78aff&label=last%20commit&style=for-the-badge)
+**BatxRinth** is an independently branded, privacy-first, advertisement-free Minecraft launcher built with Rust, Tauri v2, Vue 3, and TypeScript.
 
-## Modrinth Monorepo
+> [!IMPORTANT]
+> **Legal & Non-Affiliation Disclaimer**
+> BatxRinth is an independent community fork and is not affiliated with, sponsored by, or endorsed by Modrinth, Rinth, Inc., Microsoft, Mojang, or Discord.
 
-Welcome to the Modrinth Monorepo, the primary codebase for the Modrinth web interface and app. It contains ![Lines of Code](https://img.shields.io/endpoint?url=https://loctopus.creeperkatze.dev/github/modrinth/code/badge%3Fformat%3Dhuman&logoColor=white&color=black&label=) lines of code and has ![Contributors](https://img.shields.io/github/contributors/Modrinth/code?color=black&label=) contributors!
+---
 
-If you're not a developer and you've stumbled upon this repository, you can access the web interface on the [Modrinth website](https://modrinth.com) and download the latest release of the app [here](https://modrinth.com/app).
+## Features
 
-## Development
+* **Advertisement-Free Interface:** All paid placements, ad webviews, tracking pixels, and consent banners have been completely removed.
+* **Privacy by Default:** Zero analytics, telemetry, usage statistics, background tracking, or persistent device fingerprinting.
+* **Official Microsoft Authentication:** Full support for legitimate Microsoft/Minecraft accounts using system-browser OAuth 2.0 with PKCE.
+* **Offline Local Testing Profiles:** Optional offline profile mode designed for local development, testing, demos, and offline-compatible environments.
+* **Granular Discord Rich Presence:** Optional activity integration disabled by default with granular privacy controls.
+* **GitHub Releases Auto-Updater:** Integrated release update verification against configured GitHub Releases endpoints.
+* **Performance-Oriented Engine:** High-performance Rust core backend for fast instance management, JRE resolution, and parallel modpack processing.
 
-This repository contains two primary packages. For detailed development information, please refer to their respective guides:
+---
 
-- [Website frontend](https://docs.modrinth.com/contributing/knossos/)
-- [Desktop app](https://docs.modrinth.com/contributing/theseus/)
+## Supported Platforms
 
-## Contributing
+* **Windows:** Windows 10 / 11 (x64) via NSIS Installer & standalone binary.
+* **macOS:** macOS 11+ (Apple Silicon & Intel) via DMG package.
+* **Linux:** Debian/Ubuntu (.deb), AppImage, and tarball distributions.
 
-We welcome contributions! Before submitting any contributions, please read our [contributing guidelines](https://docs.modrinth.com/contributing/getting-started/).
+---
 
-If you plan to fork this repository for your own purposes, please review our [copying guidelines](COPYING.md).
+## Quick Start & Building
 
-## Security
+For comprehensive environment setup and build instructions across all platforms, see [`BUILDING.md`](./BUILDING.md).
 
-If you discover a security vulnerability within our codebase, please follow our [responsible disclosure guidelines](https://modrinth.com/legal/security).
+```bash
+# Install dependencies
+pnpm install
 
-## Support
+# Run frontend + Tauri desktop dev app
+pnpm app:dev
 
-If you need help with the Modrinth web interface or app, please visit our [support page](https://support.modrinth.com). For general inquiries, you can also join our [Discord server](https://discord.modrinth.com).
+# Build production bundle
+pnpm --filter=@batxrinth/app build
+```
+
+---
+
+## Documentation Index
+
+* [`BUILDING.md`](./BUILDING.md) — Build prerequisites, environment setup, and packaging guide.
+* [`PRIVACY.md`](./PRIVACY.md) — Privacy guarantees and local data handling commitments.
+* [`NETWORK.md`](./NETWORK.md) — Complete outbound network request inventory.
+* [`UPDATES.md`](./UPDATES.md) — Auto-updater design, release key signing, and GitHub Releases distribution.
+* [`SECURITY.md`](./SECURITY.md) — Security model, token storage practices, and vulnerability reporting.
+* [`MIGRATION.md`](./MIGRATION.md) — Upstream compatibility, schema migration, and data import tooling.
+* [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) — Open source licenses and legal attributions.
+
+---
 
 ## License
 
-All packages in this repository are licensed under their respective licenses. Refer to the LICENSE file in each package for more information.
+BatxRinth is licensed under the **GNU General Public License v3.0 (GPL-3.0-only)**. Refer to `LICENSE` and `COPYING.md` for terms.

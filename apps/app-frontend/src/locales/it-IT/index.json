@@ -926,20 +926,11 @@
   "app.settings.operating-system.macos": {
     "message": "macOS"
   },
-  "app.settings.privacy.ads-consent.intro": {
-    "message": "Le pubblicità aiutano Modrinth a crescere e a finanziare i creatori. I nostri partner potrebbero memorizzare o accedere ai cookie nell'app per personalizzare e misurarne le prestazioni. Di seguito puoi scegliere di disdire o di gestire le opzioni."
-  },
   "app.settings.privacy.discord-rich-presence.description": {
     "message": "Mostra Modrinth App come attività su Discord. Ciò non blocca le mod che mostrano la loro Rich Presence. Richiede un riavvio."
   },
   "app.settings.privacy.discord-rich-presence.title": {
     "message": "Rich Presence su Discord"
-  },
-  "app.settings.privacy.telemetry.description": {
-    "message": "Modrinth raccoglie analitiche e dati anonimi per migliorare l'esperienza utente e personalizzarne la tua. Disabilitando questa opzione, i tuoi dati non verranno più raccolti."
-  },
-  "app.settings.privacy.telemetry.title": {
-    "message": "Telemetria"
   },
   "app.settings.resource-management.always-show-copy-details.description": {
     "message": "Mostra il pulsante Copia info mentre un'installazione è in coda o in esecuzione. Verrà sempre mostrato dopo un errore o un'interruzione."

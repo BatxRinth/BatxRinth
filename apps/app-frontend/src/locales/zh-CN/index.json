@@ -929,20 +929,11 @@
   "app.settings.operating-system.macos": {
     "message": "macOS"
   },
-  "app.settings.privacy.ads-consent.intro": {
-    "message": "广告使 Modrinth 得以运营，并为创作者报酬提供资金支持。我们的合作伙伴可能会在应用中存储或访问 Cookie，以便实现广告个性化和效果衡量。您可以在下方选择退出或管理您的偏好设置。"
-  },
   "app.settings.privacy.discord-rich-presence.description": {
     "message": "在 Discord 上将 Modrinth App 显示为您当前的活动。这不会影响模组为游戏实例添加的 Rich Presence。需要重启应用生效。"
   },
   "app.settings.privacy.discord-rich-presence.title": {
     "message": "Discord Rich Presence"
-  },
-  "app.settings.privacy.telemetry.description": {
-    "message": "Modrinth 收集匿名分析和使用数据，以提升用户体验并为您提供个性化服务。若禁用此选项，即表示您选择退出，您的数据将不再被收集。"
-  },
-  "app.settings.privacy.telemetry.title": {
-    "message": "遥测"
   },
   "app.settings.resource-management.always-show-copy-details.description": {
     "message": "在安装排队或运行时显示“复制详细信息”选项。对于失败或中断的安装，该选项始终可用。"

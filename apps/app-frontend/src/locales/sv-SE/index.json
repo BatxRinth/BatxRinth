@@ -848,15 +848,6 @@
   "app.settings.operating-system.macos": {
     "message": "macOS"
   },
-  "app.settings.privacy.ads-consent.intro": {
-    "message": "Reklam gör Modrinth möjligt och finansierar utbetalningar till skapare. Våra partners kan lagra eller komma åt cookies i appen för att Personalisera reklam och mäta statistik."
-  },
-  "app.settings.privacy.telemetry.description": {
-    "message": "Modrinth samlar in anonymiserad statistik och användningsdata för att förbättra vår användarupplevelse och anpassa din upplevelse. Genom att inaktivera det här alternativet avanmäler du dig och din data kommer inte längre samlas in."
-  },
-  "app.settings.privacy.telemetry.title": {
-    "message": "Telemetri"
-  },
   "app.settings.resource-management.app-cache.confirm.description": {
     "message": "Appen kan laddas in långsammare tills cachen är återuppbyggd."
   },

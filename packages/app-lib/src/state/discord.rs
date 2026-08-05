@@ -72,8 +72,8 @@ impl DiscordGuard {
 
         let activity = Activity::new().state(msg).assets(
             Assets::new()
-                .large_image("modrinth_simple")
-                .large_text("Modrinth Logo"),
+                .large_image("batxrinth_logo")
+                .large_text("BatxRinth Launcher"),
         );
 
         // Attempt to set the activity

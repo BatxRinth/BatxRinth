@@ -839,17 +839,11 @@
   "app.settings.operating-system.macos": {
     "message": "macOS"
   },
-  "app.settings.privacy.ads-consent.intro": {
-    "message": "Reklamy pozwalają na dalsze działanie Modrinth i finansują dochody dla twórców. Nasi partnerzy mogą gromadzić albo uzyskiwać dostęp do plików cookies w celu personalizacji reklam i mierzenia skuteczności."
-  },
   "app.settings.privacy.discord-rich-presence.description": {
     "message": "Pokazuj Modrinth App jako aktywność na Discord. Nie wpływa to na Rich Presence dodane do instancji przez mody. Wymaga ponownego uruchomienia aplikacji."
   },
   "app.settings.privacy.discord-rich-presence.title": {
     "message": "Discord Rich Presence"
-  },
-  "app.settings.privacy.telemetry.title": {
-    "message": "Telemetria"
   },
   "app.settings.resource-management.maximum-concurrent-downloads.description": {
     "message": "Ilość plików, które aplikacja może pobierać na raz. Zmniejsz tę wartość, jeśli pobieranie jest niestabilne. Wymaga ponownego uruchomienia aplikacji."
