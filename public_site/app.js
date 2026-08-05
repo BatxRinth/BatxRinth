@@ -3,22 +3,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const labelEl = document.getElementById('primary-btn-label');
   const subEl = document.getElementById('primary-btn-sub');
 
-  const releaseBaseUrl = "https://github.com/BatxRinth/BatxRinth/releases/latest/download";
-  const latestReleaseUrl = "https://github.com/BatxRinth/BatxRinth/releases/latest";
+  const latestReleaseUrl = "https://github.com/BatxRinth/BatxRinth/releases";
   const userAgent = navigator.userAgent.toLowerCase();
 
-  let downloadUrl = `${releaseBaseUrl}/BatxRinth_x64-setup.exe`;
+  let downloadUrl = latestReleaseUrl;
   let labelText = "Download for Windows";
-  let subText = "BatxRinth_x64-setup.exe (64-bit)";
+  let subText = "View Latest Releases (.exe, .dmg, .AppImage)";
 
   if (userAgent.includes('mac') || userAgent.includes('os x')) {
     downloadUrl = latestReleaseUrl;
     labelText = "Download for macOS";
-    subText = "BatxRinth.dmg (Apple Silicon & Intel)";
+    subText = "View Latest Releases (.dmg)";
   } else if (userAgent.includes('linux')) {
     downloadUrl = latestReleaseUrl;
     labelText = "Download for Linux";
-    subText = "BatxRinth.AppImage / .deb";
+    subText = "View Latest Releases (.AppImage / .deb)";
   }
 
   if (primaryBtn && labelEl && subEl) {
