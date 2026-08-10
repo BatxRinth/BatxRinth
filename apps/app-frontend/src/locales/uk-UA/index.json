@@ -150,13 +150,13 @@
     "message": "Розширене промальовування"
   },
   "app.appearance-settings.color-theme.description": {
-    "message": "Оберіть тему для Modrinth App."
+    "message": "Оберіть тему для BatxRinth."
   },
   "app.appearance-settings.color-theme.title": {
     "message": "Колірна тема"
   },
   "app.appearance-settings.default-landing-page.description": {
-    "message": "Оберіть сторінку, яка показуватиметься при відкритті Modrinth App."
+    "message": "Оберіть сторінку, яка показуватиметься при відкритті BatxRinth."
   },
   "app.appearance-settings.default-landing-page.home": {
     "message": "Головна"
@@ -180,7 +180,7 @@
     "message": "Повернутися до світів"
   },
   "app.appearance-settings.minimize-launcher.description": {
-    "message": "Згортати Modrinth App під час запуску Minecraft."
+    "message": "Згортати BatxRinth під час запуску Minecraft."
   },
   "app.appearance-settings.minimize-launcher.title": {
     "message": "Згортати застосунок"
@@ -834,7 +834,7 @@
     "message": "Перезапуск..."
   },
   "app.settings.app-version": {
-    "message": "Modrinth App {version}"
+    "message": "BatxRinth {version}"
   },
   "app.settings.default-instance-options.environment-variables.description": {
     "message": "Змінні середовища встановлюються, коли профіль запускається."
@@ -927,7 +927,7 @@
     "message": "macOS"
   },
   "app.settings.privacy.discord-rich-presence.description": {
-    "message": "Показувати Modrinth App як вашу поточну активність у Discord. Це не впливає на Rich Presence, доданий до збірок модами. Потребує перезапуску застосунку."
+    "message": "Показувати BatxRinth як вашу поточну активність у Discord. Це не впливає на Rich Presence, доданий до збірок модами. Потребує перезапуску застосунку."
   },
   "app.settings.privacy.discord-rich-presence.title": {
     "message": "Discord Rich Presence"
@@ -966,7 +966,7 @@
     "message": "Оглянути каталог застосунку"
   },
   "app.settings.resource-management.app-directory.description": {
-    "message": "Де Modrinth App зберігає збірки та інші файли. Зміни набудуть чинності після перезапуску застосунку."
+    "message": "Де BatxRinth зберігає збірки та інші файли. Зміни набудуть чинності після перезапуску застосунку."
   },
   "app.settings.resource-management.app-directory.select": {
     "message": "Вибрати новий каталог застосунку"
@@ -1155,7 +1155,7 @@
     "message": "Увійдіть"
   },
   "app.skins.sign-in.description": {
-    "message": "Будь ласка, увійдіть у свій обліковий запис Minecraft, щоб використовувати особливості керування скінами в Modrinth App."
+    "message": "Будь ласка, увійдіть у свій обліковий запис Minecraft, щоб використовувати особливості керування скінами в BatxRinth."
   },
   "app.skins.sign-in.rinthbot-alt": {
     "message": "Схвильований бот Modrinth"
@@ -1173,7 +1173,7 @@
     "message": "Увімкнути"
   },
   "app.survey.body": {
-    "message": "Не бажаєте відповісти на кілька запитань про ваш досвід користування Modrinth App?"
+    "message": "Не бажаєте відповісти на кілька запитань про ваш досвід користування BatxRinth?"
   },
   "app.survey.footer": {
     "message": "Цей відгук надійде безпосередньо команді Modrinth і допоможе у створенні майбутніх оновлень!"
@@ -1188,13 +1188,13 @@
     "message": "Привіт, користувачу Modrinth!"
   },
   "app.update-popup.body.download-complete": {
-    "message": "Modrinth App v{version} завантажено. Перезапустіть, щоб оновити зараз, або це відбудеться автоматично після закриття застосунку."
+    "message": "BatxRinth v{version} завантажено. Перезапустіть, щоб оновити зараз, або це відбудеться автоматично після закриття застосунку."
   },
   "app.update-popup.body.linux": {
-    "message": "Modrinth App v{version} вже доступно. Скористайтеся менеджером пакетів, щоб отримати найновіші функції та виправлення!"
+    "message": "BatxRinth v{version} вже доступно. Скористайтеся менеджером пакетів, щоб отримати найновіші функції та виправлення!"
   },
   "app.update-popup.body.metered": {
-    "message": "Modrinth App v{version} вже доступно! Оскільки ви використовуєте лімітне підключення, ми не завантажили його автоматично."
+    "message": "BatxRinth v{version} вже доступно! Оскільки ви використовуєте лімітне підключення, ми не завантажили його автоматично."
   },
   "app.update-popup.changelog": {
     "message": "Журнал змін"
@@ -1365,7 +1365,7 @@
     "message": "Відв'язати спільну збірку"
   },
   "installation-settings.unpublish-shared-instance.modal.admonition-body": {
-    "message": "Це видалить спільну збірку з серверів Modrinth. Користувачі Modrinth App припинять отримувати оновлення, але ваша локальна збірка та її вміст залишаться на цьому пристрої."
+    "message": "Це видалить спільну збірку з серверів Modrinth. Користувачі BatxRinth припинять отримувати оновлення, але ваша локальна збірка та її вміст залишаться на цьому пристрої."
   },
   "installation-settings.unpublish-shared-instance.modal.admonition-header": {
     "message": "Скасування публікації спільної збірки"

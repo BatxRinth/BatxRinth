@@ -150,13 +150,13 @@
     "message": "Napredno renderovanje"
   },
   "app.appearance-settings.color-theme.description": {
-    "message": "Izaberi boju teme koju koristi Modrinth App."
+    "message": "Izaberi boju teme koju koristi BatxRinth."
   },
   "app.appearance-settings.color-theme.title": {
     "message": "Tema boje"
   },
   "app.appearance-settings.default-landing-page.description": {
-    "message": "Izaberi stranicu prikazanu kada se Modrinth App pokrene."
+    "message": "Izaberi stranicu prikazanu kada se BatxRinth pokrene."
   },
   "app.appearance-settings.default-landing-page.home": {
     "message": "Početna stranica"
@@ -180,7 +180,7 @@
     "message": "Vrati se u svetove"
   },
   "app.appearance-settings.minimize-launcher.description": {
-    "message": "Smanji Modrinth App kada se Minecraft pokrene."
+    "message": "Smanji BatxRinth kada se Minecraft pokrene."
   },
   "app.appearance-settings.minimize-launcher.title": {
     "message": "Smanji aplikaciju"

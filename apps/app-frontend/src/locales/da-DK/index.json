@@ -630,7 +630,7 @@
     "message": "Log Ind"
   },
   "app.skins.sign-in.description": {
-    "message": "Venligst log ind til din Minecraft konto for at kunne funktionerne til at administrere dit skin i Modrinth appen."
+    "message": "Venligst log ind til din Minecraft konto for at kunne funktionerne til at administrere dit skin i BatxRinthen."
   },
   "app.skins.sign-in.rinthbot-alt": {
     "message": "Overrasket Modrinth Bot"
@@ -648,13 +648,13 @@
     "message": "Slå til"
   },
   "app.update-popup.body.download-complete": {
-    "message": "Modrinth App v{version} er færdig med at download. Genindlæs for at opdatere nu, eller automatisk når du lukker Modrinth App."
+    "message": "BatxRinth v{version} er færdig med at download. Genindlæs for at opdatere nu, eller automatisk når du lukker BatxRinth."
   },
   "app.update-popup.body.linux": {
-    "message": "Modrinth App v{version} er nu tilgængelig. Brug din pakke-manager til at opdatere for de nyeste features og fejlrettelser!"
+    "message": "BatxRinth v{version} er nu tilgængelig. Brug din pakke-manager til at opdatere for de nyeste features og fejlrettelser!"
   },
   "app.update-popup.body.metered": {
-    "message": "Modrinth App v{version} er nu tilgængelig! Siden du er på et begrænset netværk, vi downloadede den ikke automatisk."
+    "message": "BatxRinth v{version} er nu tilgængelig! Siden du er på et begrænset netværk, vi downloadede den ikke automatisk."
   },
   "app.update-popup.changelog": {
     "message": "Ændringslog"

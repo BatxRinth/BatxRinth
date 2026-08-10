@@ -150,13 +150,13 @@
     "message": "Geavanceerde weergave"
   },
   "app.appearance-settings.color-theme.description": {
-    "message": "Kies het kleurenthema dat door de Modrinth-app wordt gebruikt."
+    "message": "Kies het kleurenthema dat door de BatxRinth wordt gebruikt."
   },
   "app.appearance-settings.color-theme.title": {
     "message": "Kleurenthema"
   },
   "app.appearance-settings.default-landing-page.description": {
-    "message": "Kies de pagina die wordt weergegeven wanneer de Modrinth-app wordt geopend."
+    "message": "Kies de pagina die wordt weergegeven wanneer de BatxRinth wordt geopend."
   },
   "app.appearance-settings.default-landing-page.home": {
     "message": "Start"
@@ -180,7 +180,7 @@
     "message": "Ga terug in werelden"
   },
   "app.appearance-settings.minimize-launcher.description": {
-    "message": "Minimaliseer de Modrinth-app zodra Minecraft opstart."
+    "message": "Minimaliseer de BatxRinth zodra Minecraft opstart."
   },
   "app.appearance-settings.minimize-launcher.title": {
     "message": "App minimaliseren"
@@ -834,7 +834,7 @@
     "message": "Opnieuw opstarten..."
   },
   "app.settings.app-version": {
-    "message": "Modrinth-app {version}"
+    "message": "BatxRinth {version}"
   },
   "app.settings.default-instance-options.environment-variables.description": {
     "message": "Omgevingsvariabelen die bij het opstarten van een instantie worden ingesteld."
@@ -1092,7 +1092,7 @@
     "message": "Inloggen"
   },
   "app.skins.sign-in.description": {
-    "message": "Log in op je Minecraft-account om de functies voor het beheren van skins in de Modrinth-app te kunnen gebruiken."
+    "message": "Log in op je Minecraft-account om de functies voor het beheren van skins in de BatxRinth te kunnen gebruiken."
   },
   "app.skins.sign-in.rinthbot-alt": {
     "message": "Excited Modrinth Bot"
@@ -1110,7 +1110,7 @@
     "message": "Inschakelen"
   },
   "app.survey.body": {
-    "message": "Zou je een paar vragen willen beantwoorden over je ervaringen met de Modrinth-app?"
+    "message": "Zou je een paar vragen willen beantwoorden over je ervaringen met de BatxRinth?"
   },
   "app.survey.footer": {
     "message": "Deze feedback wordt rechtstreeks doorgestuurd naar het Modrinth-team en zal als leidraad dienen voor toekomstige updates!"
@@ -1125,13 +1125,13 @@
     "message": "Hoi, Modrinth-gebruiker!"
   },
   "app.update-popup.body.download-complete": {
-    "message": "Modrinth App v{version} is klaar met downloaden. Herlaad om nu te updaten, of automatisch wanneer je de Modrinth App afsluit."
+    "message": "BatxRinth v{version} is klaar met downloaden. Herlaad om nu te updaten, of automatisch wanneer je de BatxRinth afsluit."
   },
   "app.update-popup.body.linux": {
-    "message": "De Modrinth-app v{version} is beschikbaar. Gebruik je pakketbeheerder om bij te werken en zo de nieuwste functies en verbeteringen te krijgen!"
+    "message": "De BatxRinth v{version} is beschikbaar. Gebruik je pakketbeheerder om bij te werken en zo de nieuwste functies en verbeteringen te krijgen!"
   },
   "app.update-popup.body.metered": {
-    "message": "Modrinth App v{version} is nu beschikbaar! Omdat je nu op een netwerk met datalimiet zit, is de download niet automatisch gestart."
+    "message": "BatxRinth v{version} is nu beschikbaar! Omdat je nu op een netwerk met datalimiet zit, is de download niet automatisch gestart."
   },
   "app.update-popup.changelog": {
     "message": "Wijzigingen"
@@ -1302,7 +1302,7 @@
     "message": "Gedeelde instantie ontkoppelen"
   },
   "installation-settings.unpublish-shared-instance.modal.admonition-body": {
-    "message": "Hiermee wordt de gedeelde instantie van de servers van Modrinth verwijderd. Gebruikers die deze instantie in de Modrinth-app gebruiken, ontvangen geen updates meer, maar je lokale instantie en de inhoud daarvan blijven op dit apparaat staan."
+    "message": "Hiermee wordt de gedeelde instantie van de servers van Modrinth verwijderd. Gebruikers die deze instantie in de BatxRinth gebruiken, ontvangen geen updates meer, maar je lokale instantie en de inhoud daarvan blijven op dit apparaat staan."
   },
   "installation-settings.unpublish-shared-instance.modal.admonition-header": {
     "message": "Gedeelde instantie terugtrekken"

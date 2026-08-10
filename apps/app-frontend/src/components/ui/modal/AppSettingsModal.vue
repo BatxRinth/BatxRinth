@@ -251,7 +251,7 @@ const messages = defineMessages({
 	},
 	appVersion: {
 		id: 'app.settings.app-version',
-		defaultMessage: 'Modrinth App {version}',
+		defaultMessage: 'BatxRinth {version}',
 	},
 	macos: {
 		id: 'app.settings.operating-system.macos',
