@@ -45,7 +45,14 @@
 							<rect width="9.25" height="9.25" fill="black" fill-opacity="0.9" />
 							<rect x="10.75" width="9.25" height="9.25" fill="black" fill-opacity="0.9" />
 							<rect y="10.75" width="9.25" height="9.25" fill="black" fill-opacity="0.9" />
-							<rect x="10.75" y="10.75" width="9.25" height="9.25" fill="black" fill-opacity="0.9" />
+							<rect
+								x="10.75"
+								y="10.75"
+								width="9.25"
+								height="9.25"
+								fill="black"
+								fill-opacity="0.9"
+							/>
 						</svg>
 						{{ formatMessage(messages.signIn) }}
 					</Button>
@@ -59,7 +66,10 @@
 						Use Offline Local Profile (No Microsoft Account)
 					</button>
 				</div>
-				<div v-else class="flex flex-col gap-2.5 p-3 bg-surface-2 rounded-xl border border-solid border-surface-5 mt-1 w-full box-border">
+				<div
+					v-else
+					class="flex flex-col gap-2.5 p-3 bg-surface-2 rounded-xl border border-solid border-surface-5 mt-1 w-full box-border"
+				>
 					<div class="flex items-center justify-between">
 						<span class="text-xs text-secondary font-semibold">Offline Username</span>
 						<button
@@ -131,8 +141,7 @@ const messages = defineMessages({
 	},
 	description: {
 		id: 'minecraft-required.description',
-		defaultMessage:
-			'You need a Microsoft account or an offline local testing profile to play.',
+		defaultMessage: 'You need a Microsoft account or an offline local testing profile to play.',
 	},
 	getSupport: {
 		id: 'minecraft-required.get-support',

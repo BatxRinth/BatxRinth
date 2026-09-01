@@ -39,7 +39,8 @@ pub async fn finish_login(
 #[tracing::instrument]
 pub async fn login_offline(username: &str) -> crate::Result<Credentials> {
     let state = State::get().await?;
-    let mut creds = crate::state::offline_auth::create_offline_credentials(username, true)?;
+    let mut creds =
+        crate::state::offline_auth::create_offline_credentials(username, true)?;
     creds.active = true;
     creds.upsert(&state.pool).await?;
     set_default_user(creds.offline_profile.id).await?;

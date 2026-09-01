@@ -1,4 +1,5 @@
 use crate::ErrorKind;
+use crate::state::offline_auth::{OFFLINE_ACCESS_TOKEN, OfflineProfileError};
 use crate::util::fetch::INSECURE_REQWEST_CLIENT;
 use base64::Engine;
 use base64::prelude::{BASE64_STANDARD, BASE64_URL_SAFE_NO_PAD};
@@ -265,6 +266,24 @@ impl OnlineProfileCacheIntent {
 }
 
 impl Credentials {
+    /// Whether these credentials belong to an offline local profile.
+    ///
+    /// Offline profiles hold a placeholder token that Mojang would always reject,
+    /// so every online service call must be skipped for them.
+    pub fn is_offline(&self) -> bool {
+        self.access_token == OFFLINE_ACCESS_TOKEN
+    }
+
+    /// Rejects offline local profiles before an operation that requires a real
+    /// Mojang token is attempted.
+    pub fn require_online(&self) -> crate::Result<()> {
+        if self.is_offline() {
+            return Err(OfflineProfileError::OnlineAccountRequired.into());
+        }
+
+        Ok(())
+    }
+
     /// Refreshes the authentication tokens for this user if they are expired, or
     /// very close to expiration.
     async fn refresh(
@@ -351,6 +370,10 @@ impl Credentials {
         &self,
         cache_intent: OnlineProfileCacheIntent,
     ) -> Option<Arc<MinecraftProfile>> {
+        if self.is_offline() {
+            return None;
+        }
+
         let max_age = cache_intent.max_age();
         let stale_profile = {
             let mut profile_cache = PROFILE_CACHE.lock().await;

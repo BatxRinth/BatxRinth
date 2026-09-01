@@ -659,7 +659,7 @@ async fn fetch_advanced_with_client_and_progress(
         }
 
         if let Some((name, value)) = &download_meta_header {
-            tracing::debug!("Sending download analytics: {value}");
+            tracing::debug!("Attaching download attribution metadata: {value}");
             req = req.header(name.as_str(), value.as_str());
         }
 
@@ -859,28 +859,6 @@ pub async fn fetch_mirrors_with_progress(
     }
 
     unreachable!()
-}
-
-/// Posts a JSON to a URL
-#[tracing::instrument(skip(json_body, semaphore))]
-pub async fn post_json(
-    url: &str,
-    json_body: serde_json::Value,
-    semaphore: &FetchSemaphore,
-    exec: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
-) -> crate::Result<()> {
-    let _permit = semaphore.0.acquire().await?;
-
-    let mut req = INSECURE_REQWEST_CLIENT.post(url).json(&json_body);
-
-    if let Some(creds) =
-        crate::state::ModrinthCredentials::get_active(exec).await?
-    {
-        req = req.header("Authorization", &creds.session);
-    }
-
-    req.send().await?.error_for_status()?;
-    Ok(())
 }
 
 pub async fn read_json<T>(

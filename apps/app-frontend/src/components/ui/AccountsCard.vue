@@ -3,8 +3,16 @@
 		v-if="accounts.length === 0"
 		class="flex flex-col gap-3 bg-button-bg border border-solid border-surface-5 rounded-xl p-3 mt-2 w-full box-border"
 	>
-		<span class="text-sm font-medium text-secondary">{{ formatMessage(messages.notSignedIn) }}</span>
-		<Button type="colored" color="brand" class="w-full justify-center" :disabled="loginDisabled" @click="login()">
+		<span class="text-sm font-medium text-secondary">{{
+			formatMessage(messages.notSignedIn)
+		}}</span>
+		<Button
+			type="colored"
+			color="brand"
+			class="w-full justify-center"
+			:disabled="loginDisabled"
+			@click="login()"
+		>
 			<LogInIcon v-if="!loginDisabled" />
 			<SpinnerIcon v-else class="animate-spin" />
 			{{ formatMessage(messages.signInToMinecraft) }}
@@ -18,7 +26,10 @@
 			<PlusIcon />
 			Use Offline Local Profile
 		</Button>
-		<div v-else class="flex flex-col gap-2.5 p-3 bg-surface-2 rounded-xl border border-solid border-surface-5 w-full box-border">
+		<div
+			v-else
+			class="flex flex-col gap-2.5 p-3 bg-surface-2 rounded-xl border border-solid border-surface-5 w-full box-border"
+		>
 			<div class="flex items-center justify-between">
 				<span class="text-xs text-secondary font-semibold">Offline Username</span>
 				<button
@@ -37,6 +48,10 @@
 				class="w-full box-border text-sm px-3 py-2 rounded-lg bg-bg text-primary border border-solid border-surface-5 focus:outline-none focus:border-brand"
 				@keyup.enter="loginOffline"
 			/>
+			<p class="m-0 text-xs text-secondary">
+				Local testing profile only. It does not prove game ownership, and cannot join online-mode
+				servers or use Mojang skins and capes.
+			</p>
 			<Button
 				type="colored"
 				color="brand"
@@ -129,7 +144,10 @@
 					<PlusIcon />
 					Add Offline Local Profile
 				</Button>
-				<div v-else class="flex flex-col gap-2.5 p-3 bg-surface-2 rounded-xl border border-solid border-surface-5 w-full box-border">
+				<div
+					v-else
+					class="flex flex-col gap-2.5 p-3 bg-surface-2 rounded-xl border border-solid border-surface-5 w-full box-border"
+				>
 					<div class="flex items-center justify-between">
 						<span class="text-xs text-secondary font-semibold">Offline Username</span>
 						<button
@@ -148,6 +166,10 @@
 						class="w-full box-border text-sm px-3 py-2 rounded-lg bg-bg text-primary border border-solid border-surface-5 focus:outline-none focus:border-brand"
 						@keyup.enter="loginOffline"
 					/>
+					<p class="m-0 text-xs text-secondary">
+						Local testing profile only. It does not prove game ownership, and cannot join
+						online-mode servers or use Mojang skins and capes.
+					</p>
 					<Button
 						type="colored"
 						color="brand"

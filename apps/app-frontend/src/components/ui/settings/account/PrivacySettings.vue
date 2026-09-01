@@ -70,6 +70,15 @@ watch(
 				<strong class="text-contrast">Application Updates:</strong> Configured release checks
 				directly with GitHub Releases.
 			</li>
+			<li>
+				<strong class="text-contrast">Download Attribution:</strong> Downloads carry a header
+				describing the file being fetched, so creators are credited. It contains no account, device,
+				or persistent identifier.
+			</li>
+			<li>
+				<strong class="text-contrast">Offline Local Profiles:</strong> Make no authentication
+				requests at all. Mojang profile, skin, and session calls are skipped entirely.
+			</li>
 		</ul>
 	</div>
 

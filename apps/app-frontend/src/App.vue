@@ -9,7 +9,6 @@ import {
 	VerboseLoggingFeature,
 } from '@modrinth/api-client'
 import {
-	ArrowBigUpDashIcon,
 	ChevronLeftIcon,
 	ChevronRightIcon,
 	CompassIcon,
@@ -81,12 +80,9 @@ import ModpackAlreadyInstalledModal from '@/components/ui/modal/ModpackAlreadyIn
 import ModrinthAccountRequiredModal from '@/components/ui/modal/ModrinthAccountRequiredModal.vue'
 import UpdateToPlayModal from '@/components/ui/modal/UpdateToPlayModal.vue'
 import NavButton from '@/components/ui/NavButton.vue'
-import PrideFundraiserBanner from '@/components/ui/PrideFundraiserBanner.vue'
-import PromotionWrapper from '@/components/ui/PromotionWrapper.vue'
 import QuickInstanceSwitcher from '@/components/ui/QuickInstanceSwitcher.vue'
 import SharedInstanceInviteHandler from '@/components/ui/shared-instances/shared-instance-invite-handler/index.vue'
 import SplashScreen from '@/components/ui/SplashScreen.vue'
-import SurveyPopup from '@/components/ui/SurveyPopup.vue'
 import WindowControls from '@/components/ui/WindowControls.vue'
 import { useCheckDisableMouseover } from '@/composables/macCssFix.js'
 import { config } from '@/config'
@@ -171,7 +167,6 @@ updateHistoryNavigationState()
 const APP_LEFT_NAV_WIDTH = '4rem'
 const APP_SIDEBAR_WIDTH = 300
 const INTERCOM_BUBBLE_DEFAULT_PADDING = 20
-const PRIDE_FUNDRAISER_END_DATE = new Date('2026-07-01T00:00:00Z').getTime()
 const credentials = ref()
 let credentialsRefreshId = 0
 const sidebarToggled = ref(true)
@@ -183,9 +178,6 @@ const forceSidebar = computed(
 )
 const sidebarVisible = computed(() => sidebarToggled.value || forceSidebar.value)
 const hostingRouteActive = computed(() => route.path.startsWith('/hosting'))
-const prideFundraiserEnabled = computed(
-	() => themeStore.getFeatureFlag('pride_fundraiser') && Date.now() < PRIDE_FUNDRAISER_END_DATE,
-)
 const hostingIntercomIdentityKey = computed(() => {
 	const rawServerId = route.params.id
 	const serverId = Array.isArray(rawServerId) ? rawServerId[0] : rawServerId
@@ -1713,7 +1705,6 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 		}"
 	>
 		<div class="app-viewport flex-grow router-view">
-			<SurveyPopup />
 			<div
 				class="loading-indicator-container h-8 fixed z-50 pointer-events-none"
 				:style="{
@@ -1787,10 +1778,6 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 							<FriendsList :credentials="credentials" :sign-in="() => requestSignIn()" />
 						</suspense>
 					</div>
-					<PrideFundraiserBanner
-						v-if="prideFundraiserEnabled"
-						class="p-4 border-0 border-b-[1px] border-[--brand-gradient-border] border-solid"
-					/>
 					<div v-if="news && news.length > 0" class="p-4 flex flex-col items-center">
 						<h3 class="text-base mb-4 text-primary font-medium m-0 text-left w-full">
 							{{ formatMessage(messages.news) }}

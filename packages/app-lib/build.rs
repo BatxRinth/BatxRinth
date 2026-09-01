@@ -38,14 +38,24 @@ fn set_env() {
     }
 
     // 3. Fallback defaults if still missing
-    vars.entry("MODRINTH_URL".to_string()).or_insert_with(|| "https://modrinth.com/".to_string());
-    vars.entry("MODRINTH_API_BASE_URL".to_string()).or_insert_with(|| "https://api.modrinth.com/".to_string());
-    vars.entry("SHARED_INSTANCES_API_BASE_URL".to_string()).or_insert_with(|| "https://shared-instances.modrinth.com/".to_string());
-    vars.entry("MODRINTH_ARCHON_BASE_URL".to_string()).or_insert_with(|| "https://archon.modrinth.com/".to_string());
-    vars.entry("MODRINTH_API_URL".to_string()).or_insert_with(|| "https://api.modrinth.com/v2/".to_string());
-    vars.entry("MODRINTH_API_URL_V3".to_string()).or_insert_with(|| "https://api.modrinth.com/v3/".to_string());
-    vars.entry("MODRINTH_SOCKET_URL".to_string()).or_insert_with(|| "wss://api.modrinth.com/".to_string());
-    vars.entry("MODRINTH_LAUNCHER_META_URL".to_string()).or_insert_with(|| "https://launcher-meta.modrinth.com/".to_string());
+    vars.entry("MODRINTH_URL".to_string())
+        .or_insert_with(|| "https://modrinth.com/".to_string());
+    vars.entry("MODRINTH_API_BASE_URL".to_string())
+        .or_insert_with(|| "https://api.modrinth.com/".to_string());
+    vars.entry("SHARED_INSTANCES_API_BASE_URL".to_string())
+        .or_insert_with(|| {
+            "https://shared-instances.modrinth.com/".to_string()
+        });
+    vars.entry("MODRINTH_ARCHON_BASE_URL".to_string())
+        .or_insert_with(|| "https://archon.modrinth.com/".to_string());
+    vars.entry("MODRINTH_API_URL".to_string())
+        .or_insert_with(|| "https://api.modrinth.com/v2/".to_string());
+    vars.entry("MODRINTH_API_URL_V3".to_string())
+        .or_insert_with(|| "https://api.modrinth.com/v3/".to_string());
+    vars.entry("MODRINTH_SOCKET_URL".to_string())
+        .or_insert_with(|| "wss://api.modrinth.com/".to_string());
+    vars.entry("MODRINTH_LAUNCHER_META_URL".to_string())
+        .or_insert_with(|| "https://launcher-meta.modrinth.com/".to_string());
 
     for (var_name, var_value) in vars {
         if var_name == "DATABASE_URL" {
