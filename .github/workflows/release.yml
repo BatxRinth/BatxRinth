@@ -92,10 +92,12 @@ jobs:
         with:
           version: 10
 
+      # Install targets on the toolchain pinned by rust-toolchain.toml, which is the one cargo uses
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.rust-targets }}
+        shell: bash
+        run: |
+          rustup toolchain install
+          rustup target add $(echo "${{ matrix.rust-targets }}" | tr ',' ' ')
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
