@@ -288,7 +288,10 @@ impl Credentials {
     /// Rejects offline and Ely.by profiles before an operation that requires a real
     /// Mojang token is attempted.
     pub fn require_online(&self) -> crate::Result<()> {
-        if !self.is_microsoft() {
+        if self.is_elyby() {
+            return Err(OfflineProfileError::ManagedByElyBy.into());
+        }
+        if self.is_offline() {
             return Err(OfflineProfileError::OnlineAccountRequired.into());
         }
 

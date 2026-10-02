@@ -70,6 +70,14 @@ pub async fn login_elyby(
             .await?;
     creds.upsert(&state.pool).await?;
     set_default_user(creds.offline_profile.id).await?;
+
+    // Fetch authlib-injector now so the first launch doesn't depend on GitHub
+    if let Err(error) =
+        crate::state::elyby_auth::authlib_injector_path(&state).await
+    {
+        tracing::warn!("Could not pre-download authlib-injector: {error}");
+    }
+
     Ok(creds)
 }
 

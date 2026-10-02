@@ -16,6 +16,8 @@ mod event;
 pub mod install;
 mod launcher;
 mod logger;
+#[cfg(test)]
+mod smoke_test;
 mod state;
 
 pub use api::*;

@@ -23,6 +23,10 @@ pub enum OfflineProfileError {
         "This action requires a Microsoft account. Offline and Ely.by profiles cannot use Mojang online services."
     )]
     OnlineAccountRequired,
+    #[error(
+        "Ely.by accounts change skins and capes on ely.by. They show up in game automatically."
+    )]
+    ManagedByElyBy,
 }
 
 pub fn sanitize_offline_username(
