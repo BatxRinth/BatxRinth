@@ -4,28 +4,30 @@ This document enumerates every outbound host contacted by **BatxRinth**, the exa
 
 ## Network Request Inventory
 
-| Host / Endpoint Domain             | Category           | Trigger Event                                               | Can Be Disabled?                      |
-| :--------------------------------- | :----------------- | :---------------------------------------------------------- | :------------------------------------ |
-| `api.modrinth.com`                 | Content Metadata   | Searching/browsing projects or fetching instance updates    | N/A (Core browsing feature)           |
-| `cdn.modrinth.com`                 | File Downloads     | Downloading mods, modpacks, shaders, or resource packs      | N/A (Core download feature)           |
-| `piston-meta.mojang.com`           | Game Manifest      | Fetching official Minecraft version manifest                | N/A (Core launcher feature)           |
-| `launchermeta.mojang.com`          | Game Manifest      | Fetching historical Minecraft manifests                     | N/A (Core launcher feature)           |
-| `resources.download.minecraft.net` | Game Assets        | Downloading Minecraft sound effects and assets              | N/A (Core game launch requirement)    |
-| `libraries.minecraft.net`          | Library Jars       | Downloading Minecraft Java dependency libraries             | N/A (Core game launch requirement)    |
-| `textures.minecraft.net`           | Player Textures    | Rendering player skin textures                              | N/A (Core UI feature)                 |
-| `login.live.com`                   | Microsoft OAuth    | Initiating Microsoft account sign-in                        | Yes (Use offline profile mode)        |
-| `device.auth.xboxlive.com`         | Xbox Auth          | Authenticating device token during sign-in                  | Yes (Use offline profile mode)        |
-| `sisu.xboxlive.com`                | Xbox Auth          | Authenticating Xbox user token                              | Yes (Use offline profile mode)        |
-| `xsts.auth.xboxlive.com`           | Xbox Auth          | Authenticating XSTS authorization token                     | Yes (Use offline profile mode)        |
-| `api.minecraftservices.com`        | Minecraft Profile  | Fetching user profile, skins, and game license entitlement  | Yes (Use offline profile mode)        |
-| `meta.fabricmc.net`                | Modloader Metadata | Resolving Fabric loader versions                            | N/A (When Fabric instance selected)   |
-| `maven.neoforged.net`              | Modloader Metadata | Resolving NeoForge loader versions                          | N/A (When NeoForge instance selected) |
-| `files.minecraftforge.net`         | Modloader Metadata | Resolving Forge loader versions                             | N/A (When Forge instance selected)    |
-| `meta.quiltmc.org`                 | Modloader Metadata | Resolving Quilt loader versions                             | N/A (When Quilt instance selected)    |
-| `api.azul.com`                     | JRE Resolution     | Automated detection & download of Java Runtime Environments | Yes (Specify manual Java path)        |
-| `github.com`                       | Updates            | Checking for BatxRinth app releases on GitHub Releases      | Yes (Disable automatic update checks) |
+| Host / Endpoint Domain             | Category           | Trigger Event                                               | Can Be Disabled?                             |
+| :--------------------------------- | :----------------- | :---------------------------------------------------------- | :------------------------------------------- |
+| `api.modrinth.com`                 | Content Metadata   | Searching/browsing projects or fetching instance updates    | N/A (Core browsing feature)                  |
+| `cdn.modrinth.com`                 | File Downloads     | Downloading mods, modpacks, shaders, or resource packs      | N/A (Core download feature)                  |
+| `piston-meta.mojang.com`           | Game Manifest      | Fetching official Minecraft version manifest                | N/A (Core launcher feature)                  |
+| `launchermeta.mojang.com`          | Game Manifest      | Fetching historical Minecraft manifests                     | N/A (Core launcher feature)                  |
+| `resources.download.minecraft.net` | Game Assets        | Downloading Minecraft sound effects and assets              | N/A (Core game launch requirement)           |
+| `libraries.minecraft.net`          | Library Jars       | Downloading Minecraft Java dependency libraries             | N/A (Core game launch requirement)           |
+| `textures.minecraft.net`           | Player Textures    | Rendering player skin textures                              | N/A (Core UI feature)                        |
+| `login.live.com`                   | Microsoft OAuth    | Initiating Microsoft account sign-in                        | Yes (Use offline profile mode)               |
+| `device.auth.xboxlive.com`         | Xbox Auth          | Authenticating device token during sign-in                  | Yes (Use offline profile mode)               |
+| `sisu.xboxlive.com`                | Xbox Auth          | Authenticating Xbox user token                              | Yes (Use offline profile mode)               |
+| `xsts.auth.xboxlive.com`           | Xbox Auth          | Authenticating XSTS authorization token                     | Yes (Use offline profile mode)               |
+| `api.minecraftservices.com`        | Minecraft Profile  | Fetching user profile, skins, and game license entitlement  | Yes (Use offline profile mode)               |
+| `meta.fabricmc.net`                | Modloader Metadata | Resolving Fabric loader versions                            | N/A (When Fabric instance selected)          |
+| `maven.neoforged.net`              | Modloader Metadata | Resolving NeoForge loader versions                          | N/A (When NeoForge instance selected)        |
+| `files.minecraftforge.net`         | Modloader Metadata | Resolving Forge loader versions                             | N/A (When Forge instance selected)           |
+| `meta.quiltmc.org`                 | Modloader Metadata | Resolving Quilt loader versions                             | N/A (When Quilt instance selected)           |
+| `api.azul.com`                     | JRE Resolution     | Automated detection & download of Java Runtime Environments | Yes (Specify manual Java path)               |
+| `authserver.ely.by`                | Ely.by Auth        | Signing in to, or refreshing, an Ely.by account             | Yes (Don't add an Ely.by account)            |
+| `github.com`                       | Ely.by Launch      | One-time download of the pinned authlib-injector 1.2.8 jar  | Yes (Don't add an Ely.by account)            |
+| `api.github.com`                   | Updates            | Hourly lookup of the latest BatxRinth release               | Yes (Settings → Privacy → Check for updates) |
 
-Every request above is a direct consequence of an action you took: browsing, downloading, launching, signing in, or checking for updates. Nothing is sent on a timer, on startup, or in the background for measurement purposes.
+Every request above is a direct consequence of an action you took (browsing, downloading, launching, signing in), except the update lookup, which you can switch off. That lookup only asks GitHub for the newest release; nothing is sent for measurement purposes.
 
 ## Removed Upstream Reporting
 
@@ -41,6 +43,10 @@ Upstream Modrinth builds report usage back to `api.modrinth.com`. BatxRinth remo
 ## Request Metadata
 
 Content downloads from `api.modrinth.com` and `cdn.modrinth.com` carry a `modrinth-download-meta` header describing the download itself: whether it is a new install, modpack, or update, plus the target game version, loader, and parent pack. This is how Modrinth attributes downloads to the authors whose files you are fetching. It contains no account identifier, device identifier, or persistent ID, and it is only ever attached to a file transfer you started.
+
+## Ely.by Accounts
+
+Ely.by accounts sign in with your Ely.by username or email and password directly against `authserver.ely.by`; the password is not stored, only the resulting access token. When an Ely.by account launches the game, BatxRinth adds authlib-injector (pinned to version 1.2.8 and verified by SHA-256) so the game talks to Ely.by instead of Mojang. BatxRinth itself never contacts Mojang services for an Ely.by account.
 
 ## Offline Local Profiles
 

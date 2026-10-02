@@ -2735,6 +2735,12 @@
   "app.settings.operating-system.macos": {
     "message": "macOS"
   },
+  "app.settings.privacy.check-for-updates.description": {
+    "message": "Ask GitHub once an hour whether a newer BatxRinth release exists. Only the release lookup is sent."
+  },
+  "app.settings.privacy.check-for-updates.title": {
+    "message": "Check for updates"
+  },
   "app.settings.privacy.discord-rich-presence.description": {
     "message": "Show BatxRinth as your current activity on Discord. Requires explicit opt-in and an app restart."
   },

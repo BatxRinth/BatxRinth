@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import { defineMessages, Toggle, useVIntl } from '@modrinth/ui'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
+import { useAppSettings } from '@/composables/use-app-settings'
 import { get, set } from '@/helpers/settings.ts'
 
 const { formatMessage } = useVIntl()
 const settings = ref(await get())
+const appSettings = useAppSettings()
+
+const checkForUpdates = computed({
+	get: () => appSettings.getFeatureFlag('check_for_updates'),
+	set: (value: boolean) => {
+		appSettings.featureFlags.check_for_updates = value
+		settings.value.feature_flags = { ...settings.value.feature_flags, check_for_updates: value }
+	},
+})
 
 const messages = defineMessages({
 	privacyTitle: {
@@ -16,6 +26,15 @@ const messages = defineMessages({
 		id: 'app.settings.privacy.guarantee',
 		defaultMessage:
 			'BatxRinth is private by default and entirely free of analytics, telemetry, and advertisements. No behavioral tracking data or device identifiers are collected or uploaded.',
+	},
+	checkForUpdatesTitle: {
+		id: 'app.settings.privacy.check-for-updates.title',
+		defaultMessage: 'Check for updates',
+	},
+	checkForUpdatesDescription: {
+		id: 'app.settings.privacy.check-for-updates.description',
+		defaultMessage:
+			'Ask GitHub once an hour whether a newer BatxRinth release exists. Only the release lookup is sent.',
 	},
 	discordRichPresenceTitle: {
 		id: 'app.settings.privacy.discord-rich-presence.title',
@@ -67,8 +86,8 @@ watch(
 				Live authentication directly with Microsoft endpoints.
 			</li>
 			<li>
-				<strong class="text-contrast">Application Updates:</strong> Configured release checks
-				directly with GitHub Releases.
+				<strong class="text-contrast">Application Updates:</strong> An hourly lookup of the latest
+				BatxRinth release on GitHub, which you can turn off below.
 			</li>
 			<li>
 				<strong class="text-contrast">Download Attribution:</strong> Downloads carry a header
@@ -79,7 +98,24 @@ watch(
 				<strong class="text-contrast">Offline Local Profiles:</strong> Make no authentication
 				requests at all. Mojang profile, skin, and session calls are skipped entirely.
 			</li>
+			<li>
+				<strong class="text-contrast">Ely.by Accounts:</strong> Sign in and refresh with
+				authserver.ely.by only. authlib-injector is downloaded once from GitHub and checked against
+				a pinned checksum. Mojang services are never contacted.
+			</li>
 		</ul>
+	</div>
+
+	<div class="mt-6 flex items-center justify-between gap-4">
+		<div>
+			<h2 class="m-0 text-lg font-semibold text-contrast">
+				{{ formatMessage(messages.checkForUpdatesTitle) }}
+			</h2>
+			<p class="m-0 mt-1">
+				{{ formatMessage(messages.checkForUpdatesDescription) }}
+			</p>
+		</div>
+		<Toggle id="check-for-updates" v-model="checkForUpdates" />
 	</div>
 
 	<div class="mt-6 flex items-center justify-between gap-4">

@@ -2023,6 +2023,7 @@ function isNewerVersion(latest, current) {
 }
 
 async function checkReleaseUpdates() {
+	if (!appSettings.getFeatureFlag('check_for_updates')) return
 	try {
 		const [response, currentVersion] = await Promise.all([
 			tauriFetch(RELEASES_API_URL, { headers: { Accept: 'application/vnd.github+json' } }),
