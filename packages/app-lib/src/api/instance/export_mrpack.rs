@@ -6,20 +6,25 @@ use crate::event::emit::{emit_loading, init_loading};
 use crate::pack::install_from::{
     EnvType, PackDependency, PackFile, PackFileHash, PackFormat,
 };
+use crate::state::content_store::{
+    FileContent, ReadableContent, content_file_path, input,
+    is_managed_content_path,
+};
+use crate::state::instances::adapters::sqlite::content_rows;
 use crate::state::{
     CacheBehaviour, CachedEntry, InstanceMetadata, ModLoader, SideType, State,
+    VersionEnvironment,
 };
 use crate::util::io::{self, IOError};
-use async_zip::tokio::write::ZipFileWriter;
-use async_zip::{Compression, ZipEntryBuilder};
 use futures::{StreamExt, stream};
 use path_util::SafeRelativeUtf8UnixPathBuf;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::io::{Read, Seek, Write};
+use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
-use tokio::fs::File;
-use tokio_util::compat::FuturesAsyncWriteCompatExt;
+use zip::write::SimpleFileOptions;
+use zip::{CompressionMethod, ZipWriter};
 
 const DEFAULT_SELECTED_EXPORT_PATH_PREFIXES: &[&str] = &[
     "mods",
@@ -29,6 +34,8 @@ const DEFAULT_SELECTED_EXPORT_PATH_PREFIXES: &[&str] = &[
     "config",
 ];
 const EXPORT_CANDIDATE_METADATA_CONCURRENCY: usize = 32;
+const EXPORT_COPY_BUFFER_SIZE: usize = 256 * 1024;
+const STANDARD_ZIP_FILE_SIZE_ERROR: &str = "Your modpack cannot be exported as it contains a file over the size limit of 4 GB";
 
 const NEVER_EXPORTABLE_PATH_PREFIXES: &[&str] = &[
     "profile.json",
@@ -168,6 +175,24 @@ pub async fn export_mrpack(
     _name: Option<String>,
 ) -> crate::Result<()> {
     let state = State::get().await?;
+    let destination = Path::new(&export_path);
+    let parent = destination.parent().ok_or_else(|| {
+        crate::state::content_store::input("Invalid export destination")
+    })?;
+    let parent = tokio::fs::canonicalize(parent).await?;
+    let store = tokio::fs::canonicalize(state.directories.store_dir()).await?;
+    let profiles =
+        tokio::fs::canonicalize(state.directories.instances_dir()).await?;
+    if parent.starts_with(store)
+        || parent.starts_with(profiles)
+        || tokio::fs::symlink_metadata(destination)
+            .await
+            .is_ok_and(|metadata| metadata.file_type().is_symlink())
+    {
+        return Err(crate::state::content_store::input(
+            "Export to a regular file outside the store and instance directories",
+        ));
+    }
     let _permit: tokio::sync::SemaphorePermit =
         state.io_semaphore.0.acquire().await?;
     let metadata = get(instance_id).await?.ok_or_else(|| {
@@ -181,31 +206,29 @@ pub async fn export_mrpack(
     );
 
     let instance_base_path = get_full_path(instance_id).await?;
-    let mut file = File::create(&export_path)
-        .await
-        .map_err(|e| IOError::with_path(e, &export_path))?;
-    let mut writer = ZipFileWriter::with_tokio(&mut file);
     let version_id = version_id.unwrap_or("1.0.0".to_string());
     let mut packfile =
         create_mrpack_json(&metadata, version_id, description).await?;
     packfile.files.retain(|f| {
-        is_path_exportable(&f.path) && export_selection.is_included(&f.path)
+        let logical = SafeRelativeUtf8UnixPathBuf::try_from(
+            f.path.as_str().trim_end_matches(".disabled").to_string(),
+        );
+        is_path_exportable(&f.path)
+            && logical.is_ok_and(|path| export_selection.is_included(&path))
     });
     let packfile_paths = packfile
         .files
         .iter()
         .map(|file| file.path.as_str().to_string())
         .collect::<HashSet<_>>();
-    let loading_bar = init_loading(
-        LoadingBarType::ZipExtract {
-            instance_id: metadata.instance.id.clone(),
-            instance_name: metadata.instance.name.clone(),
-        },
-        1.0,
-        "Exporting instance to .mrpack",
-    )
-    .await?;
 
+    let stored_files =
+        content_rows::get_instance_files(instance_id, &state.pool)
+            .await?
+            .into_iter()
+            .map(|file| (content_file_path(&file), file))
+            .collect::<HashMap<_, _>>();
+    let mut override_files = Vec::new();
     let mut directories = vec![instance_base_path.clone()];
     while let Some(directory) = directories.pop() {
         let mut read_dir = io::read_dir(&directory).await?;
@@ -231,41 +254,105 @@ pub async fn export_mrpack(
                 }
                 continue;
             }
-            if !file_type.is_file()
-                || !export_selection.is_included(&relative_path)
+            let logical_path = logical_content_path(&relative_path)?;
+            if (!file_type.is_file() && !file_type.is_symlink())
+                || !export_selection.is_included(&logical_path)
                 || packfile_paths.contains(relative_path.as_str())
             {
                 continue;
             }
-
-            let mut stream = writer
-                .write_entry_stream(
-                    ZipEntryBuilder::new(
-                        format!("overrides/{relative_path}").into(),
-                        Compression::Deflate,
-                    )
-                    .build(),
-                )
-                .await?
-                .compat_write();
-            let mut source = File::open(&path)
-                .await
-                .map_err(|e| IOError::with_path(e, &path))?;
-            tokio::io::copy(&mut source, &mut stream)
-                .await
-                .map_err(IOError::from)?;
-            stream.into_inner().close().await?;
+            let Some(content) = export_content(
+                &state,
+                stored_files.get(relative_path.as_str()),
+                &path,
+                file_type.is_symlink(),
+            )
+            .await?
+            else {
+                continue;
+            };
+            let size = tokio::fs::metadata(content.path()).await?.len();
+            ensure_standard_zip_file_size(size)?;
+            override_files.push((content, relative_path, size));
         }
     }
 
+    let total_bytes = override_files
+        .iter()
+        .fold(1_u64, |total, (_, _, size)| total.saturating_add(*size));
+    let loading_bar = init_loading(
+        LoadingBarType::PackExport {
+            instance_id: metadata.instance.id.clone(),
+            instance_name: metadata.instance.name.clone(),
+        },
+        total_bytes as f64,
+        "Exporting instance to .mrpack",
+    )
+    .await?;
     let data = serde_json::to_vec_pretty(&packfile)?;
-    let builder = ZipEntryBuilder::new(
-        "modrinth.index.json".to_string().into(),
-        Compression::Deflate,
-    );
-    writer.write_entry_whole(builder, &data).await?;
-    writer.close().await?;
-    emit_loading(&loading_bar, 1.0, None)?;
+    tokio::task::spawn_blocking(move || {
+        let file = std::fs::File::create(&export_path)
+            .map_err(|error| IOError::with_path(error, &export_path))?;
+        write_mrpack_archive(file, override_files, &data, |bytes_written| {
+            emit_loading(&loading_bar, bytes_written as f64, None)
+        })
+    })
+    .await??;
+
+    Ok(())
+}
+
+fn ensure_standard_zip_file_size(size: u64) -> crate::Result<()> {
+    if size > zip::ZIP64_BYTES_THR {
+        return Err(crate::ErrorKind::OtherError(
+            STANDARD_ZIP_FILE_SIZE_ERROR.to_string(),
+        )
+        .into());
+    }
+
+    Ok(())
+}
+
+fn write_mrpack_archive<W, F>(
+    writer: W,
+    override_files: Vec<(ReadableContent, SafeRelativeUtf8UnixPathBuf, u64)>,
+    packfile_data: &[u8],
+    mut emit_progress: F,
+) -> crate::Result<()>
+where
+    W: Write + Seek,
+    F: FnMut(u64) -> crate::Result<()>,
+{
+    let options = SimpleFileOptions::default()
+        .compression_method(CompressionMethod::Deflated);
+    let mut writer = ZipWriter::new(writer);
+    let mut buffer = vec![0_u8; EXPORT_COPY_BUFFER_SIZE];
+
+    for (content, relative_path, _) in override_files {
+        let path = content.path();
+        writer
+            .start_file(format!("overrides/{relative_path}"), options)
+            .map_err(std::io::Error::from)?;
+        let mut source = std::fs::File::open(path)
+            .map_err(|error| IOError::with_path(error, path))?;
+        loop {
+            let bytes_read = source
+                .read(&mut buffer)
+                .map_err(|error| IOError::with_path(error, path))?;
+            if bytes_read == 0 {
+                break;
+            }
+            writer.write_all(&buffer[..bytes_read])?;
+            emit_progress(bytes_read as u64)?;
+        }
+    }
+
+    writer
+        .start_file("modrinth.index.json", options)
+        .map_err(std::io::Error::from)?;
+    writer.write_all(packfile_data)?;
+    writer.finish().map_err(std::io::Error::from)?;
+    emit_progress(1)?;
 
     Ok(())
 }
@@ -287,6 +374,9 @@ fn is_path_exportable(relative_path: &SafeRelativeUtf8UnixPathBuf) -> bool {
 pub async fn get_pack_export_candidates(
     instance_id: &str,
 ) -> crate::Result<Vec<PackExportCandidate>> {
+    let state = State::get().await?;
+    crate::state::instances::commands::sync_content_files(instance_id, &state)
+        .await?;
     get_pack_export_candidates_for_parent(instance_id, None).await
 }
 
@@ -324,7 +414,12 @@ pub async fn get_pack_export_candidates_for_parent(
         .map(|path| {
             let instance_base_dir = &instance_base_dir;
             async move {
-                build_pack_export_candidate(instance_base_dir, &path).await
+                build_pack_export_candidate(
+                    instance_id,
+                    instance_base_dir,
+                    &path,
+                )
+                .await
             }
         })
         .buffer_unordered(EXPORT_CANDIDATE_METADATA_CONCURRENCY)
@@ -341,6 +436,7 @@ pub async fn get_pack_export_candidates_for_parent(
 }
 
 async fn build_pack_export_candidate(
+    instance_id: &str,
     instance_base_dir: &PathBuf,
     path: &PathBuf,
 ) -> crate::Result<Option<PackExportCandidate>> {
@@ -349,12 +445,39 @@ async fn build_pack_export_candidate(
         return Ok(None);
     }
 
+    let state = State::get().await?;
     let metadata = tokio::fs::symlink_metadata(path)
         .await
         .map_err(|error| IOError::with_path(error, path))?;
-    if metadata.file_type().is_symlink()
-        || (!metadata.is_dir() && !metadata.is_file())
-    {
+    let content = if metadata.is_dir() {
+        ReadableContent::Local(path.clone())
+    } else {
+        let logical_path = logical_content_path(&relative_path)?;
+        let file = content_rows::get_instance_file_by_relative_path(
+            instance_id,
+            logical_path.as_str(),
+            &state.pool,
+        )
+        .await?;
+        let Some(content) = export_content(
+            &state,
+            file.as_ref(),
+            path,
+            metadata.file_type().is_symlink(),
+        )
+        .await?
+        else {
+            return Ok(None);
+        };
+        content
+    };
+    let metadata = tokio::fs::metadata(content.path()).await?;
+    let relative_path = if metadata.is_file() {
+        logical_content_path(&relative_path)?
+    } else {
+        relative_path
+    };
+    if !metadata.is_dir() && !metadata.is_file() {
         return Ok(None);
     }
 
@@ -380,6 +503,55 @@ async fn build_pack_export_candidate(
         disabled: false,
         default_selected,
     }))
+}
+
+fn logical_content_path(
+    path: &SafeRelativeUtf8UnixPathBuf,
+) -> crate::Result<SafeRelativeUtf8UnixPathBuf> {
+    if is_managed_content_path(path.as_str()) {
+        Ok(SafeRelativeUtf8UnixPathBuf::try_from(
+            path.as_str().trim_end_matches(".disabled").to_string(),
+        )?)
+    } else {
+        Ok(path.clone())
+    }
+}
+
+async fn export_content(
+    state: &State,
+    file: Option<&crate::state::InstanceFile>,
+    path: &Path,
+    is_symlink: bool,
+) -> crate::Result<Option<ReadableContent>> {
+    if let Some(file) = file {
+        match state.content_store.file_content(file).await? {
+            FileContent::Stored { stored_file, .. } => {
+                if file.missing
+                    || !state
+                        .content_store
+                        .instance_file_matches(
+                            path,
+                            &stored_file.metadata.sha512,
+                        )
+                        .await?
+                {
+                    return Err(input(format!(
+                        "{} was changed outside the app; resolve it before exporting",
+                        file.relative_path
+                    )));
+                }
+                return Ok(Some(ReadableContent::Stored(stored_file)));
+            }
+            FileContent::Damaged(_) => {
+                return Err(input(format!(
+                    "Repair {} before exporting this instance",
+                    file.relative_path
+                )));
+            }
+            FileContent::Unmanaged => {}
+        }
+    }
+    Ok((!is_symlink).then(|| ReadableContent::Local(path.to_path_buf())))
 }
 
 fn is_default_selected_export_candidate(
@@ -411,6 +583,32 @@ fn pack_get_relative_path(
             .collect::<Vec<_>>()
             .join("/"),
     )?)
+}
+
+fn get_mrpack_environment(
+    environment: Option<VersionEnvironment>,
+) -> HashMap<EnvType, SideType> {
+    let (client, server) =
+        match environment.unwrap_or(VersionEnvironment::Unknown) {
+            VersionEnvironment::ClientAndServer
+            | VersionEnvironment::ClientOnlyServerOptional
+            | VersionEnvironment::ServerOnly
+            | VersionEnvironment::ServerOnlyClientOptional
+            | VersionEnvironment::ClientOrServer
+            | VersionEnvironment::ClientOrServerPrefersBoth
+            | VersionEnvironment::Unknown => {
+                (SideType::Required, SideType::Required)
+            }
+            VersionEnvironment::ClientOnly
+            | VersionEnvironment::SingleplayerOnly => {
+                (SideType::Required, SideType::Unsupported)
+            }
+            VersionEnvironment::DedicatedServerOnly => {
+                (SideType::Unsupported, SideType::Required)
+            }
+        };
+
+    HashMap::from([(EnvType::Client, client), (EnvType::Server, server)])
 }
 
 #[tracing::instrument(skip_all)]
@@ -456,59 +654,58 @@ pub async fn create_mrpack_json(
     )
     .await?
     .into_iter()
-    .filter_map(|(path, file)| match file.metadata {
-        Some(metadata) => Some((path, metadata.version_id)),
-        _ => None,
+    .filter_map(|(path, file)| {
+        let path = if file.enabled {
+            path
+        } else {
+            format!("{path}.disabled")
+        };
+        file.metadata
+            .map(|metadata| (path, file.hash, metadata.version_id))
     })
     .collect::<Vec<_>>();
-    let versions = CachedEntry::get_version_many(
-        &projects.iter().map(|x| &*x.1).collect::<Vec<_>>(),
-        None,
+    let version_ids = projects.iter().map(|x| &*x.2).collect::<Vec<_>>();
+    let versions = CachedEntry::get_version_v3_many(
+        &version_ids,
+        Some(CacheBehaviour::MustRevalidate),
         &state.pool,
         &state.api_semaphore,
     )
     .await?;
     let files = projects
         .into_iter()
-        .filter_map(|(path, version_id)| {
-            if let Some(version) = versions.iter().find(|x| x.id == version_id)
-            {
-                let mut env = HashMap::new();
-                env.insert(EnvType::Client, SideType::Required);
-                env.insert(EnvType::Server, SideType::Required);
-                let Some(primary_file) = version.files.first() else {
-                    return Some(Err(crate::ErrorKind::OtherError(format!(
-                        "No primary file found for mod at: {path}"
-                    ))
-                    .as_error()));
-                };
-                let file_size = primary_file.size;
-                let downloads = vec![primary_file.url.clone()];
-                let hashes = primary_file
-                    .hashes
-                    .clone()
-                    .into_iter()
-                    .map(|(h1, h2)| (PackFileHash::from(h1), h2))
-                    .collect();
+        .filter_map(|(path, hash, version_id)| {
+            let version = versions.iter().find(|x| x.id == version_id)?;
+            let env = get_mrpack_environment(version.environment);
+            let file = version.files.iter().find(|file| {
+                file.hashes
+                    .get("sha1")
+                    .is_some_and(|file_hash| file_hash == &hash)
+            })?;
+            let file_size = file.size;
+            let downloads = vec![file.url.clone()];
+            let hashes = file
+                .hashes
+                .clone()
+                .into_iter()
+                .map(|(h1, h2)| (PackFileHash::from(h1), h2))
+                .collect();
 
-                Some(Ok(PackFile {
-                    path: match path.try_into() {
-                        Ok(path) => path,
-                        Err(_) => {
-                            return Some(Err(crate::ErrorKind::OtherError(
-                                "Invalid file path in project".into(),
-                            )
-                            .as_error()));
-                        }
-                    },
-                    hashes,
-                    env: Some(env),
-                    downloads,
-                    file_size,
-                }))
-            } else {
-                None
-            }
+            Some(Ok(PackFile {
+                path: match path.try_into() {
+                    Ok(path) => path,
+                    Err(_) => {
+                        return Some(Err(crate::ErrorKind::OtherError(
+                            "Invalid file path in project".into(),
+                        )
+                        .as_error()));
+                    }
+                },
+                hashes,
+                env: Some(env),
+                downloads,
+                file_size,
+            }))
         })
         .collect::<crate::Result<Vec<PackFile>>>()?;
 

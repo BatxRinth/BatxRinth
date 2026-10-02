@@ -89,7 +89,7 @@
 				</div>
 			</div>
 		</template>
-		<div class="bg-button-bg pt-1 pb-2 border border-solid border-surface-5">
+		<div class="bg-button-bg pt-1 pb-2 border-0 border-t border-solid border-surface-5">
 			<template v-if="accounts.length > 0">
 				<div v-for="account in accounts" :key="account.profile.id" class="flex gap-1 items-center">
 					<button
@@ -208,6 +208,8 @@ import {
 import type { Ref } from 'vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
+import { useAppEvent } from '@/composables/use-app-event'
+import { handleSevereError } from '@/composables/use-error.js'
 import { trackEvent } from '@/helpers/analytics'
 import {
 	get_default_user,
@@ -217,11 +219,9 @@ import {
 	set_default_user,
 	users,
 } from '@/helpers/auth'
-import { process_listener } from '@/helpers/events'
-import { getPlayerHeadUrl } from '@/helpers/rendering/batch-skin-renderer.ts'
+import { getPlayerHeadUrl } from '@/helpers/rendering/player-head'
 import type { Skin } from '@/helpers/skins'
 import { get_available_skins } from '@/helpers/skins'
-import { handleSevereError } from '@/store/error.js'
 
 const { formatMessage } = useVIntl()
 const { handleError } = injectNotificationManager()
@@ -271,7 +271,23 @@ const accounts: Ref<MinecraftCredential[]> = ref([])
 const loginDisabled = ref(false)
 const defaultUser = ref<string | undefined>()
 const equippedSkin = ref<Skin | null>(null)
-const headUrlCache = ref(new Map<string, string>())
+const equippedHeadUrl = ref<string>()
+let headRequest = 0
+
+async function updateHeadUrl(skin: Skin | null) {
+	const request = ++headRequest
+	if (equippedHeadUrl.value) URL.revokeObjectURL(equippedHeadUrl.value)
+	equippedHeadUrl.value = undefined
+	if (!skin) return
+	const url = await getPlayerHeadUrl(skin)
+	if (request !== headRequest) URL.revokeObjectURL(url)
+	else equippedHeadUrl.value = url
+}
+
+onUnmounted(() => {
+	headRequest++
+	if (equippedHeadUrl.value) URL.revokeObjectURL(equippedHeadUrl.value)
+})
 
 async function refreshValues() {
 	defaultUser.value = await get_default_user().catch(handleError)
@@ -283,19 +299,10 @@ async function refreshValues() {
 		const skins = await get_available_skins()
 		equippedSkin.value = skins.find((skin) => skin.is_equipped) ?? null
 
-		if (equippedSkin.value) {
-			try {
-				const headUrl = await getPlayerHeadUrl(equippedSkin.value)
-				headUrlCache.value = new Map(headUrlCache.value).set(
-					equippedSkin.value.texture_key,
-					headUrl,
-				)
-			} catch (error) {
-				console.warn('Failed to get head render for equipped skin:', error)
-			}
-		}
+		await updateHeadUrl(equippedSkin.value)
 	} catch {
 		equippedSkin.value = null
+		void updateHeadUrl(null)
 	}
 }
 
@@ -303,8 +310,7 @@ async function setEquippedSkin(skin: Skin) {
 	equippedSkin.value = skin
 
 	try {
-		const headUrl = await getPlayerHeadUrl(skin)
-		headUrlCache.value = new Map(headUrlCache.value).set(skin.texture_key, headUrl)
+		await updateHeadUrl(skin)
 	} catch (error) {
 		console.warn('Failed to get head render for equipped skin:', error)
 	}
@@ -318,6 +324,7 @@ defineExpose({
 	refreshValues,
 	setEquippedSkin,
 	setLoginDisabled,
+	login,
 	loginDisabled,
 })
 
@@ -331,7 +338,7 @@ const selectedAccount = computed(() =>
 
 const avatarUrl = computed(() => {
 	if (equippedSkin.value?.texture_key) {
-		const cachedUrl = headUrlCache.value.get(equippedSkin.value.texture_key)
+		const cachedUrl = equippedHeadUrl.value
 		if (cachedUrl) {
 			return cachedUrl
 		}
@@ -348,7 +355,7 @@ function getAccountAvatarUrl(account: MinecraftCredential) {
 		account.profile.id === selectedAccount.value?.profile?.id &&
 		equippedSkin.value?.texture_key
 	) {
-		const cachedUrl = headUrlCache.value.get(equippedSkin.value.texture_key)
+		const cachedUrl = equippedHeadUrl.value
 		if (cachedUrl) {
 			return cachedUrl
 		}
@@ -374,14 +381,10 @@ async function logout(id: string) {
 	trackEvent('AccountLogOut')
 }
 
-const unlisten = await process_listener(async (e) => {
+useAppEvent('process', async (e) => {
 	if (e.event === 'launched') {
 		await refreshValues()
 	}
-})
-
-onUnmounted(() => {
-	unlisten()
 })
 
 const messages = defineMessages({

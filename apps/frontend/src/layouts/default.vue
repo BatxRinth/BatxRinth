@@ -1,35 +1,6 @@
 <template>
-	<div class="pointer-events-none fixed inset-0 z-[-1]">
-		<div id="fixed-background-teleport" class="relative"></div>
-	</div>
-	<div class="pointer-events-none absolute inset-0 z-[-1]">
-		<div id="absolute-background-teleport" class="relative"></div>
-	</div>
-	<div
-		class="pride-backdrop pointer-events-none absolute inset-0 z-[-1]"
-		:class="{ shown: showPrideBackdrop }"
-	></div>
-	<div class="pointer-events-none absolute inset-0 z-50">
-		<div
-			class="over-the-top-random-animation"
-			:style="{ '--_r-count': rCount }"
-			:class="{ threshold: rCount > 20, 'rings-expand': rCount >= 40 }"
-		>
-			<div>
-				<div
-					class="animation-ring-3 flex items-center justify-center rounded-full border-4 border-solid border-brand bg-brand-highlight opacity-40"
-				></div>
-				<div
-					class="animation-ring-2 flex items-center justify-center rounded-full border-4 border-solid border-brand bg-brand-highlight opacity-60"
-				></div>
-				<div
-					class="animation-ring-1 flex items-center justify-center rounded-full border-4 border-solid border-brand bg-brand-highlight text-9xl font-extrabold text-contrast"
-				>
-					?
-				</div>
-			</div>
-		</div>
-	</div>
+	<TooltipDirective />
+
 	<div
 		ref="main_page"
 		class="layout"
@@ -38,6 +9,37 @@
 			'modrinth-parent__no-modal-blurs': !cosmetics.advancedRendering,
 		}"
 	>
+		<div class="pointer-events-none fixed inset-0 z-[-1]">
+			<div id="fixed-background-teleport" class="relative"></div>
+		</div>
+		<div class="pointer-events-none absolute inset-0 z-[-1]">
+			<div id="absolute-background-teleport" class="relative"></div>
+		</div>
+		<div
+			class="pride-backdrop pointer-events-none absolute inset-0 z-[-1]"
+			:class="{ shown: showPrideBackdrop }"
+		></div>
+		<div class="pointer-events-none absolute inset-0 z-50">
+			<div
+				class="over-the-top-random-animation"
+				:style="{ '--_r-count': rCount }"
+				:class="{ threshold: rCount > 20, 'rings-expand': rCount >= 40 }"
+			>
+				<div>
+					<div
+						class="animation-ring-3 flex items-center justify-center rounded-full border-4 border-solid border-brand bg-brand-highlight opacity-40"
+					></div>
+					<div
+						class="animation-ring-2 flex items-center justify-center rounded-full border-4 border-solid border-brand bg-brand-highlight opacity-60"
+					></div>
+					<div
+						class="animation-ring-1 flex items-center justify-center rounded-full border-4 border-solid border-brand bg-brand-highlight text-9xl font-extrabold text-contrast"
+					>
+						?
+					</div>
+				</div>
+			</div>
+		</div>
 		<RussiaBanner v-if="flags.showAllBanners || isRussia" />
 		<TaxIdMismatchBanner v-if="flags.showAllBanners || showTinMismatchBanner" />
 		<TaxComplianceBanner v-if="flags.showAllBanners || showTaxComplianceBanner" />
@@ -70,6 +72,7 @@
 			:errors="generatedStateErrors"
 			:api-url="config.public.apiBaseUrl"
 		/>
+
 		<ViewOnModrinthBanner />
 		<header
 			class="desktop-only relative z-[5] mx-auto grid max-w-[1280px] grid-cols-[1fr_auto] items-center gap-2 px-6 py-4 lg:grid-cols-[auto_1fr_auto]"
@@ -140,22 +143,6 @@
 					</ButtonLink>
 					<ButtonLink
 						type="quiet"
-						to="/discover/modpacks"
-						:class="
-							route.name === 'discover-modpacks' || route.path.startsWith('/modpack/')
-								? (route.name === 'discover-modpacks'
-										? 'main-nav-primary'
-										: 'main-nav-secondary') === 'main-nav-primary'
-									? '!bg-[var(--color-button-bg-selected)] !text-[var(--color-button-text-selected)] [&>svg]:!text-[var(--color-button-text-selected)]'
-									: '!bg-[var(--color-button-bg)] !text-contrast'
-								: ''
-						"
-					>
-						<PackageOpenIcon aria-hidden="true" />
-						{{ formatMessage(commonProjectTypeCategoryMessages.modpack) }}
-					</ButtonLink>
-					<ButtonLink
-						type="quiet"
 						to="/discover/shaders"
 						:class="
 							route.name === 'discover-shaders' || route.path.startsWith('/shader/')
@@ -169,6 +156,22 @@
 					>
 						<GlassesIcon aria-hidden="true" />
 						{{ formatMessage(commonProjectTypeCategoryMessages.shader) }}
+					</ButtonLink>
+					<ButtonLink
+						type="quiet"
+						to="/discover/modpacks"
+						:class="
+							route.name === 'discover-modpacks' || route.path.startsWith('/modpack/')
+								? (route.name === 'discover-modpacks'
+										? 'main-nav-primary'
+										: 'main-nav-secondary') === 'main-nav-primary'
+									? '!bg-[var(--color-button-bg-selected)] !text-[var(--color-button-text-selected)] [&>svg]:!text-[var(--color-button-text-selected)]'
+									: '!bg-[var(--color-button-bg)] !text-contrast'
+								: ''
+						"
+					>
+						<PackageOpenIcon aria-hidden="true" />
+						{{ formatMessage(commonProjectTypeCategoryMessages.modpack) }}
 					</ButtonLink>
 					<ButtonLink
 						type="quiet"
@@ -373,6 +376,7 @@
 						{
 							id: 'review-projects',
 							label: formatMessage(messages.reviewProjects),
+							icon: ScaleIcon,
 							type: 'link',
 							to: '/moderation',
 							tone: 'orange',
@@ -380,6 +384,7 @@
 						{
 							id: 'tech-review',
 							label: formatMessage(messages.techReview),
+							icon: ShieldAlertIcon,
 							type: 'link',
 							to: '/moderation/technical-review',
 							tone: 'orange',
@@ -387,6 +392,7 @@
 						{
 							id: 'review-reports',
 							label: formatMessage(messages.reports),
+							icon: ReportIcon,
 							type: 'link',
 							to: '/moderation/reports',
 							tone: 'orange',
@@ -394,107 +400,117 @@
 						{
 							id: 'external-projects',
 							label: formatMessage(messages.externalProjects),
+							icon: GlobeIcon,
 							type: 'link',
 							to: '/moderation/external-projects',
 							tone: 'orange',
 						},
 						{
-							type: 'divider',
+							id: 'global-traces',
+							label: 'Global traces',
+							icon: HashIcon,
+							type: 'link',
+							to: '/moderation/global-traces',
+							tone: 'orange',
 						},
 						{
+							id: 'delphi-rules',
+							label: 'Delphi rules',
+							icon: SettingsIcon,
+							type: 'link',
+							to: '/moderation/technical-review/rules',
+							tone: 'orange',
+						},
+						{ type: 'divider' },
+						{
 							id: 'file-lookup',
-							label: formatMessage(messages.fileLookup),
+							label: 'File lookup',
+							icon: FileSearchCornerIcon,
 							type: 'link',
 							to: '/admin/file_lookup',
 						},
 						{
+							id: 'user-lookup',
+							label: 'User lookup',
+							icon: UserSearchIcon,
+							type: 'link',
+							to: '/admin/user_lookup',
+							shown: isAdmin(auth.user),
+						},
+						{
 							type: 'divider',
 							shown: isAdmin(auth.user),
 						},
 						{
-							id: 'user-lookup',
-							label: formatMessage(messages.lookupByEmail),
+							id: 'servers-lookup',
+							label: 'Server lookup',
+							icon: ServerSearchIcon,
 							type: 'link',
-							to: '/admin/user_email',
-							tone: 'brand',
-							shown: isAdmin(auth.user),
-						},
-						{
-							id: 'affiliates',
-							label: formatMessage(messages.manageAffiliates),
-							type: 'link',
-							to: '/admin/affiliates',
-							tone: 'brand',
+							to: '/admin/servers/lookup',
 							shown: isAdmin(auth.user),
 						},
 						{
 							id: 'servers-notices',
-							label: formatMessage(messages.manageServerNotices),
+							label: 'Server notices',
+							icon: IssuesIcon,
 							type: 'link',
 							to: '/admin/servers/notices',
-							tone: 'brand',
 							shown: isAdmin(auth.user),
 						},
 						{
 							id: 'servers-transfers',
 							label: 'Server transfers',
+							icon: TransferIcon,
 							type: 'link',
 							to: '/admin/servers/transfers',
-							tone: 'brand',
 							shown: isAdmin(auth.user),
 						},
 						{
 							id: 'servers-nodes',
 							label: 'Credit server nodes',
+							icon: ServerIcon,
 							action: (event) => $refs.modal_batch_credit.show(event),
-							tone: 'brand',
+							shown: isAdmin(auth.user),
+						},
+						{
+							type: 'divider',
+							shown: isAdmin(auth.user),
+						},
+						{
+							id: 'affiliates',
+							label: 'Affiliate links',
+							icon: AffiliateIcon,
+							type: 'link',
+							to: '/admin/affiliates',
 							shown: isAdmin(auth.user),
 						},
 						{
 							id: 'analytics-events',
-							label: formatMessage(messages.analyticsEvents),
+							label: 'Analytics events',
+							icon: ChartIcon,
 							type: 'link',
 							to: '/admin/analytics/events',
-							tone: 'brand',
 							shown: isAdmin(auth.user),
+						},
+						{ type: 'divider' },
+						{
+							id: 'email-templates',
+							label: 'Email templates',
+							icon: MailIcon,
+							type: 'link',
+							to: '/admin/emails',
+						},
+						{
+							id: 'document-templates',
+							label: 'Document templates',
+							icon: BookOpenIcon,
+							type: 'link',
+							to: '/admin/docs',
 						},
 					]"
 				>
 					<ModrinthIcon aria-hidden="true" />
 					<DropdownIcon aria-hidden="true" class="h-5 w-5 text-secondary" />
-					<template #review-projects>
-						<ScaleIcon aria-hidden="true" /> {{ formatMessage(messages.reviewProjects) }}
-					</template>
-					<template #tech-review>
-						<ShieldAlertIcon aria-hidden="true" /> {{ formatMessage(messages.techReview) }}
-					</template>
-					<template #review-reports>
-						<ReportIcon aria-hidden="true" /> {{ formatMessage(messages.reports) }}
-					</template>
-					<template #external-projects>
-						<GlobeIcon aria-hidden="true" /> {{ formatMessage(messages.externalProjects) }}
-					</template>
-					<template #user-lookup>
-						<UserSearchIcon aria-hidden="true" /> {{ formatMessage(messages.lookupByEmail) }}
-					</template>
-					<template #file-lookup>
-						<FileIcon aria-hidden="true" /> {{ formatMessage(messages.fileLookup) }}
-					</template>
-					<template #servers-notices>
-						<IssuesIcon aria-hidden="true" /> {{ formatMessage(messages.manageServerNotices) }}
-					</template>
-					<template #servers-transfers>
-						<TransferIcon aria-hidden="true" /> Server transfers
-					</template>
-					<template #affiliates>
-						<AffiliateIcon aria-hidden="true" /> {{ formatMessage(messages.manageAffiliates) }}
-					</template>
-					<template #servers-nodes>
-						<ServerIcon aria-hidden="true" /> Credit server nodes
-					</template>
-					<template #analytics-events>
-						<ChartIcon aria-hidden="true" /> {{ formatMessage(messages.analyticsEvents) }}
-					</template>
 				</TeleportOverflowMenu>
 				<TeleportOverflowMenu
 					v-if="auth.user"
@@ -506,17 +522,20 @@
 						{
 							id: 'new-project',
 							label: formatMessage(messages.newProject),
+							icon: BoxPlusIcon,
 							action: (event) => requireVerifiedEmail(() => $refs.modal_creation.show(event)),
 						},
 						{
 							id: 'new-server-project',
 							label: formatMessage(messages.newServerProject),
+							icon: ServerPlusIcon,
 							action: (event) =>
 								requireVerifiedEmail(() => $refs.modal_creation.show(event, { type: 'server' })),
 						},
 						{
 							id: 'new-collection',
 							label: formatMessage(messages.newCollection),
+							icon: CollectionPlusIcon,
 							action: (event) =>
 								requireVerifiedEmail(() => $refs.modal_collection_creation.show(event)),
 						},
@@ -524,6 +543,7 @@
 						{
 							id: 'new-organization',
 							label: formatMessage(messages.newOrganization),
+							icon: OrganizationPlusIcon,
 							action: (event) =>
 								requireVerifiedEmail(() => $refs.modal_organization_creation.show(event)),
 						},
@@ -531,19 +551,6 @@
 				>
 					<PlusIcon aria-hidden="true" />
 					{{ formatMessage(messages.publish) }}
-					<template #new-project>
-						<BoxIcon aria-hidden="true" /> {{ formatMessage(messages.newProject) }}
-					</template>
-					<template #new-server-project>
-						<BoxIcon aria-hidden="true" /> {{ formatMessage(messages.newServerProject) }}
-					</template>
-					<!-- <template #import-project> <BoxImportIcon /> Import project </template>-->
-					<template #new-collection>
-						<CollectionIcon aria-hidden="true" /> {{ formatMessage(messages.newCollection) }}
-					</template>
-					<template #new-organization>
-						<OrganizationIcon aria-hidden="true" /> {{ formatMessage(messages.newOrganization) }}
-					</template>
 				</TeleportOverflowMenu>
 				<TeleportOverflowMenu
 					v-if="auth.user"
@@ -557,57 +564,40 @@
 				>
 					<Avatar :src="auth.user.avatar_url" aria-hidden="true" circle />
 					<DropdownIcon class="h-5 w-5 text-secondary" />
-					<template #profile>
-						<UserIcon aria-hidden="true" /> {{ formatMessage(messages.profile) }}
-					</template>
-					<template #notifications>
-						<BellIcon aria-hidden="true" /> {{ formatMessage(commonMessages.notificationsLabel) }}
-					</template>
-					<template #reports>
-						<ReportIcon aria-hidden="true" /> {{ formatMessage(messages.activeReports) }}
-					</template>
-					<template #saved>
-						<LibraryIcon aria-hidden="true" /> {{ formatMessage(commonMessages.collectionsLabel) }}
-					</template>
-					<template #servers>
-						<ServerStackIcon aria-hidden="true" /> {{ formatMessage(messages.myServers) }}
-					</template>
-					<template #plus>
-						<ArrowBigUpDashIcon aria-hidden="true" />
-						{{ formatMessage(messages.upgradeToModrinthPlus) }}
-					</template>
-					<template #settings>
-						<SettingsIcon aria-hidden="true" /> {{ formatMessage(commonMessages.settingsLabel) }}
-					</template>
-					<template #flags>
-						<ToggleRightIcon aria-hidden="true" />
-						{{ formatMessage(commonSettingsMessages.featureFlags) }}
-					</template>
-					<template #projects>
-						<BoxIcon aria-hidden="true" /> {{ formatMessage(messages.projects) }}
-					</template>
-					<template #organizations>
-						<OrganizationIcon aria-hidden="true" /> {{ formatMessage(messages.organizations) }}
-					</template>
-					<template #affiliate-links>
-						<AffiliateIcon aria-hidden="true" />
-						{{ formatMessage(commonMessages.affiliateLinksButton) }}
-					</template>
-					<template #revenue>
-						<CurrencyIcon aria-hidden="true" /> {{ formatMessage(messages.revenue) }}
-					</template>
-					<template #analytics>
-						<ChartIcon aria-hidden="true" /> {{ formatMessage(commonMessages.analyticsButton) }}
-					</template>
-					<template #moderation>
-						<ScaleIcon aria-hidden="true" /> {{ formatMessage(commonMessages.moderationLabel) }}
-					</template>
-					<template #sign-out>
-						<LogOutIcon aria-hidden="true" /> {{ formatMessage(commonMessages.signOutButton) }}
+					<template
+						v-for="account in accountSwitcherAccounts"
+						:key="account.id"
+						#[account.optionId]
+					>
+						<Avatar :src="account.avatarUrl" size="1.25rem" aria-hidden="true" circle />
+						{{ account.username }}
+						<UserRoleIcon :role="account.role" />
 					</template>
 				</TeleportOverflowMenu>
 				<template v-else>
-					<ButtonLink type="colored" color="brand" :to="signInRouteObj">
+					<TeleportOverflowMenu
+						v-if="accountSwitcherAccounts.length > 0"
+						type="colored"
+						color="brand"
+						:icon-only="false"
+						:label="formatMessage(commonMessages.signInButton)"
+						class="btn-dropdown-animation !gap-1 !pr-1"
+						:options="accountSwitcherOptions"
+					>
+						<LogInIcon aria-hidden="true" />
+						{{ formatMessage(commonMessages.signInButton) }}
+						<DropdownIcon class="h-5 w-5" />
+						<template
+							v-for="account in accountSwitcherAccounts"
+							:key="account.id"
+							#[account.optionId]
+						>
+							<Avatar :src="account.avatarUrl" size="1.25rem" aria-hidden="true" circle />
+							{{ account.username }}
+							<UserRoleIcon :role="account.role" />
+						</template>
+					</TeleportOverflowMenu>
+					<ButtonLink v-else type="colored" color="brand" :to="signInRouteObj">
 						<LogInIcon aria-hidden="true" />
 						{{ formatMessage(commonMessages.signInButton) }}
 					</ButtonLink>
@@ -629,14 +619,14 @@
 				@focusout="isBrowseMenuOpen = false"
 			>
 				<div class="links cascade-links">
-					<NuxtLink
+					<ButtonLink
 						v-for="navRoute in navRoutes"
 						:key="navRoute.href"
 						:to="navRoute.href"
-						class="iconified-button"
+						class="!h-auto !whitespace-normal"
 					>
 						{{ navRoute.label }}
-					</NuxtLink>
+					</ButtonLink>
 				</div>
 			</div>
 			<div
@@ -646,10 +636,10 @@
 				@focusout="isMobileMenuOpen = false"
 			>
 				<div class="account-container">
-					<NuxtLink
+					<ButtonLink
 						v-if="auth.user"
 						:to="`/user/${auth.user.username}`"
-						class="iconified-button account-button"
+						class="account-button !h-auto !whitespace-normal"
 					>
 						<Avatar
 							:src="auth.user.avatar_url"
@@ -662,66 +652,85 @@
 							<div>@{{ auth.user.username }}</div>
 							<div>{{ formatMessage(commonMessages.visitYourProfile) }}</div>
 						</div>
-					</NuxtLink>
-					<nuxt-link v-else class="iconified-button brand-button" :to="signInRouteObj">
+					</ButtonLink>
+					<ButtonLink
+						v-else
+						type="colored"
+						color="brand"
+						:to="signInRouteObj"
+						class="!h-auto !whitespace-normal"
+					>
 						<LogInIcon aria-hidden="true" /> {{ formatMessage(commonMessages.signInButton) }}
-					</nuxt-link>
+					</ButtonLink>
 				</div>
 				<div class="links">
 					<template v-if="auth.user">
-						<button class="iconified-button danger-button" @click="logoutUser()">
+						<Button
+							type="colored"
+							color="red"
+							class="!h-auto !whitespace-normal"
+							@click="logoutUser()"
+						>
 							<LogOutIcon aria-hidden="true" />
 							{{ formatMessage(commonMessages.signOutButton) }}
-						</button>
-						<button class="iconified-button" @click="$refs.modal_creation.show()">
+						</Button>
+						<Button class="!h-auto !whitespace-normal" @click="$refs.modal_creation.show()">
 							<PlusIcon aria-hidden="true" />
 							{{ formatMessage(commonMessages.createAProjectButton) }}
-						</button>
-						<NuxtLink class="iconified-button" to="/dashboard/collections">
+						</Button>
+						<ButtonLink class="!h-auto !whitespace-normal" to="/dashboard/collections">
 							<LibraryIcon class="icon" />
 							{{ formatMessage(commonMessages.collectionsLabel) }}
-						</NuxtLink>
-						<NuxtLink class="iconified-button" to="/hosting/manage">
+						</ButtonLink>
+						<ButtonLink class="!h-auto !whitespace-normal" to="/hosting/manage">
 							<ServerIcon class="icon" />
 							{{ formatMessage(commonMessages.serversLabel) }}
-						</NuxtLink>
-						<NuxtLink
+						</ButtonLink>
+						<ButtonLink
 							v-if="auth.user.role === 'moderator' || auth.user.role === 'admin'"
-							class="iconified-button"
+							class="!h-auto !whitespace-normal"
 							to="/moderation"
 						>
 							<ScaleIcon aria-hidden="true" />
 							{{ formatMessage(commonMessages.moderationLabel) }}
-						</NuxtLink>
-						<NuxtLink v-if="flags.developerMode" class="iconified-button" to="/settings/flags">
+						</ButtonLink>
+						<ButtonLink
+							v-if="flags.developerMode"
+							class="!h-auto !whitespace-normal"
+							to="/settings/flags"
+						>
 							<ToggleRightIcon aria-hidden="true" />
 							{{ formatMessage(commonSettingsMessages.featureFlags) }}
-						</NuxtLink>
+						</ButtonLink>
 					</template>
-					<NuxtLink class="iconified-button" to="/settings">
+					<ButtonLink class="!h-auto !whitespace-normal" to="/settings">
 						<SettingsIcon aria-hidden="true" />
 						{{ formatMessage(commonMessages.settingsLabel) }}
-					</NuxtLink>
-					<button class="iconified-button" @click="changeTheme">
+					</ButtonLink>
+					<Button class="!h-auto !whitespace-normal" @click="changeTheme">
 						<MoonIcon v-if="$theme.active === 'light'" class="icon" />
 						<SunIcon v-else class="icon" />
 						<span class="dropdown-item__text">
 							{{ formatMessage(messages.changeTheme) }}
 						</span>
-					</button>
+					</Button>
 				</div>
 			</div>
 			<div class="mobile-navbar" :class="{ expanded: isBrowseMenuOpen || isMobileMenuOpen }">
-				<NuxtLink
+				<ButtonLink
 					to="/"
-					class="tab button-animation"
+					type="quiet"
+					interaction="none"
+					class="tab !h-auto !rounded-none !px-0"
 					:title="formatMessage(navMenuMessages.home)"
 					:aria-label="formatMessage(navMenuMessages.home)"
 				>
 					<HomeIcon aria-hidden="true" />
-				</NuxtLink>
-				<button
-					class="tab button-animation"
+				</ButtonLink>
+				<Button
+					type="quiet"
+					interaction="none"
+					class="tab !h-auto !rounded-none !px-0"
 					:class="{ 'router-link-exact-active': isBrowseMenuOpen }"
 					:title="formatMessage(navMenuMessages.search)"
 					:aria-label="formatMessage(navMenuMessages.search)"
@@ -734,11 +743,13 @@
 						<SearchIcon aria-hidden="true" class="smaller" />
 						{{ formatMessage(navMenuMessages.search) }}
 					</template>
-				</button>
+				</Button>
 				<template v-if="auth.user">
-					<NuxtLink
+					<ButtonLink
 						to="/dashboard/notifications"
-						class="tab button-animation"
+						type="quiet"
+						interaction="none"
+						class="tab !h-auto !rounded-none !px-0"
 						:aria-label="formatMessage(commonMessages.notificationsLabel)"
 						:class="{
 							'no-active': isMobileMenuOpen || isBrowseMenuOpen,
@@ -752,18 +763,22 @@
 						"
 					>
 						<BellIcon aria-hidden="true" />
-					</NuxtLink>
-					<NuxtLink
+					</ButtonLink>
+					<ButtonLink
 						to="/dashboard"
-						class="tab button-animation"
+						type="quiet"
+						interaction="none"
+						class="tab !h-auto !rounded-none !px-0"
 						:aria-label="formatMessage(commonMessages.dashboardLabel)"
 						:title="formatMessage(commonMessages.dashboardLabel)"
 					>
 						<ChartIcon aria-hidden="true" />
-					</NuxtLink>
+					</ButtonLink>
 				</template>
-				<button
-					class="tab button-animation"
+				<Button
+					type="quiet"
+					interaction="none"
+					class="tab !h-auto !rounded-none !px-0"
 					:title="formatMessage(messages.toggleMenu)"
 					:aria-label="
 						isMobileMenuOpen ? formatMessage(messages.closeMenu) : formatMessage(messages.openMenu)
@@ -784,7 +799,7 @@
 							circle
 						/>
 					</template>
-				</button>
+				</Button>
 			</div>
 		</header>
 		<main class="min-h-[calc(100vh-4.5rem-310.59px)]">
@@ -801,27 +816,33 @@
 import {
 	AffiliateIcon,
 	ArrowBigUpDashIcon,
+	ArrowLeftRightIcon,
 	BellIcon,
+	BookOpenIcon,
 	BoxIcon,
+	BoxPlusIcon,
 	BracesIcon,
 	ChartIcon,
-	CollectionIcon,
+	CollectionPlusIcon,
 	CompassIcon,
 	CurrencyIcon,
 	DownloadIcon,
 	DropdownIcon,
-	FileIcon,
+	FileSearchCornerIcon,
 	GlassesIcon,
 	GlobeIcon,
 	HamburgerIcon,
+	HashIcon,
 	HomeIcon,
 	IssuesIcon,
 	LibraryIcon,
 	LogInIcon,
 	LogOutIcon,
+	MailIcon,
 	ModrinthIcon,
 	MoonIcon,
 	OrganizationIcon,
+	OrganizationPlusIcon,
 	PackageOpenIcon,
 	PaintbrushIcon,
 	PlugIcon,
@@ -830,6 +851,8 @@ import {
 	ScaleIcon,
 	SearchIcon,
 	ServerIcon,
+	ServerPlusIcon,
+	ServerSearchIcon,
 	ServerStackIcon,
 	SettingsIcon,
 	ShieldAlertIcon,
@@ -842,6 +865,7 @@ import {
 } from '@modrinth/assets'
 import {
 	Avatar,
+	Button,
 	ButtonLink,
 	commonMessages,
 	commonProjectTypeCategoryMessages,
@@ -851,9 +875,12 @@ import {
 	injectModrinthClient,
 	injectNotificationManager,
 	injectPageContext,
+	injectUserPreferences,
 	providePageContext,
 	TeleportOverflowMenu,
+	TooltipDirective,
 	useHostingIntercom,
+	UserRoleIcon,
 	useVIntl,
 } from '@modrinth/ui'
 import { isAdmin, isStaff, UserBadge } from '@modrinth/utils'
@@ -875,18 +902,24 @@ import CollectionCreateModal from '~/components/ui/create/CollectionCreateModal.
 import OrganizationCreateModal from '~/components/ui/create/OrganizationCreateModal.vue'
 import ProjectCreateModal from '~/components/ui/create/ProjectCreateModal.vue'
 import ModrinthFooter from '~/components/ui/ModrinthFooter.vue'
+import {
+	forgetStoredAccount,
+	switchToSignedOut,
+	switchToStoredAccount,
+	useStoredAccounts,
+} from '~/composables/accounts.ts'
 import { getSignInRouteObj } from '~/composables/auth.ts'
-import { errors as generatedStateErrors } from '~/generated/state.json'
+import { logout } from '~/composables/user.js'
+import { errors as generatedStateErrors, taxComplianceThresholds } from '~/generated/state.json'
 import { provideCurrentProjectId } from '~/providers/current-project.ts'
 import { getProjectTypeMessage } from '~/utils/i18n-project-type.ts'
 import { hasActiveMidas } from '~/utils/user-membership.ts'
-
-const generatedState = useGeneratedState()
 
 const country = useUserCountry()
 
 const { formatMessage } = useVIntl()
 const { addNotification } = injectNotificationManager()
+const { updatePreferences } = injectUserPreferences()
 
 const auth = await useAuth()
 const user = await useUser()
@@ -898,6 +931,7 @@ const config = useRuntimeConfig()
 const route = useNativeRoute()
 const router = useNativeRouter()
 const signInRouteObj = computed(() => getSignInRouteObj(route))
+const storedAccounts = useStoredAccounts()
 const link = config.public.siteUrl + route.path.replace(/\/+$/, '')
 const client = injectModrinthClient()
 const pageContext = injectPageContext()
@@ -930,7 +964,7 @@ const showTaxComplianceBanner = computed(() => {
 	if (flags.value.testTaxForm && auth.value.user) return true
 	const bal = payoutBalance.value
 	if (!bal) return false
-	const threshold = getTaxThreshold(generatedState.value?.taxComplianceThresholds)
+	const threshold = getTaxThreshold(taxComplianceThresholds)
 	const thresholdMet = (bal.withdrawn_ytd ?? 0) >= threshold
 	const status = bal.form_completion_status ?? 'unknown'
 	const isComplete = status === 'complete'
@@ -947,13 +981,10 @@ const showTinMismatchBanner = computed(() => {
 
 const PRIDE_COLLECTION_ID = 'M4c3ITvd'
 const PRIDE_ARTICLE_SLUGS = ['pride-campaign-2025', 'pride-campaign-2026', 'proud-of-you-2026']
-const PRIDE_CACHE_TIME = 1000 * 60 * 60 * 24
 
 const { data: prideCollection } = useQuery({
 	queryKey: computed(() => ['collection', PRIDE_COLLECTION_ID]),
 	queryFn: () => client.labrinth.collections.get(PRIDE_COLLECTION_ID),
-	staleTime: PRIDE_CACHE_TIME,
-	gcTime: PRIDE_CACHE_TIME,
 })
 
 const prideProjectIds = computed(() => new Set(prideCollection.value?.projects ?? []))
@@ -1066,9 +1097,9 @@ const messages = defineMessages({
 		id: 'layout.action.external-projects',
 		defaultMessage: 'External projects',
 	},
-	lookupByEmail: {
-		id: 'layout.action.lookup-by-email',
-		defaultMessage: 'Lookup by email',
+	userLookup: {
+		id: 'layout.action.user-lookup',
+		defaultMessage: 'User lookup',
 	},
 	fileLookup: {
 		id: 'layout.action.file-lookup',
@@ -1092,7 +1123,7 @@ const messages = defineMessages({
 	},
 	newServerProject: {
 		id: 'layout.action.new-server-project',
-		defaultMessage: 'New server',
+		defaultMessage: 'New server project',
 	},
 	newCollection: {
 		id: 'layout.action.new-collection',
@@ -1134,6 +1165,22 @@ const messages = defineMessages({
 		id: 'layout.nav.my-servers',
 		defaultMessage: 'My servers',
 	},
+	switchAccount: {
+		id: 'layout.nav.switch-account',
+		defaultMessage: 'Switch account',
+	},
+	addAccount: {
+		id: 'layout.nav.add-account',
+		defaultMessage: 'Add account',
+	},
+	removeAccount: {
+		id: 'layout.nav.remove-account',
+		defaultMessage: 'Remove account',
+	},
+	accountSwitchFailed: {
+		id: 'layout.nav.switch-account-failed',
+		defaultMessage: "Couldn't switch accounts. Please try again.",
+	},
 	openMenu: {
 		id: 'layout.mobile.open-menu',
 		defaultMessage: 'Open menu',
@@ -1144,6 +1191,7 @@ const messages = defineMessages({
 	},
 })
 
+useFavicon()
 useHead({
 	link: [
 		{
@@ -1191,8 +1239,8 @@ const navRoutes = computed(() => [
 		href: '/discover/mods',
 	},
 	{
-		label: formatMessage(getProjectTypeMessage('plugin', true)),
-		href: '/discover/plugins',
+		label: formatMessage(getProjectTypeMessage('resourcepack', true)),
+		href: '/discover/resourcepacks',
 	},
 	{
 		label: formatMessage(getProjectTypeMessage('datapack', true)),
@@ -1203,18 +1251,73 @@ const navRoutes = computed(() => [
 		href: '/discover/shaders',
 	},
 	{
-		label: formatMessage(getProjectTypeMessage('resourcepack', true)),
-		href: '/discover/resourcepacks',
-	},
-	{
 		label: formatMessage(getProjectTypeMessage('modpack', true)),
 		href: '/discover/modpacks',
+	},
+	{
+		label: formatMessage(getProjectTypeMessage('plugin', true)),
+		href: '/discover/plugins',
 	},
 	{
 		label: formatMessage(getProjectTypeMessage('server', true)),
 		href: '/discover/servers',
 	},
 ])
+
+const accountSwitcherAccounts = computed(() =>
+	storedAccounts.value.map((account) => ({
+		...account,
+		optionId: `account-${account.id}`,
+		current: account.id === auth.value.user?.id,
+	})),
+)
+
+const accountSwitcherOptions = computed(() => [
+	...accountSwitcherAccounts.value.map((account) => ({
+		id: account.optionId,
+		label: account.username,
+		selected: account.current,
+		action: () => switchAccount(account),
+		trailingAction: {
+			label: formatMessage(messages.removeAccount),
+			icon: XIcon,
+			color: 'red',
+			action: () => removeAccount(account),
+		},
+	})),
+	{
+		type: 'divider',
+	},
+	{
+		id: 'add-account',
+		label: formatMessage(messages.addAccount),
+		icon: PlusIcon,
+		type: 'link',
+		to: signInRouteObj.value,
+	},
+])
+
+async function switchAccount(account) {
+	if (account.current) return
+
+	const result = await switchToStoredAccount(account)
+	if (result === 'error') {
+		addNotification({
+			title: formatMessage(commonMessages.errorNotificationTitle),
+			text: formatMessage(messages.accountSwitchFailed),
+			type: 'error',
+		})
+	}
+}
+
+async function removeAccount(account) {
+	if (account.current) {
+		await logout()
+		return
+	}
+
+	forgetStoredAccount(account.id)
+}
 
 const userMenuOptions = computed(() => {
 	const user = auth.value.user
@@ -1224,12 +1327,14 @@ const userMenuOptions = computed(() => {
 		{
 			id: 'profile',
 			label: formatMessage(messages.profile),
+			icon: UserIcon,
 			type: 'link',
 			to: `/user/${user.username}`,
 		},
 		{
 			id: 'plus',
 			label: formatMessage(messages.upgradeToModrinthPlus),
+			icon: ArrowBigUpDashIcon,
 			type: 'link',
 			to: '/plus',
 			tone: 'purple',
@@ -1238,12 +1343,14 @@ const userMenuOptions = computed(() => {
 		{
 			id: 'servers',
 			label: formatMessage(messages.myServers),
+			icon: ServerStackIcon,
 			type: 'link',
 			to: '/hosting/manage',
 		},
 		{
 			id: 'flags',
 			label: formatMessage(commonSettingsMessages.featureFlags),
+			icon: ToggleRightIcon,
 			type: 'link',
 			to: '/settings/flags',
 			shown: flags.value.developerMode,
@@ -1251,6 +1358,7 @@ const userMenuOptions = computed(() => {
 		{
 			id: 'settings',
 			label: formatMessage(commonMessages.settingsLabel),
+			icon: SettingsIcon,
 			type: 'link',
 			to: '/settings',
 		},
@@ -1265,18 +1373,21 @@ const userMenuOptions = computed(() => {
 		{
 			id: 'notifications',
 			label: formatMessage(commonMessages.notificationsLabel),
+			icon: BellIcon,
 			type: 'link',
 			to: '/dashboard/notifications',
 		},
 		{
 			id: 'reports',
 			label: formatMessage(messages.activeReports),
+			icon: ReportIcon,
 			type: 'link',
 			to: '/dashboard/reports',
 		},
 		{
 			id: 'saved',
 			label: formatMessage(commonMessages.collectionsLabel),
+			icon: LibraryIcon,
 			type: 'link',
 			to: '/dashboard/collections',
 		},
@@ -1286,31 +1397,36 @@ const userMenuOptions = computed(() => {
 		{
 			id: 'projects',
 			label: formatMessage(messages.projects),
+			icon: BoxIcon,
 			type: 'link',
 			to: '/dashboard/projects',
 		},
 		{
 			id: 'organizations',
 			label: formatMessage(messages.organizations),
+			icon: OrganizationIcon,
 			type: 'link',
 			to: '/dashboard/organizations',
 		},
 		{
 			id: 'analytics',
 			label: formatMessage(commonMessages.analyticsButton),
+			icon: ChartIcon,
 			type: 'link',
 			to: '/dashboard/analytics',
 		},
 		{
 			id: 'affiliate-links',
 			label: formatMessage(commonMessages.affiliateLinksButton),
+			icon: AffiliateIcon,
 			type: 'link',
 			to: '/dashboard/affiliate-links',
-			shown: user.badges & UserBadge.AFFILIATE,
+			shown: Boolean(user.badges & UserBadge.AFFILIATE),
 		},
 		{
 			id: 'revenue',
 			label: formatMessage(messages.revenue),
+			icon: CurrencyIcon,
 			type: 'link',
 			to: '/dashboard/revenue',
 		},
@@ -1322,8 +1438,16 @@ const userMenuOptions = computed(() => {
 			type: 'divider',
 		},
 		{
+			id: 'switch-account',
+			label: formatMessage(messages.switchAccount),
+			icon: ArrowLeftRightIcon,
+			type: 'submenu',
+			options: accountSwitcherOptions.value,
+		},
+		{
 			id: 'sign-out',
 			label: formatMessage(commonMessages.signOutButton),
+			icon: LogOutIcon,
 			tone: 'red',
 			hoverFilled: true,
 			action: () => logoutUser(),
@@ -1412,7 +1536,7 @@ watch(
 )
 
 async function logoutUser() {
-	await logout()
+	await switchToSignedOut(client)
 }
 
 function runAnalytics() {
@@ -1455,7 +1579,19 @@ function toggleBrowseMenu() {
 	}
 }
 
-const { cycle: changeTheme } = useTheme()
+const theme = useTheme()
+
+function changeTheme() {
+	const selectedTheme = theme.cycle()
+	if (!theme.syncAcrossDevices) return
+
+	void updatePreferences({
+		appearance: {
+			auto: false,
+			theme: selectedTheme,
+		},
+	}).catch(() => undefined)
+}
 </script>
 
 <style lang="scss">

@@ -13,7 +13,7 @@ import {
 } from '@modrinth/assets'
 import { computed, ref } from 'vue'
 
-import type { OverflowMenuOption } from '#ui/components/base/buttons'
+import type { ButtonMenuOption } from '#ui/components/base/buttons'
 import { Button, TeleportOverflowMenu } from '#ui/components/base/buttons'
 
 import { useFormatDateTime } from '../../../composables'
@@ -94,8 +94,8 @@ const itemBorderClass = computed(() => {
 	return 'border-transparent'
 })
 
-const overflowMenuOptions = computed<OverflowMenuOption[]>(() => {
-	const options: OverflowMenuOption[] = []
+const overflowMenuOptions = computed<ButtonMenuOption[]>(() => {
+	const options: ButtonMenuOption[] = []
 
 	if (props.showCopyIdAction) {
 		options.push({
@@ -112,7 +112,8 @@ const overflowMenuOptions = computed<OverflowMenuOption[]>(() => {
 	options.push({
 		id: 'download',
 		label: formatMessage(commonMessages.downloadButton),
-		action: () => emit('download'),
+		type: 'link',
+		href: `https://${props.kyrosUrl}/modrinth/v0/backups/${props.backup.id}/download?auth=${props.jwt}`,
 		disabled: !props.kyrosUrl || !props.jwt,
 	})
 
@@ -279,7 +280,12 @@ const creatorAvatarSrc = computed(() =>
 				<RotateCounterClockwiseIcon class="size-5" />
 				{{ formatMessage(messages.restore) }}
 			</Button>
-			<TeleportOverflowMenu type="quiet" label="More options" :options="overflowMenuOptions">
+			<TeleportOverflowMenu
+				type="quiet"
+				label="More options"
+				:options="overflowMenuOptions"
+				@select="(option) => option.id === 'download' && emit('download')"
+			>
 				<MoreVerticalIcon class="size-5" />
 				<template #copy-id>
 					<ClipboardCopyIcon class="size-5" />

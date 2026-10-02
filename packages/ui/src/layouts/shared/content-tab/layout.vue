@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Labrinth } from '@modrinth/api-client'
 import {
 	ArrowDownAZIcon,
 	ArrowUpZAIcon,
@@ -9,48 +10,57 @@ import {
 	DownloadIcon,
 	DropdownIcon,
 	FileIcon,
-	FilterIcon,
 	FolderOpenIcon,
 	LinkIcon,
+	OrganizationIcon,
 	RefreshCwIcon,
 	SearchIcon,
 	ShareIcon,
 	TextCursorInputIcon,
 	TrashIcon,
+	UserIcon,
 } from '@modrinth/assets'
-import { computed, nextTick, ref, watch } from 'vue'
+import { useQueryClient } from '@tanstack/vue-query'
+import { useSessionStorage } from '@vueuse/core'
+import { chunk } from 'es-toolkit'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-import { Button, TeleportOverflowMenu } from '#ui/components/base/buttons'
+import Avatar from '#ui/components/base/Avatar.vue'
+import { Button, type ButtonMenuOption, TeleportOverflowMenu } from '#ui/components/base/buttons'
+import DropdownFilterBar from '#ui/components/base/DropdownFilterBar.vue'
 import EmptyState from '#ui/components/base/EmptyState.vue'
-import StyledInput from '#ui/components/base/StyledInput.vue'
+import FilterPills from '#ui/components/base/FilterPills.vue'
+import Input from '#ui/components/base/inputs/Input.vue'
+import UpdateAllModal from '#ui/components/modal/update-all-modal/index.vue'
+import type {
+	UpdateAllItem,
+	UpdateAllSelection,
+} from '#ui/components/modal/update-all-modal/update-all-modal-types'
 import { useDebugLogger } from '#ui/composables/debug-logger'
 import { defineMessages, useVIntl } from '#ui/composables/i18n'
+import { injectModrinthClient } from '#ui/providers/api-client'
+import { injectNotificationManager } from '#ui/providers/web-notifications'
 import { commonMessages, formatContentTypeSentence } from '#ui/utils/common-messages'
+import { versionMatchesCompatibilityTarget } from '#ui/utils/version-compatibility'
 
 import ContentCardTable from './components/ContentCardTable.vue'
-import ContentModpackCard from './components/ContentModpackCard.vue'
 import ContentSelectionBar from './components/ContentSelectionBar.vue'
-import ConfirmBulkUpdateModal from './components/modals/ConfirmBulkUpdateModal.vue'
+import ManagedContentCard from './components/managed-content-card/index.vue'
 import ConfirmDeletionModal from './components/modals/ConfirmDeletionModal.vue'
 import ConfirmDisableModal from './components/modals/ConfirmDisableModal.vue'
 import ConfirmUnlinkModal from './components/modals/ConfirmUnlinkModal.vue'
 import ContentDependencyWarningModal from './components/modals/ContentDependencyWarningModal.vue'
 import {
 	getClientWarningType,
-	isClientOnlyEnvironment,
 	useBulkOperation,
 	useChangingItems,
 	useContentFilters,
+	useContentMetadataFilters,
 	useContentSearch,
 	useContentSelection,
 } from './composables'
 import { injectContentManager } from './providers/content-manager'
-import type {
-	BulkOperationStatus,
-	ContentActionWarning,
-	ContentCardTableItem,
-	ContentItem,
-} from './types'
+import type { ContentActionWarning, ContentCardTableItem, ContentItem } from './types'
 
 const { formatMessage } = useVIntl()
 const debug = useDebugLogger('ContentPageLayout')
@@ -58,6 +68,7 @@ const debug = useDebugLogger('ContentPageLayout')
 const props = withDefaults(
 	defineProps<{
 		bottomPadding?: boolean
+		highlightedItemId?: string
 	}>(),
 	{
 		bottomPadding: true,
@@ -89,9 +100,13 @@ const messages = defineMessages({
 		id: 'content.page-layout.upload-files',
 		defaultMessage: 'Upload files',
 	},
-	sortAlphabetical: {
-		id: 'content.page-layout.sort.alphabetical',
-		defaultMessage: 'Alphabetical',
+	sortAlphabeticalAscending: {
+		id: 'content.page-layout.sort.alphabetical-ascending',
+		defaultMessage: 'Name (A-Z)',
+	},
+	sortAlphabeticalDescending: {
+		id: 'content.page-layout.sort.alphabetical-descending',
+		defaultMessage: 'Name (Z-A)',
 	},
 	sortDateAddedNewest: {
 		id: 'content.page-layout.sort.date-added-newest',
@@ -100,6 +115,14 @@ const messages = defineMessages({
 	sortDateAddedOldest: {
 		id: 'content.page-layout.sort.date-added-oldest',
 		defaultMessage: 'Oldest first',
+	},
+	filter: {
+		id: 'content.page-layout.filter.add',
+		defaultMessage: 'Filter',
+	},
+	authorCount: {
+		id: 'content.page-layout.filter.author-count',
+		defaultMessage: '{count, plural, one {# author} other {# authors}}',
 	},
 	updateAll: {
 		id: 'content.page-layout.update-all',
@@ -153,6 +176,14 @@ const messages = defineMessages({
 		id: 'content.page-layout.please-wait',
 		defaultMessage: 'Please wait',
 	},
+	failedToLoadUpdates: {
+		id: 'content.page-layout.failed-to-load-updates',
+		defaultMessage: 'Failed to load available updates',
+	},
+	failedToLoadChangelog: {
+		id: 'content.page-layout.failed-to-load-changelog',
+		defaultMessage: 'Failed to load changelog',
+	},
 })
 
 const ctx = injectContentManager()
@@ -163,25 +194,43 @@ function getItemId(item: ContentItem) {
 }
 
 type SortMode = 'alphabetical-asc' | 'alphabetical-desc' | 'date-added-newest' | 'date-added-oldest'
-const sortMode = ref<SortMode>('alphabetical-asc')
+const sortMode = ctx.filterPersistKey
+	? useSessionStorage<SortMode>(`content-sort:${ctx.filterPersistKey}`, 'alphabetical-asc')
+	: ref<SortMode>('alphabetical-asc')
 
 const sortLabels: Record<SortMode, () => string> = {
-	'alphabetical-asc': () => formatMessage(messages.sortAlphabetical),
-	'alphabetical-desc': () => formatMessage(messages.sortAlphabetical),
+	'alphabetical-asc': () => formatMessage(messages.sortAlphabeticalAscending),
+	'alphabetical-desc': () => formatMessage(messages.sortAlphabeticalDescending),
 	'date-added-newest': () => formatMessage(messages.sortDateAddedNewest),
 	'date-added-oldest': () => formatMessage(messages.sortDateAddedOldest),
 }
 
-function cycleSortMode() {
-	const modes: SortMode[] = [
-		'alphabetical-asc',
-		'alphabetical-desc',
-		'date-added-newest',
-		'date-added-oldest',
-	]
-	const idx = modes.indexOf(sortMode.value)
-	sortMode.value = modes[(idx + 1) % modes.length]
-}
+const sortOptions = computed<ButtonMenuOption[]>(() => [
+	{
+		id: 'alphabetical-asc',
+		label: formatMessage(messages.sortAlphabeticalAscending),
+		icon: ArrowDownAZIcon,
+		action: () => (sortMode.value = 'alphabetical-asc'),
+	},
+	{
+		id: 'alphabetical-desc',
+		label: formatMessage(messages.sortAlphabeticalDescending),
+		icon: ArrowUpZAIcon,
+		action: () => (sortMode.value = 'alphabetical-desc'),
+	},
+	{
+		id: 'date-added-newest',
+		label: formatMessage(messages.sortDateAddedNewest),
+		icon: ClockArrowDownIcon,
+		action: () => (sortMode.value = 'date-added-newest'),
+	},
+	{
+		id: 'date-added-oldest',
+		label: formatMessage(messages.sortDateAddedOldest),
+		icon: ClockArrowUpIcon,
+		action: () => (sortMode.value = 'date-added-oldest'),
+	},
+])
 
 const sortedItems = computed(() => {
 	const items = [...ctx.items.value]
@@ -229,12 +278,135 @@ const { selectedFilters, filterOptions, toggleFilter, applyFilters } = useConten
 	ctx.items,
 	{
 		showTypeFilters: true,
-		showUpdateFilter: ctx.hasUpdateSupport,
-		showWarningsFilter: true,
+		showUpdateFilter: false,
+		showWarningsFilter: false,
+		showStatusFilters: false,
+		showEnvironmentWarnings: ctx.showEnvironmentWarnings,
 		isPackLocked: ctx.isPackLocked,
 		persistKey: ctx.filterPersistKey,
 	},
 )
+
+const { selectedMetadataFilters, metadataFilterCategories, applyMetadataFilters } =
+	useContentMetadataFilters(ctx.items, ctx.filterPersistKey, {
+		showSharedContent: ctx.showSharedContentFilter,
+		showEnvironmentWarnings: ctx.showEnvironmentWarnings,
+	})
+
+watch(
+	() => props.highlightedItemId,
+	(id) => {
+		if (!id) return
+		searchQuery.value = ''
+		selectedFilters.value = []
+		selectedMetadataFilters.value = {}
+	},
+	{ immediate: true },
+)
+
+const metadataFilterAuthors = computed(() => {
+	const authors = new Map<string, NonNullable<ContentItem['owner']>>()
+	for (const item of ctx.items.value) {
+		if (!item.owner) continue
+		authors.set(`${item.owner.type}:${item.owner.id}`, item.owner)
+	}
+	return authors
+})
+
+function getMetadataFilterAuthor(value: string) {
+	return metadataFilterAuthors.value.get(value)
+}
+
+function getMetadataFilterPreviewAuthor(selectedValues: string[]) {
+	const [selectedValue] = selectedValues
+	return selectedValues.length === 1 && selectedValue
+		? getMetadataFilterAuthor(selectedValue)
+		: undefined
+}
+
+const metadataFilterPreviewAuthorLimit = 3
+const metadataFilterPreviewAuthorSize = 20
+const metadataFilterPreviewAuthorOffset = 14
+
+function getMetadataFilterPreviewAuthorValues(selectedValues: string[]) {
+	return selectedValues.slice(0, metadataFilterPreviewAuthorLimit)
+}
+
+function getMetadataFilterPreviewAuthorOverflow(selectedValues: string[]) {
+	return Math.max(0, selectedValues.length - metadataFilterPreviewAuthorLimit)
+}
+
+function getMetadataFilterPreviewAuthorStackWidth(selectedValues: string[]) {
+	const visibleCount = Math.min(selectedValues.length, metadataFilterPreviewAuthorLimit)
+	if (visibleCount === 0) return 0
+	return (
+		metadataFilterPreviewAuthorSize +
+		(visibleCount - 1 + (selectedValues.length > metadataFilterPreviewAuthorLimit ? 1 : 0)) *
+			metadataFilterPreviewAuthorOffset
+	)
+}
+
+function isMetadataFilterOrganization(value: string) {
+	return (
+		getMetadataFilterAuthor(value)?.type === 'organization' || value.startsWith('organization:')
+	)
+}
+
+const metadataFilterTriggerClass =
+	'!h-[34px] !rounded-xl !border !border-solid !border-surface-5 !bg-transparent !px-3 !text-sm !font-medium !text-primary !shadow-[0_1px_1.5px_rgba(0,0,0,0.15)] transition-all duration-100 active:scale-[0.97] hover:!bg-surface-3 focus-visible:!outline-none focus-visible:!ring-4 focus-visible:!ring-brand-shadow [&>svg]:!size-5'
+const metadataFilterPreviewTriggerClass =
+	'!h-[34px] !rounded-xl !border !border-solid !border-brand !bg-brand-highlight !px-3 !text-sm !font-medium !text-brand !shadow-[0_1px_1.5px_rgba(0,0,0,0.15)] transition-all duration-100 active:scale-[0.97] hover:!bg-brand-highlight focus-visible:!outline-none focus-visible:!ring-4 focus-visible:!ring-brand-shadow [&>svg]:!size-5 [&>svg]:!text-brand'
+
+const filterControlsRef = ref<HTMLElement | null>(null)
+const projectTypeFiltersRef = ref<HTMLElement | null>(null)
+const metadataFiltersRef = ref<HTMLElement | null>(null)
+const metadataFiltersWrapped = ref(false)
+let filterControlsResizeObserver: ResizeObserver | null = null
+
+function updateMetadataFiltersWrapped() {
+	metadataFiltersWrapped.value =
+		!!projectTypeFiltersRef.value &&
+		!!metadataFiltersRef.value &&
+		metadataFiltersRef.value.offsetTop > projectTypeFiltersRef.value.offsetTop
+}
+
+function observeFilterControls() {
+	filterControlsResizeObserver?.disconnect()
+	for (const element of [
+		filterControlsRef.value,
+		projectTypeFiltersRef.value,
+		metadataFiltersRef.value,
+	]) {
+		if (element) filterControlsResizeObserver?.observe(element)
+	}
+	updateMetadataFiltersWrapped()
+}
+
+onMounted(() => {
+	if (typeof ResizeObserver === 'undefined') return
+	filterControlsResizeObserver = new ResizeObserver(updateMetadataFiltersWrapped)
+	observeFilterControls()
+})
+
+watch([filterControlsRef, projectTypeFiltersRef, metadataFiltersRef], observeFilterControls, {
+	flush: 'post',
+})
+
+onBeforeUnmount(() => {
+	filterControlsResizeObserver?.disconnect()
+})
+
+function updateFilterChips(nextFilters: string[]) {
+	if (nextFilters.length === 0) {
+		selectedFilters.value = []
+		return
+	}
+
+	const changedFilter =
+		nextFilters.find((filter) => !selectedFilters.value.includes(filter)) ??
+		selectedFilters.value.find((filter) => !nextFilters.includes(filter))
+	if (changedFilter) toggleFilter(changedFilter)
+}
 
 const { selectedIds, selectedItems, clearSelection, removeFromSelection } = useContentSelection(
 	ctx.items,
@@ -255,6 +427,7 @@ const { isChanging, markChanging, unmarkChanging } = useChangingItems()
 const bulkWaiting = ref(false)
 const bulkStatusMessage = ref<string | null>(null)
 const bulkItemCount = ref(0)
+const bulkUpdateItems = ref<ContentItem[]>([])
 
 const refreshing = ref(false)
 async function handleRefresh() {
@@ -270,27 +443,30 @@ async function handleRefresh() {
 const filteredItems = computed(() => {
 	const sorted = sortedItems.value
 	const searched = search(sorted)
-	return applyFilters(searched)
+	return applyMetadataFilters(applyFilters(searched))
 })
 const tableItems = computed<ContentCardTableItem[]>(() => {
 	const items = filteredItems.value.map((item) => {
 		const base = ctx.mapToTableItem(item)
 		const id = getItemId(item)
+		const locked = base.locked ?? item.locked ?? false
+		const clientWarning = getClientWarningType(item, ctx.showEnvironmentWarnings)
 		return {
 			...base,
 			id,
+			locked,
 			disabled:
 				isChanging(id) || ctx.isBusy.value || isBulkOperating.value || item.installing === true,
 			disabledTooltip: ctx.isBusy.value ? (ctx.busyMessage?.value ?? null) : null,
-			toggleDisabled: ctx.isBusy.value,
-			toggleDisabledTooltip: ctx.isBusy.value ? (ctx.busyMessage?.value ?? null) : null,
+			toggleDisabled: ctx.isBusy.value || base.toggleDisabled,
+			toggleDisabledTooltip: ctx.isBusy.value
+				? (ctx.busyMessage?.value ?? null)
+				: base.toggleDisabledTooltip,
 			installing: item.installing === true,
+			installProgress: item.installProgress,
 			hasUpdate: base.hasUpdate ?? item.has_update,
-			isClientOnly:
-				isClientOnlyEnvironment(item.environment) ||
-				!!item.pack_client_retained ||
-				!!item.pack_client_depends,
-			clientWarning: getClientWarningType(item),
+			isClientOnly: clientWarning !== null,
+			clientWarning,
 			hideDelete: base.hideDelete,
 			hideSwitchVersion: base.hideSwitchVersion ?? !base.versionLink,
 			overflowOptions: ctx.getOverflowOptions?.(item),
@@ -310,7 +486,7 @@ const tableItems = computed<ContentCardTableItem[]>(() => {
 })
 
 const hasOutdatedProjects = computed(() => {
-	const outdated = ctx.items.value.filter((p) => p.has_update)
+	const outdated = ctx.items.value.filter((p) => p.has_update && !p.locked)
 	if (outdated.length > 0) {
 		debug('hasOutdatedProjects: raw items with has_update=true', {
 			count: outdated.length,
@@ -413,6 +589,16 @@ async function promptDeleteItems(items: ContentItem[], event?: MouseEvent) {
 }
 
 async function showDeletionConfirmation(event?: MouseEvent) {
+	const confirmed = await ctx.confirmDeleteItems?.(pendingDeletionItems.value)
+	if (confirmed !== undefined) {
+		if (!confirmed) return
+		if (pendingDeletionWarning.value) {
+			confirmDeletionModal.value?.show()
+		} else {
+			await confirmDelete()
+		}
+		return
+	}
 	if (
 		!pendingDeletionWarning.value &&
 		(event?.shiftKey || skipNonEssentialWarnings.value) &&
@@ -446,6 +632,7 @@ async function confirmDependencyWarningDelete(disableDependentsAfterDeleting: bo
 
 	pendingDependencyWarningItems.value = []
 	pendingDependencyWarningDependents.value = []
+	if ((await ctx.confirmDeleteItems?.(pendingDeletionItems.value)) === false) return
 	if (pendingDeletionWarning.value) {
 		confirmDeletionModal.value?.show()
 		return
@@ -533,9 +720,11 @@ async function confirmDelete() {
 }
 
 async function promptDisableItems(items: ContentItem[]) {
-	if (items.length === 0) return
-	pendingDisableItems.value = items
-	const warning = ctx.getDisableWarning?.(items) ?? null
+	const toggleableItems = items.filter(canToggleItem)
+	if (toggleableItems.length === 0) return
+	if (ctx.confirmAction && !(await ctx.confirmAction('disable', toggleableItems))) return
+	pendingDisableItems.value = toggleableItems
+	const warning = ctx.getDisableWarning?.(toggleableItems) ?? null
 	if (warning) {
 		pendingDisableWarning.value = warning
 		confirmDisableModal.value?.show()
@@ -601,6 +790,7 @@ async function handleToggleEnabledById(id: string, _value: boolean) {
 		await promptDisableItems([item])
 		return
 	}
+	if (ctx.confirmAction && !(await ctx.confirmAction('enable', [item]))) return
 	markChanging(id)
 	try {
 		await ctx.toggleEnabled(item)
@@ -613,6 +803,7 @@ async function bulkEnable() {
 	if (ctx.isBusy.value) return
 	const items = toggleableSelectedItems.value.filter((item) => !item.enabled)
 	if (items.length === 0) return
+	if (ctx.confirmAction && !(await ctx.confirmAction('enable', items))) return
 	if (ctx.bulkEnableItems) {
 		isBulkOperating.value = true
 		bulkOperation.value = 'enable'
@@ -642,111 +833,249 @@ async function bulkDisable() {
 }
 
 function handleUpdateById(id: string) {
+	const item = ctx.items.value.find((item) => getItemId(item) === id)
+	if (!item || item.locked) return
 	ctx.updateItem?.(id)
 }
 
 function handleSwitchVersionById(id: string) {
 	const item = ctx.items.value.find((i) => getItemId(i) === id)
-	if (item) {
+	if (item && !item.locked) {
 		ctx.switchVersion?.(item)
 	}
 }
 
-// Bulk updating
-const confirmBulkUpdateModal = ref<InstanceType<typeof ConfirmBulkUpdateModal>>()
-const pendingBulkUpdateItems = ref<ContentItem[]>([])
-const pendingBulkUpdateAll = ref(false)
+const queryClient = useQueryClient()
+const client = injectModrinthClient()
+const { addNotification } = injectNotificationManager()
+const updateAllModal = ref<InstanceType<typeof UpdateAllModal>>()
+const updateAllItems = ref<UpdateAllItem[]>([])
+const loadingUpdateAll = ref(false)
+const loadingUpdateAllChangelog = ref(false)
+let updateAllRequestId = 0
 
-const hasBulkUpdateSupport = computed(
-	() => !!(ctx.bulkUpdateAll || ctx.bulkUpdateItem || ctx.bulkUpdateItems),
-)
+const hasBulkUpdateSupport = computed(() => !!ctx.bulkUpdateSelections)
 
-function promptUpdateAll(event?: MouseEvent) {
-	if (!hasBulkUpdateSupport.value) return
-	const items = ctx.items.value.filter((item) => item.has_update)
-	if (items.length === 0) return
-	pendingBulkUpdateItems.value = items
-	pendingBulkUpdateAll.value = true
-	if ((event?.shiftKey || skipNonEssentialWarnings.value) && !ctx.isBusy.value) {
-		confirmBulkUpdate()
-	} else {
-		confirmBulkUpdateModal.value?.show()
-	}
+function getUpdateAllCandidates(items: ContentItem[]) {
+	return items.filter(
+		(item) =>
+			item.has_update &&
+			!item.locked &&
+			item.project?.id &&
+			item.version?.id &&
+			item.update_version_id,
+	)
 }
 
-function promptUpdateSelected(event?: MouseEvent) {
-	if (!hasBulkUpdateSupport.value) return
-	const items = selectedItems.value.filter((item) => item.has_update)
-	if (items.length === 0) return
-	pendingBulkUpdateItems.value = items
-	pendingBulkUpdateAll.value = false
-	if ((event?.shiftKey || skipNonEssentialWarnings.value) && !ctx.isBusy.value) {
-		confirmBulkUpdate()
-	} else {
-		confirmBulkUpdateModal.value?.show()
-	}
+async function loadRecommendedUpdateVersions(items: ContentItem[]) {
+	const ids = [...new Set(items.map((item) => item.update_version_id!))].sort()
+	const batches = await Promise.all(
+		chunk(ids, 100).map(async (batch) => {
+			try {
+				const versions = await queryClient.fetchQuery({
+					queryKey: ['labrinth', 'versions', 'v2', 'recommended', batch],
+					queryFn: () =>
+						client.labrinth.versions_v2.getVersions(batch, { include_changelog: false }),
+					staleTime: 5 * 60_000,
+				})
+				for (const version of versions) {
+					queryClient.setQueryData(['labrinth', 'version', 'v2', 'summary', version.id], version)
+				}
+				return versions
+			} catch {
+				return []
+			}
+		}),
+	)
+	return new Map(batches.flat().map((version) => [version.id, version]))
 }
 
-async function confirmBulkUpdate() {
-	if (ctx.isBusy.value) return
-	const items = pendingBulkUpdateItems.value
-	if (items.length === 0 || !hasBulkUpdateSupport.value) return
+async function openUpdateAll(items: ContentItem[]) {
+	if (
+		!ctx.bulkUpdateSelections ||
+		ctx.isBusy.value ||
+		isBulkOperating.value ||
+		loadingUpdateAll.value
+	)
+		return
+	const candidates = getUpdateAllCandidates(items)
+	if (candidates.length === 0) return
 
-	const setBulkStatus = (status: BulkOperationStatus) => {
-		bulkStatusMessage.value = status.message ?? null
-		bulkProgress.value = status.progress ?? bulkProgress.value
-		bulkTotal.value = status.total ?? bulkTotal.value
-		bulkWaiting.value = status.waiting ?? false
+	const requestId = ++updateAllRequestId
+	updateAllItems.value = []
+	loadingUpdateAll.value = true
+	loadingUpdateAllChangelog.value = false
+	await nextTick()
+	if (requestId !== updateAllRequestId) return
+	updateAllModal.value?.show()
+
+	const recommendedPromise = loadRecommendedUpdateVersions(candidates)
+	const projectVersions = new Map<string, Labrinth.Versions.v2.Version[]>()
+	let failedToLoadVersions = false
+	const projectIds = [...new Set(candidates.map((item) => item.project!.id))]
+	for (const batch of chunk(projectIds, 8)) {
+		await Promise.all(
+			batch.map(async (projectId) => {
+				try {
+					const versions = await queryClient.fetchQuery({
+						queryKey: ['labrinth', 'versions', 'v2', projectId],
+						queryFn: () =>
+							client.labrinth.versions_v2.getProjectVersions(projectId, {
+								include_changelog: false,
+							}),
+						staleTime: 5 * 60_000,
+					})
+					projectVersions.set(projectId, versions)
+				} catch {
+					failedToLoadVersions = true
+				}
+			}),
+		)
+		if (requestId !== updateAllRequestId) return
 	}
+	const recommended = await recommendedPromise
+	if (requestId !== updateAllRequestId) return
 
-	try {
-		if (pendingBulkUpdateAll.value && ctx.bulkUpdateAll) {
-			isBulkOperating.value = true
-			bulkOperation.value = 'update'
-			bulkProgress.value = 0
-			bulkTotal.value = items.length
-			bulkItemCount.value = items.length
-			bulkStatusMessage.value = null
-			bulkWaiting.value = true
-			try {
-				await ctx.bulkUpdateAll(setBulkStatus)
-			} finally {
-				clearSelection()
-				isBulkOperating.value = false
-				bulkOperation.value = null
-				bulkProgress.value = 0
-				bulkTotal.value = 0
-				bulkItemCount.value = 0
-				bulkStatusMessage.value = null
-				bulkWaiting.value = false
-			}
-		} else if (ctx.bulkUpdateItems) {
-			isBulkOperating.value = true
-			bulkOperation.value = 'update'
-			bulkProgress.value = 0
-			bulkTotal.value = items.length
-			bulkItemCount.value = items.length
-			bulkStatusMessage.value = null
-			bulkWaiting.value = true
-			try {
-				await ctx.bulkUpdateItems(items)
-			} finally {
-				clearSelection()
-				isBulkOperating.value = false
-				bulkOperation.value = null
-				bulkProgress.value = 0
-				bulkTotal.value = 0
-				bulkItemCount.value = 0
-				bulkStatusMessage.value = null
-				bulkWaiting.value = false
-			}
-		} else if (ctx.bulkUpdateItem) {
-			await runBulk('update', items, ctx.bulkUpdateItem, { onComplete: clearSelection })
+	updateAllItems.value = candidates.map((item) => {
+		const preferredVersionId = item.update_version_id!
+		const versions = projectVersions.get(item.project!.id) ?? []
+		const preferredVersion =
+			queryClient.getQueryData<Labrinth.Versions.v2.Version>([
+				'labrinth',
+				'version',
+				'v2',
+				preferredVersionId,
+			]) ??
+			recommended.get(preferredVersionId) ??
+			versions.find((version) => version.id === preferredVersionId)
+		const sorted = [
+			...versions,
+			...(preferredVersion && !versions.some((version) => version.id === preferredVersion.id)
+				? [preferredVersion]
+				: []),
+		].sort((a, b) => Date.parse(b.date_published) - Date.parse(a.date_published))
+		const currentIndex = sorted.findIndex((version) => version.id === item.version!.id)
+		const newer = currentIndex < 0 ? sorted : sorted.slice(0, currentIndex)
+		if (preferredVersion && !newer.some((version) => version.id === preferredVersion.id)) {
+			newer.unshift(preferredVersion)
 		}
-	} finally {
-		pendingBulkUpdateItems.value = []
-		pendingBulkUpdateAll.value = false
+		const compatible = newer.filter(
+			(version) =>
+				version.id === preferredVersionId ||
+				versionMatchesCompatibilityTarget(version, {
+					gameVersion: ctx.currentGameVersion?.value ?? '',
+					loader: ctx.currentLoader?.value ?? '',
+					projectType: item.project_type,
+				}),
+		)
+		return {
+			id: getItemId(item),
+			project: item.project!,
+			currentVersion: item.version!,
+			versions:
+				compatible.length > 0
+					? compatible
+					: [
+							preferredVersion ?? {
+								id: preferredVersionId,
+								version_number: formatMessage(commonMessages.updateAvailableLabel),
+							},
+						],
+			initialVersionId: preferredVersionId,
+		}
+	})
+	loadingUpdateAll.value = false
+	if (failedToLoadVersions) {
+		addNotification({ type: 'error', title: formatMessage(messages.failedToLoadUpdates) })
 	}
+}
+
+function preloadUpdateAllChangelog(selection: UpdateAllSelection) {
+	if (selection.version.changelog != null) return
+	void queryClient.prefetchQuery({
+		queryKey: ['labrinth', 'version', 'v2', selection.version.id],
+		queryFn: () => client.labrinth.versions_v2.getVersion(selection.version.id),
+		staleTime: 5 * 60_000,
+	})
+}
+
+async function loadUpdateAllChangelog(selection: UpdateAllSelection) {
+	if (selection.version.changelog != null) return
+	const requestId = updateAllRequestId
+	loadingUpdateAllChangelog.value = true
+	try {
+		const version = await queryClient.fetchQuery({
+			queryKey: ['labrinth', 'version', 'v2', selection.version.id],
+			queryFn: () => client.labrinth.versions_v2.getVersion(selection.version.id),
+			staleTime: 5 * 60_000,
+		})
+		if (requestId !== updateAllRequestId) return
+		updateAllItems.value = updateAllItems.value.map((item) => ({
+			...item,
+			versions: item.versions.map((candidate) =>
+				candidate.id === version.id ? version : candidate,
+			),
+		}))
+	} catch (error) {
+		addNotification({
+			type: 'error',
+			title: formatMessage(messages.failedToLoadChangelog),
+			text: error instanceof Error ? error.message : undefined,
+		})
+	} finally {
+		if (requestId === updateAllRequestId) loadingUpdateAllChangelog.value = false
+	}
+}
+
+async function updateAllSelected(selections: UpdateAllSelection[]) {
+	if (
+		!ctx.bulkUpdateSelections ||
+		ctx.isBusy.value ||
+		isBulkOperating.value ||
+		selections.length === 0
+	)
+		return
+	++updateAllRequestId
+	isBulkOperating.value = true
+	bulkOperation.value = 'update'
+	bulkItemCount.value = selections.length
+	bulkTotal.value = selections.length
+	bulkProgress.value = 0
+	bulkUpdateItems.value = selections.flatMap((selection) => {
+		const item = ctx.items.value.find((item) => getItemId(item) === selection.id)
+		return item ? [item] : []
+	})
+	bulkWaiting.value = true
+	try {
+		await ctx.bulkUpdateSelections(selections, (completed) => {
+			bulkWaiting.value = false
+			bulkProgress.value = completed
+		})
+		clearSelection()
+	} catch {
+		return
+	} finally {
+		isBulkOperating.value = false
+		bulkOperation.value = null
+		bulkItemCount.value = 0
+		bulkTotal.value = 0
+		bulkProgress.value = 0
+		bulkUpdateItems.value = []
+		bulkWaiting.value = false
+	}
+}
+
+function promptUpdateAll() {
+	void openUpdateAll(ctx.items.value)
+}
+
+function cancelUpdateAll() {
+	++updateAllRequestId
+	loadingUpdateAll.value = false
+}
+
+function promptUpdateSelected() {
+	void openUpdateAll(selectedItems.value)
 }
 
 const confirmUnlinkModal = ref<InstanceType<typeof ConfirmUnlinkModal>>()
@@ -769,39 +1098,33 @@ const confirmUnlinkModal = ref<InstanceType<typeof ConfirmUnlinkModal>>()
 			</div>
 
 			<template v-else>
-				<ContentModpackCard
-					v-if="ctx.modpack.value"
-					:project="ctx.modpack.value.project"
-					:project-link="ctx.modpack.value.projectLink"
-					:version="ctx.modpack.value.version"
-					:version-link="ctx.modpack.value.versionLink"
-					:owner="ctx.modpack.value.owner"
-					:categories="ctx.modpack.value.categories"
-					:has-update="ctx.modpack.value.hasUpdate"
-					:disabled="ctx.modpack.value.disabled"
-					:disabled-text="ctx.modpack.value.disabledText"
-					v-on="{
-						...(ctx.updateModpack ? { update: () => ctx.updateModpack?.() } : {}),
-						...(ctx.viewModpackContent ? { content: () => ctx.viewModpackContent?.() } : {}),
-						...(ctx.unlinkModpack ? { unlink: () => confirmUnlinkModal?.show() } : {}),
-						...(ctx.openSettings ? { settings: () => ctx.openSettings?.() } : {}),
-					}"
+				<ManagedContentCard
+					v-if="ctx.managedContent.value"
+					:data="ctx.managedContent.value.card"
+					:disabled="ctx.managedContent.value.disabled"
+					:disabled-text="ctx.managedContent.value.disabledText"
+					:show-view-content="!!ctx.viewManagedContent"
+					:show-settings="!!ctx.openManagedContentSettings"
+					:show-primary-action="!!ctx.runManagedContentPrimaryAction"
+					@view-content="ctx.viewManagedContent?.()"
+					@settings="ctx.openManagedContentSettings?.()"
+					@primary-action="ctx.runManagedContentPrimaryAction?.($event)"
 				/>
 
 				<template v-if="ctx.items.value.length > 0">
-					<div class="flex flex-col gap-4">
-						<span v-if="ctx.modpack.value" class="text-xl font-semibold text-contrast">
+					<div class="flex flex-col gap-2">
+						<span v-if="ctx.managedContent.value" class="mb-2 text-xl font-semibold text-contrast">
 							{{ formatMessage(messages.additionalContent) }}
 						</span>
 
 						<div class="flex flex-wrap items-center gap-2">
-							<StyledInput
+							<Input
 								v-model="searchQuery"
 								:icon="SearchIcon"
 								type="text"
 								autocomplete="off"
 								:spellcheck="false"
-								input-class="!h-10"
+								size="medium"
 								wrapper-class="flex-1 min-w-0"
 								clearable
 								:placeholder="
@@ -847,85 +1170,221 @@ const confirmUnlinkModal = ref<InstanceType<typeof ConfirmUnlinkModal>>()
 							</div>
 						</div>
 
-						<div class="@container flex flex-wrap items-center justify-between gap-2">
-							<div class="flex flex-wrap items-center gap-1.5">
-								<FilterIcon class="size-5 text-secondary" />
-								<button
-									class="cursor-pointer rounded-full border border-solid px-3 py-1.5 text-base font-semibold leading-5 transition-all duration-100 active:scale-[0.97]"
-									:class="
-										selectedFilters.length === 0
-											? 'border-green bg-brand-highlight text-brand'
-											: 'border-surface-5 bg-surface-4 text-primary hover:bg-surface-5'
-									"
-									:aria-pressed="selectedFilters.length === 0"
-									@click="selectedFilters = []"
-								>
-									{{ formatMessage(commonMessages.allProjectType) }}
-								</button>
-								<button
-									v-for="option in filterOptions"
-									:key="option.id"
-									class="cursor-pointer rounded-full border border-solid px-3 py-1.5 text-base font-semibold leading-5 transition-all duration-100 active:scale-[0.97]"
-									:class="
-										selectedFilters.includes(option.id)
-											? 'border-green bg-brand-highlight text-brand'
-											: 'border-surface-5 bg-surface-4 text-primary hover:bg-surface-5'
-									"
-									:aria-pressed="selectedFilters.includes(option.id)"
-									@click="toggleFilter(option.id)"
-								>
-									{{ option.label }}
-								</button>
-								<div class="hidden @[900px]:block">
-									<Button
-										type="quiet"
-										:aria-label="
-											formatMessage(messages.sortByLabel, { mode: sortLabels[sortMode]() })
-										"
-										@click="cycleSortMode"
+						<div class="@container flex items-start gap-2">
+							<div ref="filterControlsRef" class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+								<div ref="projectTypeFiltersRef" class="flex items-center gap-2">
+									<TeleportOverflowMenu
+										class="!h-[34px] !text-sm !font-medium"
+										:icon-only="false"
+										:label="formatMessage(messages.sortByLabel, { mode: sortLabels[sortMode]() })"
+										:options="sortOptions"
 									>
-										<ArrowUpZAIcon v-if="sortMode === 'alphabetical-desc'" /><ClockArrowDownIcon
-											v-else-if="sortMode === 'date-added-newest'"
-										/><ClockArrowUpIcon
-											v-else-if="sortMode === 'date-added-oldest'"
-										/><ArrowDownAZIcon v-else />
+										<ArrowUpZAIcon v-if="sortMode === 'alphabetical-desc'" />
+										<ClockArrowDownIcon v-else-if="sortMode === 'date-added-newest'" />
+										<ClockArrowUpIcon v-else-if="sortMode === 'date-added-oldest'" />
+										<ArrowDownAZIcon v-else />
 										{{ sortLabels[sortMode]() }}
-									</Button>
+										<DropdownIcon />
+									</TeleportOverflowMenu>
+									<div class="h-6 w-px shrink-0 bg-surface-5" />
+									<FilterPills
+										:model-value="selectedFilters"
+										:options="filterOptions"
+										@update:model-value="updateFilterChips"
+									>
+										<template #all>
+											{{ formatMessage(commonMessages.allProjectType) }}
+										</template>
+									</FilterPills>
+								</div>
+								<div
+									v-if="metadataFilterCategories.length > 0"
+									ref="metadataFiltersRef"
+									class="flex flex-wrap items-center gap-1.5 [&>div:last-of-type]:!h-[34px] [&>div:last-of-type]:!gap-1.5 [&_[data-button]]:!h-[34px]"
+								>
+									<div
+										class="mr-0.5 h-6 w-px shrink-0 bg-surface-5"
+										:class="{ invisible: metadataFiltersWrapped }"
+									/>
+									<DropdownFilterBar
+										v-model="selectedMetadataFilters"
+										:categories="metadataFilterCategories"
+										:show-label="false"
+										:add-label="formatMessage(messages.filter)"
+										:add-button-class="metadataFilterTriggerClass"
+										:preview-trigger-class="metadataFilterPreviewTriggerClass"
+										add-button-size="sm"
+										checkbox-position="right"
+										apply-immediately
+									>
+										<template #preview-content="{ category, selectedValues, label, summary }">
+											<div
+												v-if="category.key === 'author'"
+												class="flex min-w-0 flex-1 items-center gap-2"
+											>
+												<template v-if="selectedValues.length === 1">
+													<span
+														class="flex size-5 shrink-0 items-center justify-center overflow-hidden bg-surface-2 text-brand"
+														:class="
+															getMetadataFilterPreviewAuthor(selectedValues)?.type ===
+															'organization'
+																? 'rounded'
+																: 'rounded-full'
+														"
+													>
+														<Avatar
+															v-if="getMetadataFilterPreviewAuthor(selectedValues)?.avatar_url"
+															:src="getMetadataFilterPreviewAuthor(selectedValues)?.avatar_url"
+															size="100%"
+															:circle="
+																getMetadataFilterPreviewAuthor(selectedValues)?.type !==
+																'organization'
+															"
+															no-shadow
+															class="!border-0"
+														/>
+														<OrganizationIcon
+															v-else-if="
+																getMetadataFilterPreviewAuthor(selectedValues)?.type ===
+																'organization'
+															"
+															class="size-4"
+														/>
+														<UserIcon v-else class="size-4" />
+													</span>
+													<span class="min-w-0 truncate font-semibold text-contrast">
+														{{ getMetadataFilterPreviewAuthor(selectedValues)?.name ?? summary }}
+													</span>
+												</template>
+												<template v-else>
+													<span class="font-medium">{{ label }}:</span>
+													<div
+														class="relative h-5 shrink-0"
+														:style="{
+															width: `${getMetadataFilterPreviewAuthorStackWidth(selectedValues)}px`,
+														}"
+														aria-hidden="true"
+													>
+														<div
+															v-for="(value, index) in getMetadataFilterPreviewAuthorValues(
+																selectedValues,
+															)"
+															:key="value"
+															class="absolute top-0 flex size-5 items-center justify-center overflow-hidden border border-solid border-surface-3 bg-surface-4 text-brand"
+															:class="
+																isMetadataFilterOrganization(value) ? 'rounded' : 'rounded-full'
+															"
+															:style="{
+																left: `${index * metadataFilterPreviewAuthorOffset}px`,
+																zIndex:
+																	getMetadataFilterPreviewAuthorValues(selectedValues).length -
+																	index,
+															}"
+														>
+															<Avatar
+																v-if="getMetadataFilterAuthor(value)?.avatar_url"
+																:src="getMetadataFilterAuthor(value)?.avatar_url"
+																size="100%"
+																:circle="!isMetadataFilterOrganization(value)"
+																no-shadow
+																class="!border-0"
+															/>
+															<OrganizationIcon
+																v-else-if="isMetadataFilterOrganization(value)"
+																class="size-3.5"
+															/>
+															<UserIcon v-else class="size-3.5" />
+														</div>
+														<div
+															v-if="getMetadataFilterPreviewAuthorOverflow(selectedValues) > 0"
+															class="absolute top-0 flex size-5 items-center justify-center rounded-full border border-solid border-surface-3 bg-surface-4 text-[10px] font-bold text-contrast"
+															:style="{
+																left: `${getMetadataFilterPreviewAuthorValues(selectedValues).length * metadataFilterPreviewAuthorOffset}px`,
+															}"
+														>
+															+{{ getMetadataFilterPreviewAuthorOverflow(selectedValues) }}
+														</div>
+													</div>
+													<span class="min-w-0 truncate font-semibold text-contrast">
+														{{
+															formatMessage(messages.authorCount, { count: selectedValues.length })
+														}}
+													</span>
+												</template>
+											</div>
+											<span v-else class="min-w-0 flex-1 truncate">
+												<span class="font-medium">{{ label }}:</span>
+												<span class="ml-1 font-semibold text-contrast">{{ summary }}</span>
+											</span>
+										</template>
+										<template #option="{ category, option, selected }">
+											<div
+												v-if="category.key === 'author'"
+												class="flex min-w-0 flex-1 items-center gap-2"
+											>
+												<span
+													v-tooltip="option.label"
+													class="flex size-6 shrink-0 items-center justify-center overflow-hidden bg-surface-2 text-secondary"
+													:class="
+														getMetadataFilterAuthor(option.value)?.type === 'organization'
+															? 'rounded'
+															: 'rounded-full'
+													"
+												>
+													<img
+														v-if="getMetadataFilterAuthor(option.value)?.avatar_url"
+														:src="getMetadataFilterAuthor(option.value)?.avatar_url"
+														:alt="option.label"
+														class="size-full object-cover"
+													/>
+													<OrganizationIcon
+														v-else-if="
+															getMetadataFilterAuthor(option.value)?.type === 'organization'
+														"
+														class="size-5"
+													/>
+													<UserIcon v-else class="size-5" />
+												</span>
+												<span
+													v-tooltip="option.label"
+													class="min-w-0 truncate font-semibold leading-tight"
+													:class="selected ? 'text-contrast' : 'text-primary'"
+												>
+													{{ option.label }}
+												</span>
+											</div>
+											<span
+												v-else
+												class="min-w-0 truncate font-semibold leading-tight"
+												:class="selected ? 'text-contrast' : 'text-primary'"
+											>
+												{{ option.label }}
+											</span>
+										</template>
+									</DropdownFilterBar>
 								</div>
 							</div>
 
-							<div class="flex items-center gap-2">
-								<div class="@[900px]:hidden">
-									<Button
-										type="quiet"
-										:aria-label="
-											formatMessage(messages.sortByLabel, { mode: sortLabels[sortMode]() })
-										"
-										@click="cycleSortMode"
-									>
-										<ArrowUpZAIcon v-if="sortMode === 'alphabetical-desc'" /><ClockArrowDownIcon
-											v-else-if="sortMode === 'date-added-newest'"
-										/><ClockArrowUpIcon
-											v-else-if="sortMode === 'date-added-oldest'"
-										/><ArrowDownAZIcon v-else />
-										{{ sortLabels[sortMode]() }}
-									</Button>
-								</div>
-
+							<div class="flex shrink-0 items-center gap-2">
 								<Button
 									v-if="hasBulkUpdateSupport && hasOutdatedProjects"
 									v-tooltip="formatMessage(messages.updateAll)"
 									type="quiet"
 									color="green"
-									:disabled="isBulkOperating"
-									class="hover:!bg-green focus-visible:!bg-green hover:!text-[var(--color-accent-contrast)] focus-visible:!text-[var(--color-accent-contrast)]"
+									:disabled="isBulkOperating || loadingUpdateAll"
+									class="!text-sm !font-medium hover:!bg-green focus-visible:!bg-green hover:!text-[var(--color-accent-contrast)] focus-visible:!text-[var(--color-accent-contrast)]"
 									@click="promptUpdateAll"
 								>
 									<DownloadIcon />
 									{{ formatMessage(messages.updateAll) }}
 								</Button>
 
-								<Button type="quiet" :disabled="refreshing" @click="handleRefresh">
+								<Button
+									type="quiet"
+									:disabled="refreshing"
+									class="!text-sm !font-medium"
+									@click="handleRefresh"
+								>
 									<RefreshCwIcon :class="refreshing ? 'animate-spin' : ''" />
 									{{ formatMessage(commonMessages.refreshButton) }}
 								</Button>
@@ -934,7 +1393,9 @@ const confirmUnlinkModal = ref<InstanceType<typeof ConfirmUnlinkModal>>()
 
 						<ContentCardTable
 							v-model:selected-ids="selectedIds"
+							class="mt-2"
 							:items="tableItems"
+							:highlighted-item-id="highlightedItemId"
 							:show-selection="true"
 							@update:enabled="handleToggleEnabledById"
 							@delete="handleDeleteById"
@@ -952,13 +1413,15 @@ const confirmUnlinkModal = ref<InstanceType<typeof ConfirmUnlinkModal>>()
 					<template #heading>
 						{{
 							formatMessage(
-								ctx.modpack.value ? messages.noExtraContentInstalled : messages.noContentInstalled,
+								ctx.managedContent.value
+									? messages.noExtraContentInstalled
+									: messages.noContentInstalled,
 							)
 						}}
 					</template>
 					<template #description>
 						{{
-							ctx.modpack.value
+							ctx.managedContent.value
 								? formatMessage(messages.emptyModpackHint)
 								: formatMessage(messages.emptyHint, {
 										contentType: formatContentTypeSentence(
@@ -1004,7 +1467,8 @@ const confirmUnlinkModal = ref<InstanceType<typeof ConfirmUnlinkModal>>()
 		</template>
 
 		<ContentSelectionBar
-			:selected-items="selectedItems"
+			v-if="!ctx.bulkUpdatesInBackground || bulkOperation !== 'update'"
+			:selected-items="bulkOperation === 'update' ? bulkUpdateItems : selectedItems"
 			:content-type-label="ctx.contentTypeLabel.value"
 			:is-busy="ctx.isBusy.value"
 			:busy-tooltip="ctx.busyMessage?.value"
@@ -1024,10 +1488,11 @@ const confirmUnlinkModal = ref<InstanceType<typeof ConfirmUnlinkModal>>()
 		>
 			<template #actions>
 				<Button
-					v-if="hasBulkUpdateSupport && selectedItems.some((m) => m.has_update)"
+					v-if="hasBulkUpdateSupport && selectedItems.some((m) => m.has_update && !m.locked)"
 					v-tooltip="formatMessage(commonMessages.updateButton)"
 					type="quiet"
 					color="green"
+					:disabled="loadingUpdateAll"
 					class="hover:!bg-green focus-visible:!bg-green hover:!text-[var(--color-accent-contrast)] focus-visible:!text-[var(--color-accent-contrast)]"
 					@click="promptUpdateSelected"
 				>
@@ -1133,20 +1598,24 @@ const confirmUnlinkModal = ref<InstanceType<typeof ConfirmUnlinkModal>>()
 			:action-disabled-tooltip="ctx.busyMessage?.value ?? undefined"
 			@delete="confirmDependencyWarningDelete"
 		/>
-		<ConfirmBulkUpdateModal
+		<UpdateAllModal
 			v-if="hasBulkUpdateSupport"
-			ref="confirmBulkUpdateModal"
-			:count="pendingBulkUpdateItems.length"
+			ref="updateAllModal"
+			:items="updateAllItems"
 			:server="ctx.deletionContext === 'server'"
+			:loading="loadingUpdateAll"
+			:loading-changelog="loadingUpdateAllChangelog"
 			:action-disabled="ctx.isBusy.value"
-			:action-disabled-tooltip="ctx.busyMessage?.value ?? undefined"
-			@update="confirmBulkUpdate"
+			@changelog="loadUpdateAllChangelog"
+			@preload-changelog="preloadUpdateAllChangelog"
+			@cancel="cancelUpdateAll"
+			@update="updateAllSelected"
 		/>
 		<ConfirmUnlinkModal
 			v-if="ctx.unlinkModpack"
 			ref="confirmUnlinkModal"
 			:server="ctx.deletionContext === 'server'"
-			:backup-tip="ctx.modpack.value?.project.title"
+			:backup-tip="ctx.managedContent.value?.card.manager.name"
 			:action-disabled="ctx.isBusy.value"
 			:action-disabled-tooltip="ctx.busyMessage?.value ?? undefined"
 			@unlink="ctx.unlinkModpack!()"

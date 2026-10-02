@@ -8,6 +8,9 @@
   "app.action-bar.downloads": {
     "message": "ดาวน์โหลด"
   },
+  "app.action-bar.hide-downloads": {
+    "message": "ซ่อนการดาวน์โหลดที่ดำเนินการอยู่"
+  },
   "app.action-bar.hide-more-running-instances": {
     "message": "ซ่อนอินสแตนซ์ที่ทำงานอยู่เพิ่มเติม"
   },
@@ -20,11 +23,26 @@
   "app.action-bar.install.dismiss": {
     "message": "ปิด"
   },
+  "app.action-bar.install.open-instance": {
+    "message": "เปิด Instance"
+  },
   "app.action-bar.install.retry": {
     "message": "ลองอีกครั้ง"
   },
+  "app.action-bar.install.summary.app-closing": {
+    "message": "ถูกยกเลิกจากการปิดแอป"
+  },
   "app.action-bar.install.summary.canceled": {
     "message": "ยกเลิกสำเร็จ"
+  },
+  "app.action-bar.install.summary.cleanup-incomplete": {
+    "message": "การ Cleanup ไม่สำเร็จ"
+  },
+  "app.action-bar.install.summary.content-download-failed": {
+    "message": "ไม่สามารถดาวน์โหลดไฟล์ได้"
+  },
+  "app.action-bar.install.summary.corrupt-download": {
+    "message": "ไฟล์ที่ดาวน์โหลดเสียหาย"
   },
   "app.action-bar.make-primary-instance": {
     "message": "กำหนดอินสแตนซ์หลัก"
@@ -59,11 +77,11 @@
   "app.action-bar.view-logs": {
     "message": "ดู Log"
   },
-  "app.appearance-settings.advanced-rendering.title": {
-    "message": "การเรนเดอร์ขั้นสูง"
+  "app.ads-consent.accept": {
+    "message": "ยอมรับทั้งหมด"
   },
-  "app.appearance-settings.color-theme.title": {
-    "message": "ธีมสี"
+  "app.ads-consent.reject": {
+    "message": "ปฏิเสธทั้งหมด"
   },
   "app.appearance-settings.default-landing-page.home": {
     "message": "หน้าหลัก"
@@ -71,14 +89,8 @@
   "app.appearance-settings.default-landing-page.library": {
     "message": "ไลบรารี"
   },
-  "app.appearance-settings.default-landing-page.title": {
-    "message": "หน้าเริ่มต้น"
-  },
   "app.appearance-settings.hide-nametag.title": {
     "message": "ซ่อนป้ายชื่อ"
-  },
-  "app.appearance-settings.jump-back-into-worlds.title": {
-    "message": "เล่นต่อ"
   },
   "app.appearance-settings.show-play-time.title": {
     "message": "แสดงระยะเวลาที่เล่น"
@@ -118,9 +130,6 @@
   },
   "app.browse.project-type.modpacks": {
     "message": "แพ็กม็อด"
-  },
-  "app.browse.server-instance-content-warning": {
-    "message": "การเพิ่มเนื้อหาอาจทำให้ใช้งานร่วมกันไม่ได้เมื่อเข้าร่วมเซิร์ฟเวอร์ เนื้อหาที่เพิ่มเข้ามาจะหายไปเมื่อคุณอัปเดตอินสแตนซ์ของเซิร์ฟเวอร์"
   },
   "app.browse.server.installing": {
     "message": "กำลังติดตั้ง"
@@ -392,18 +401,6 @@
   "app.skins.section.tiny-takeover": {
     "message": "Tiny Takeover"
   },
-  "app.skins.sign-in.button": {
-    "message": "ลงชื่อเข้าใช้"
-  },
-  "app.skins.sign-in.description": {
-    "message": "โปรดลงชื่อเข้าใช้บัญชี Minecraft ของคุณเพื่อใช้งานฟีเจอร์จัดการสกินของแอป Modrinth"
-  },
-  "app.skins.sign-in.rinthbot-alt": {
-    "message": "บอท Modrinth ที่กำลังตื่นเต้น"
-  },
-  "app.skins.sign-in.title": {
-    "message": "โปรดลงชื่อเข้าใช้"
-  },
   "app.update-popup.body.download-complete": {
     "message": "ดาวน์โหลด Modrinth v{version} สำเร็จแล้ว เปิดโปรแกรมใหม่อีกครั้งเพื่ออัปเดตตอนนี้ หรือจะรออัปเดตอัตโนมัติ ซึ่งจะเกิดขึ้นเมื่อคุณกดปิดโปรแกรม Modrinth"
   },
@@ -445,9 +442,6 @@
   },
   "app.world.world-item.offline": {
     "message": "ออฟไลน์"
-  },
-  "app.world.world-item.players-online": {
-    "message": "{count} ออนไลน์"
   },
   "friends.action.add-friend": {
     "message": "เพิ่มเพื่อน"
@@ -605,29 +599,8 @@
   "instance.settings.tabs.general.edit-icon.select": {
     "message": "เลือกรูปสัญลักษณ์"
   },
-  "instance.settings.tabs.general.library-groups": {
-    "message": "จัดกลุ่ม"
-  },
-  "instance.settings.tabs.general.library-groups.create": {
-    "message": "สร้างกลุ่มใหม่"
-  },
-  "instance.settings.tabs.general.library-groups.description": {
-    "message": "การจัดกลุ่มจะช่วยจัดระเบียบโปรแกรมของคุณภายในหน้ารายการให้เป็นหมวดหมู่"
-  },
-  "instance.settings.tabs.general.library-groups.enter-name": {
-    "message": "ใส่ชื่อกลุ่ม"
-  },
   "instance.settings.tabs.general.name": {
     "message": "ชื่อ"
-  },
-  "instance.settings.tabs.hooks": {
-    "message": "Launch Hook"
-  },
-  "instance.settings.tabs.hooks.custom-hooks": {
-    "message": "กำหนด Launch Hook เอง"
-  },
-  "instance.settings.tabs.hooks.description": {
-    "message": "Launch Hook จะช่วยให้ผู้เล่นที่ชำนาญสามารถใช้คำสั่งต่อระบบบางอย่างได้ ทั้งก่อนและหลังเกมถูกเปิด"
   },
   "instance.settings.tabs.hooks.post-exit": {
     "message": "Post-exit"
@@ -647,9 +620,6 @@
   "instance.settings.tabs.hooks.pre-launch.enter": {
     "message": "ป้อนคำสั่ง..."
   },
-  "instance.settings.tabs.hooks.title": {
-    "message": "Game Launch Hook"
-  },
   "instance.settings.tabs.hooks.wrapper": {
     "message": "Wrapper"
   },
@@ -665,29 +635,8 @@
   "instance.settings.tabs.installation.loader-version": {
     "message": "เวอร์ชัน {loader}"
   },
-  "instance.settings.tabs.java": {
-    "message": "Java และ หน่วยความจำ"
-  },
-  "instance.settings.tabs.java.environment-variables": {
-    "message": "Environment Variables"
-  },
   "instance.settings.tabs.java.hooks": {
     "message": "Hook"
-  },
-  "instance.settings.tabs.java.java-arguments": {
-    "message": "อาร์กิวเมนต์ Java"
-  },
-  "instance.settings.tabs.java.java-installation": {
-    "message": "การติดตั้ง Java"
-  },
-  "instance.settings.tabs.java.java-memory": {
-    "message": "หน่วยความจำที่จัดสรร"
-  },
-  "instance.settings.tabs.window": {
-    "message": "หน้าต่าง"
-  },
-  "instance.settings.tabs.window.custom-window-settings": {
-    "message": "การตั้งค่าการปรับแต่งหน้าต่าง"
   },
   "instance.settings.tabs.window.fullscreen": {
     "message": "เต็มหน้าจอ"
@@ -785,16 +734,7 @@
   "search.filter.locked.instance.sync": {
     "message": "เชื่อมต่อกับโปรแกรม"
   },
-  "search.filter.locked.server": {
-    "message": "เซิร์ฟเวอร์เป็นผู้กำหนด"
-  },
   "search.filter.locked.server-environment.title": {
     "message": "มีเพียงม็อดสำหรับฝั่งเครื่องของผู้เล่นเท่านั้นที่สามารถเพิ่มลงในโปรแกรมเซิร์ฟเวอร์ดังกล่าวได้"
-  },
-  "search.filter.locked.server-game-version.title": {
-    "message": "เวอร์ชันเกมถูกกำหนดโดยเซิร์ฟเวอร์แล้ว"
-  },
-  "search.filter.locked.server-loader.title": {
-    "message": "ตัวรันถูกกำหนดโดยเซิร์ฟเวอร์แล้ว"
   }
 }

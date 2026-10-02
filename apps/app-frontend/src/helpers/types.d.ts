@@ -8,13 +8,23 @@ export type GameInstance = {
 
 	name: string
 	icon_path?: string
+	icon_config?: InstanceIconConfig | null
 
 	game_version: string
 	protocol_version?: number
 	loader: InstanceLoader
 	loader_version?: string
 
-	groups: string[]
+	group_ids: string[]
+	synced_options: {
+		resource_packs: boolean
+		data_packs: boolean
+		game_options: boolean
+		command_history: boolean
+		multiplayer_servers: boolean
+		creative_hotbars: boolean
+		screenshots: boolean
+	}
 
 	link?: InstanceLink | null
 	shared_instance?: SharedInstanceAttachment | null
@@ -36,6 +46,27 @@ export type GameInstance = {
 	force_fullscreen?: boolean
 	game_resolution?: [number, number]
 	hooks: Hooks
+	visible_tabs: {
+		files: boolean
+		worlds: boolean
+		screenshots: boolean
+	}
+}
+
+export type IconBackground =
+	| {
+			type: 'color'
+			value: string
+	  }
+	| {
+			type: 'linear-top-down-gradient'
+			top_color: string
+			bottom_color: string
+	  }
+
+export type InstanceIconConfig = {
+	background: IconBackground
+	symbol: string
 }
 
 type InstallStage =
@@ -128,6 +159,7 @@ export type ContentSourceKind =
 
 type ContentFile = {
 	enabled: boolean
+	locked: boolean
 	source_kind?: ContentSourceKind | null
 	metadata?: {
 		project_id: string
@@ -151,10 +183,7 @@ type MemorySettings = {
 	maximum: number
 }
 
-type WindowSize = {
-	width: number
-	height: number
-}
+type WindowSize = [number, number]
 
 type Hooks = {
 	pre_launch?: string
@@ -195,13 +224,18 @@ type AppSettings = {
 	advanced_rendering: boolean
 	native_decorations: boolean
 	worlds_in_home: boolean
+	sync_theme_across_devices: boolean
+	sync_behavior_across_devices: boolean
+	sync_features_across_devices: boolean
+	show_files_tab_in_instances: boolean
+	show_worlds_tab_in_instances: boolean
+	show_screenshots_tab_in_instances: boolean
+	show_skin_selector_in_sidebar: boolean
 
 	telemetry: boolean
 	discord_rpc: boolean
 	developer_mode: boolean
 	personalized_ads: boolean
-
-	onboarded: boolean
 
 	extra_launch_args: string[]
 	custom_env_vars: [string, string][]
@@ -209,6 +243,20 @@ type AppSettings = {
 	force_fullscreen: boolean
 	game_resolution: [number, number]
 	hide_on_process_start: boolean
+	show_jump_in: boolean
+	always_show_copy_details: boolean
+	hide_installed_modpacks: boolean
+	advanced_filters_collapsed: boolean
+	dismissed_photosensitivity_filter_warning: boolean
+	friends_active_collapsed: boolean
+	friends_online_collapsed: boolean
+	friends_offline_collapsed: boolean
+	friends_pending_collapsed: boolean
+	refocus_on_game_close: boolean
+	compact_instance_cards: boolean
+	show_play_time: boolean
+	warn_on_unknown_modpacks: boolean
+	skip_non_essential_warnings: boolean
 	hooks: Hooks
 
 	custom_dir?: string

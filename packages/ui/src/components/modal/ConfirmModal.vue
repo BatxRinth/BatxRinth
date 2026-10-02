@@ -1,10 +1,12 @@
 <template>
-	<NewModal ref="modal" :noblur="noblur" :danger="danger" :on-hide="onHide" max-width="550px">
-		<template #title>
-			<slot name="title">
-				<span class="font-extrabold text-contrast text-lg">{{ title }}</span>
-			</slot>
-		</template>
+	<NewModal
+		ref="modal"
+		:noblur="noblur"
+		:danger="danger"
+		:on-hide="onHide"
+		max-width="800px"
+		:header="title"
+	>
 		<div class="flex flex-col gap-4">
 			<template v-if="description">
 				<div
@@ -20,10 +22,10 @@
 			<label v-if="hasToType" for="confirmation">
 				<span>
 					To confirm you want to proceed, type
-					<span class="italic font-bold">{{ confirmationText }}</span> below:
+					<span class="font-semibold text-contrast">{{ confirmationText }}</span> below:
 				</span>
 			</label>
-			<StyledInput
+			<Input
 				v-if="hasToType"
 				id="confirmation"
 				v-model="confirmation_typed"
@@ -56,7 +58,7 @@ import { computed, ref } from 'vue'
 
 import { Button } from '#ui/components/base/buttons'
 
-import StyledInput from '../base/StyledInput.vue'
+import Input from '../base/inputs/Input.vue'
 import NewModal from './NewModal.vue'
 
 const props = defineProps({

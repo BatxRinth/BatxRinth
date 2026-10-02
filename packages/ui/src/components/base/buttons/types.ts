@@ -3,7 +3,7 @@ import type { RouteLocationRaw } from 'vue-router'
 
 import type { AnchoredTeleportPlacement } from '../../../utils/use-anchored-teleport'
 
-export type ButtonType = 'base' | 'colored' | 'outlined' | 'quiet'
+export type ButtonType = 'base' | 'colored' | 'colored-text' | 'outlined' | 'quiet'
 
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
 
@@ -36,6 +36,10 @@ export type ButtonVisualProps = {
 			color?: ButtonColor
 	  }
 	| {
+			type: 'colored-text'
+			color?: ButtonColor
+	  }
+	| {
 			type: 'quiet'
 			color?: ButtonColor
 	  }
@@ -65,7 +69,7 @@ export type ButtonLinkDestination =
 
 export type TeleportPlacement = AnchoredTeleportPlacement
 
-export interface OverflowMenuItemBase {
+export interface ButtonMenuItemBase {
 	id: string
 	label: string
 	icon?: Component
@@ -76,14 +80,21 @@ export interface OverflowMenuItemBase {
 	tone?: 'default' | ButtonColor
 	hoverFilled?: boolean
 	hoverFilledOnly?: boolean
+	selected?: boolean
+	trailingAction?: {
+		label: string
+		icon: Component
+		color?: ButtonColor
+		action: (event: MouseEvent) => void
+	}
 }
 
-export interface OverflowMenuAction extends OverflowMenuItemBase {
+export interface ButtonMenuAction extends ButtonMenuItemBase {
 	type?: 'action'
 	action: (event: MouseEvent) => void
 }
 
-export interface OverflowMenuLink extends OverflowMenuItemBase {
+export interface ButtonMenuLink extends ButtonMenuItemBase {
 	type: 'link'
 	to?: RouteLocationRaw
 	href?: string
@@ -92,13 +103,31 @@ export interface OverflowMenuLink extends OverflowMenuItemBase {
 	download?: string | boolean
 }
 
-export interface OverflowMenuDivider {
+export interface ButtonMenuDivider {
 	type: 'divider'
 	id?: string
 	shown?: boolean
 }
 
-export type OverflowMenuOption = OverflowMenuAction | OverflowMenuLink | OverflowMenuDivider
+export interface ButtonMenuHeading {
+	type: 'heading'
+	id?: string
+	label: string
+	shown?: boolean
+}
+
+export type ButtonMenuLeafOption =
+	| ButtonMenuAction
+	| ButtonMenuLink
+	| ButtonMenuDivider
+	| ButtonMenuHeading
+
+export interface ButtonMenuSubmenu extends ButtonMenuItemBase {
+	type: 'submenu'
+	options: ButtonMenuLeafOption[]
+}
+
+export type ButtonMenuOption = ButtonMenuLeafOption | ButtonMenuSubmenu
 
 export interface ButtonElementHandle {
 	element: HTMLElement | null

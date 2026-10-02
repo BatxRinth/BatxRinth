@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import type { Labrinth } from '@modrinth/api-client'
-import {
-	ChevronRightIcon,
-	CodeIcon,
-	CoffeeIcon,
-	InfoIcon,
-	MonitorIcon,
-	UsersIcon,
-	WrenchIcon,
-} from '@modrinth/assets'
+import { ChevronRightIcon, InfoIcon, Settings2Icon, UsersIcon, WrenchIcon } from '@modrinth/assets'
 import {
 	Avatar,
 	commonMessages,
@@ -19,22 +11,19 @@ import {
 } from '@modrinth/ui'
 import type { PlatformTag } from '@modrinth/utils'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
-import { convertFileSrc } from '@tauri-apps/api/core'
 import { computed, nextTick, ref, watch } from 'vue'
 
 import { get_project_v3 } from '@/helpers/cache'
-import { get_linked_modpack_info } from '@/helpers/instance'
+import { get_linked_modpack_info, getInstanceIconUrl } from '@/helpers/instance'
 import { get_loader_versions } from '@/helpers/metadata'
 import { get_game_versions, get_loaders } from '@/helpers/tags'
 import type { GameInstance } from '@/helpers/types'
 
 import GeneralSettings from './general-settings.vue'
-import HooksSettings from './hooks-settings.vue'
 import InstallationSettings from './installation-settings.vue'
 import { provideInstanceSettings } from './instance-settings-context.ts'
-import JavaSettings from './java-settings.vue'
 import SharingSettings from './sharing-settings.vue'
-import WindowSettings from './window-settings.vue'
+import SyncedOptionsSettings from './synced-options-settings.vue'
 
 const { formatMessage } = useVIntl()
 const queryClient = useQueryClient()
@@ -52,9 +41,17 @@ const handleUnlinked = () => emit('unlinked')
 
 const instanceRef = computed(() => props.instance)
 const tabbedModal = ref<InstanceType<typeof TabbedModal> | null>(null)
+let onAfterClose: (() => void) | undefined
 
-function hide() {
-	tabbedModal.value?.hide()
+function hide(callback?: () => void) {
+	onAfterClose = callback
+	if (!tabbedModal.value?.hide()) onAfterClose = undefined
+}
+
+function handleAfterHide() {
+	const callback = onAfterClose
+	onAfterClose = undefined
+	callback?.()
 }
 
 provideInstanceSettings({
@@ -101,36 +98,20 @@ const tabs = computed<TabbedModalTab[]>(() => [
 	},
 	{
 		name: defineMessage({
+			id: 'instance.settings.tabs.settings-overrides',
+			defaultMessage: 'Sync overrides',
+		}),
+		icon: Settings2Icon,
+		content: SyncedOptionsSettings,
+	},
+	{
+		name: defineMessage({
 			id: 'instance.settings.tabs.sharing',
 			defaultMessage: 'Sharing',
 		}),
 		icon: UsersIcon,
 		content: SharingSettings,
 		shown: props.instance.shared_instance?.role === 'owner' && !props.instance.quarantined,
-	},
-	{
-		name: defineMessage({
-			id: 'instance.settings.tabs.window',
-			defaultMessage: 'Window',
-		}),
-		icon: MonitorIcon,
-		content: WindowSettings,
-	},
-	{
-		name: defineMessage({
-			id: 'instance.settings.tabs.java',
-			defaultMessage: 'Java and memory',
-		}),
-		icon: CoffeeIcon,
-		content: JavaSettings,
-	},
-	{
-		name: defineMessage({
-			id: 'instance.settings.tabs.hooks',
-			defaultMessage: 'Launch hooks',
-		}),
-		icon: CodeIcon,
-		content: HooksSettings,
 	},
 ])
 
@@ -192,15 +173,17 @@ defineExpose({ show, hide })
 	<TabbedModal
 		ref="tabbedModal"
 		:tabs="tabs"
+		:on-after-hide="handleAfterHide"
 		:max-width="'min(928px, calc(95vw - 10rem))'"
 		:width="'min(928px, calc(95vw - 10rem))'"
 	>
 		<template #title>
 			<span class="flex items-center gap-2 text-lg font-semibold text-primary">
 				<Avatar
-					:src="instance.icon_path ? convertFileSrc(instance.icon_path) : undefined"
+					:src="getInstanceIconUrl(instance.icon_path)"
 					size="24px"
 					:tint-by="props.instance.id"
+					pad-transparent-corners
 				/>
 				{{ instance.name }} <ChevronRightIcon />
 				<span class="font-extrabold text-contrast">{{

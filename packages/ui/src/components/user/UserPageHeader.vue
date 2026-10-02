@@ -3,6 +3,7 @@
 		<template #leading>
 			<Avatar
 				:src="user.avatar_url"
+				:raw-src="user.raw_avatar_url"
 				:alt="user.username"
 				:size="isModrinthUser ? '64px' : '96px'"
 				:tint-by="user.username"
@@ -10,13 +11,13 @@
 			/>
 		</template>
 
-		<template v-if="isOfficialAccount || showAffiliateBadge" #badges>
+		<template v-if="isOfficialAccount || showAffiliateBadge || user.lock" #badges>
 			<PageHeaderBadgeItem
 				v-if="isOfficialAccount"
 				:icon="BadgeCheckIcon"
 				:icon-props="{ fill: 'var(--color-brand-highlight)' }"
 				:tooltip="formatMessage(messages.officialAccount)"
-				class="border-brand-highlight bg-brand-highlight text-brand"
+				class="border-brand-highlight bg-brand-highlight !text-brand"
 			>
 				{{ formatMessage(messages.officialAccount) }}
 			</PageHeaderBadgeItem>
@@ -26,6 +27,14 @@
 				class="border-brand-highlight bg-brand-highlight text-brand"
 			>
 				{{ formatMessage(messages.affiliateLabel) }}
+			</PageHeaderBadgeItem>
+			<PageHeaderBadgeItem
+				v-if="user.lock"
+				:icon="LockIcon"
+				:tooltip="user.lock.reason"
+				class="border-highlight-red bg-highlight-red !text-red"
+			>
+				{{ formatMessage(messages.lockedLabel) }}
 			</PageHeaderBadgeItem>
 		</template>
 
@@ -57,7 +66,15 @@
 
 		<template #actions>
 			<PageHeaderActions>
-				<ButtonLink v-if="isSelf" size="xl" :to="editProfileLink">
+				<Button
+					v-if="isSelf && typeof editProfileLink === 'function'"
+					size="xl"
+					@click="editProfileLink"
+				>
+					<EditIcon />
+					{{ formatMessage(commonMessages.editButton) }}
+				</Button>
+				<ButtonLink v-else-if="isSelf" size="xl" :to="editProfileLink">
 					<EditIcon />
 					{{ formatMessage(commonMessages.editButton) }}
 				</ButtonLink>
@@ -81,6 +98,7 @@ import {
 	AffiliateIcon,
 	BadgeCheckIcon,
 	BanIcon,
+	BoxesIcon,
 	BoxIcon,
 	CalendarIcon,
 	ChartIcon,
@@ -89,14 +107,17 @@ import {
 	DownloadIcon,
 	EditIcon,
 	InfoIcon,
+	LockIcon,
+	LockOpenIcon,
+	LogOutIcon,
 	MoreVerticalIcon,
 	ReportIcon,
 } from '@modrinth/assets'
 import { computed } from 'vue'
 
 import Avatar from '#ui/components/base/Avatar.vue'
-import type { OverflowMenuOption } from '#ui/components/base/buttons'
-import { ButtonLink, TeleportOverflowMenu } from '#ui/components/base/buttons'
+import type { ButtonMenuOption } from '#ui/components/base/buttons'
+import { Button, ButtonLink, TeleportOverflowMenu } from '#ui/components/base/buttons'
 import PageHeader from '#ui/components/base/page-header/index.vue'
 import PageHeaderMetadata from '#ui/components/base/page-header/metadata/index.vue'
 import PageHeaderMetadataNumberItem from '#ui/components/base/page-header/metadata/page-header-metadata-number-item.vue'
@@ -128,13 +149,13 @@ const messages = defineMessages({
 		id: 'profile.button.unblock',
 		defaultMessage: 'Unblock',
 	},
-	editRoleButton: {
-		id: 'profile.button.edit-role',
-		defaultMessage: 'Edit role',
-	},
 	infoButton: {
 		id: 'profile.button.info',
 		defaultMessage: 'View user details',
+	},
+	sharedInstancesButton: {
+		id: 'profile.button.shared-instances',
+		defaultMessage: 'View shared instances',
 	},
 	officialAccount: {
 		id: 'profile.official-account',
@@ -163,6 +184,22 @@ const messages = defineMessages({
 	setAffiliateButton: {
 		id: 'profile.button.set-affiliate',
 		defaultMessage: 'Set as affiliate',
+	},
+	lockedLabel: {
+		id: 'profile.label.locked',
+		defaultMessage: 'Locked',
+	},
+	lockButton: {
+		id: 'profile.button.lock',
+		defaultMessage: 'Lock account',
+	},
+	unlockButton: {
+		id: 'profile.button.unlock',
+		defaultMessage: 'Unlock account',
+	},
+	revokeSessionsButton: {
+		id: 'profile.button.revoke-sessions',
+		defaultMessage: 'Revoke all sessions',
 	},
 })
 
@@ -211,8 +248,11 @@ const emit = defineEmits<{
 	openBilling: []
 	toggleAffiliate: []
 	openInfo: []
+	openSharedInstances: []
 	openAnalytics: []
-	editRole: []
+	editUser: []
+	toggleLock: []
+	revokeSessions: []
 }>()
 
 const { formatMessage } = useVIntl()
@@ -224,7 +264,7 @@ const formatDateTime = useFormatDateTime({
 const downloadsTooltip = computed(() => formatNumber(props.downloads))
 const joinedTooltip = computed(() => formatDateTime(props.user.created))
 
-const moreActions = computed<OverflowMenuOption[]>(() => [
+const moreActions = computed<ButtonMenuOption[]>(() => [
 	{
 		id: 'manage-projects',
 		label: formatMessage(messages.profileManageProjectsButton),
@@ -290,6 +330,30 @@ const moreActions = computed<OverflowMenuOption[]>(() => [
 		shown: props.showStaffActions && props.isStaff,
 	},
 	{
+		id: 'toggle-lock',
+		label: formatMessage(props.user.lock ? messages.unlockButton : messages.lockButton),
+		icon: props.user.lock ? LockOpenIcon : LockIcon,
+		action: () => emit('toggleLock'),
+		tone: 'red',
+		shown: props.showStaffActions && props.isAdmin && props.user.role === 'developer',
+	},
+	{
+		id: 'revoke-sessions',
+		label: formatMessage(messages.revokeSessionsButton),
+		icon: LogOutIcon,
+		action: () => emit('revokeSessions'),
+		tone: 'red',
+		shown: props.showStaffActions && props.isAdmin && !props.isSelf,
+	},
+	{
+		id: 'open-shared-instances',
+		label: formatMessage(messages.sharedInstancesButton),
+		icon: BoxesIcon,
+		action: () => emit('openSharedInstances'),
+		tone: 'orange',
+		shown: props.showStaffActions && props.isStaff,
+	},
+	{
 		id: 'open-analytics',
 		label: formatMessage(messages.analyticsButton),
 		icon: ChartIcon,
@@ -298,10 +362,10 @@ const moreActions = computed<OverflowMenuOption[]>(() => [
 		shown: props.showStaffActions && props.isAdmin,
 	},
 	{
-		id: 'edit-role',
-		label: formatMessage(messages.editRoleButton),
+		id: 'edit-user',
+		label: 'Edit user',
 		icon: EditIcon,
-		action: () => emit('editRole'),
+		action: () => emit('editUser'),
 		tone: 'orange',
 		shown: props.showStaffActions && props.isAdmin,
 	},

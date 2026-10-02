@@ -5,8 +5,8 @@ use crate::state::instances::{
     adapters::sqlite::{content_rows, instance_rows},
 };
 use crate::state::{
-    InstanceInstallStage, LauncherFeatureVersion, ModLoader, ReleaseChannel,
-    State,
+    InstanceIconConfig, InstanceInstallStage, LauncherFeatureVersion,
+    ModLoader, ReleaseChannel, State,
 };
 use crate::util::fetch;
 use crate::util::io;
@@ -23,6 +23,7 @@ pub struct CreateInstance {
     pub loader: ModLoader,
     pub loader_version: Option<String>,
     pub icon_path: Option<String>,
+    pub icon_config: Option<InstanceIconConfig>,
     pub link: InstanceLink,
 }
 
@@ -95,8 +96,21 @@ pub(crate) async fn create_instance(
         let launch_overrides =
             InstanceLaunchOverrides::empty(instance_id.clone());
 
-        let mut tx = state.pool.begin().await?;
+        let mut tx = state.pool.begin_with("BEGIN IMMEDIATE").await?;
         instance_rows::insert_instance(&instance, &mut tx).await?;
+        instance_rows::insert_default_instance_sync_preferences(
+            &instance_id,
+            &mut tx,
+        )
+        .await?;
+        if let Some(icon_config) = &input.icon_config {
+            instance_rows::update_instance_icon_config(
+                &instance_id,
+                Some(icon_config),
+                &mut tx,
+            )
+            .await?;
+        }
         content_rows::insert_content_set(&content_set, &mut tx).await?;
         instance_rows::upsert_instance_link(&instance_id, &input.link, &mut tx)
             .await?;
@@ -116,6 +130,17 @@ pub(crate) async fn create_instance(
             &state.directories,
         )
         .await;
+        if let Err(error) =
+            crate::api::instance::reconcile_instance_synced_options(
+                &instance.id,
+            )
+            .await
+        {
+            tracing::warn!(
+                "Failed to reconcile synced options for newly created instance {}: {error}",
+                instance.id
+            );
+        }
 
         Ok(instance)
     }
@@ -136,6 +161,7 @@ async fn resolve_instance_path(
     let base_path = path
         .map(ToOwned::to_owned)
         .unwrap_or_else(|| sanitize_instance_name(name));
+    crate::state::content_store::validate_relative(&base_path)?;
     let mut path = base_path.clone();
     let mut full_path = state.directories.instances_dir().join(&path);
 
@@ -170,7 +196,7 @@ async fn path_available(
         .is_none())
 }
 
-async fn resolve_icon_path(
+pub(crate) async fn resolve_icon_path(
     icon_path: Option<&str>,
     ignore_missing_remote_icon: bool,
     state: &State,
@@ -191,9 +217,8 @@ async fn resolve_icon_path(
         .await
         {
             Ok(bytes) => bytes,
-            Err(error)
-                if ignore_missing_remote_icon && is_not_found_error(&error) =>
-            {
+            Err(error) if ignore_missing_remote_icon => {
+                tracing::warn!("Error while getting instance icon: {error}");
                 return Ok(None);
             }
             Err(error) => return Err(error),
@@ -208,18 +233,6 @@ async fn resolve_icon_path(
     };
 
     Ok(Some(file.to_string_lossy().to_string()))
-}
-
-fn is_not_found_error(error: &crate::Error) -> bool {
-    match error.raw.as_ref() {
-        crate::ErrorKind::FetchError(error) => {
-            error.status() == Some(reqwest::StatusCode::NOT_FOUND)
-        }
-        crate::ErrorKind::LabrinthError(error) => {
-            error.status == Some(reqwest::StatusCode::NOT_FOUND.as_u16())
-        }
-        _ => false,
-    }
 }
 
 fn content_source_kind(link: &InstanceLink) -> ContentSourceKind {
@@ -245,8 +258,11 @@ fn content_source_kind(link: &InstanceLink) -> ContentSourceKind {
 }
 
 fn sanitize_instance_name(input: &str) -> String {
-    input.replace(
-        ['/', '\\', '?', '*', ':', '\'', '\"', '|', '<', '>', '!'],
-        "_",
-    )
+    input
+        .replace(
+            ['/', '\\', '?', '*', ':', '\'', '\"', '|', '<', '>', '!'],
+            "_",
+        )
+        .trim_end_matches(['.', ' '])
+        .to_string()
 }

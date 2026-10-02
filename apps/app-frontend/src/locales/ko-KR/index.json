@@ -8,6 +8,9 @@
   "app.action-bar.downloads": {
     "message": "다운로드"
   },
+  "app.action-bar.hide-downloads": {
+    "message": "진행 중인 다운로드 닫기"
+  },
   "app.action-bar.hide-more-running-instances": {
     "message": "실행 중인 인스턴스 숨기기"
   },
@@ -50,9 +53,6 @@
   "app.action-bar.install.summary.download-failed": {
     "message": "다운로드를 완료할 수 없습니다"
   },
-  "app.action-bar.install.summary.instance-not-found": {
-    "message": "인스턴스를 찾을 수 없습니다"
-  },
   "app.action-bar.install.summary.invalid-file-path": {
     "message": "파일 경로가 올바르지 않습니다"
   },
@@ -92,9 +92,6 @@
   "app.action-bar.install.updating-shared-content": {
     "message": "공유 콘텐츠 업데이트 중"
   },
-  "app.action-bar.installs": {
-    "message": "설치"
-  },
   "app.action-bar.make-primary-instance": {
     "message": "기본 인스턴스로 지정"
   },
@@ -109,6 +106,9 @@
   },
   "app.action-bar.reload-to-update": {
     "message": "업데이트하려면 다시 로드"
+  },
+  "app.action-bar.show-downloads": {
+    "message": "다운로드 목록 보기"
   },
   "app.action-bar.show-more-running-instances": {
     "message": "실행 중인 인스턴스 보이기"
@@ -143,20 +143,11 @@
   "app.ads-consent.title": {
     "message": "개인정보와 광고가 Modrinth를 지원하는 방식"
   },
-  "app.appearance-settings.advanced-rendering.description": {
-    "message": "배경 흐림 효과와 같은 시각 효과를 활성화합니다. 하드웨어 가속이 지원되지 않는 경우 성능이 저하될 수 있습니다."
+  "app.appearance-settings.compact-mode.description": {
+    "message": "라이브러리 인스턴스를 간결한 행 형태의 레이아웃으로 표시합니다."
   },
-  "app.appearance-settings.advanced-rendering.title": {
-    "message": "고급 렌더링"
-  },
-  "app.appearance-settings.color-theme.description": {
-    "message": "Modrinth 앱에서 사용할 색상 테마를 선택하세요."
-  },
-  "app.appearance-settings.color-theme.title": {
-    "message": "색상 테마"
-  },
-  "app.appearance-settings.default-landing-page.description": {
-    "message": "Modrinth 앱이 실행될 때 표시될 페이지를 선택하세요."
+  "app.appearance-settings.compact-mode.title": {
+    "message": "컴팩트 모드"
   },
   "app.appearance-settings.default-landing-page.home": {
     "message": "홈"
@@ -164,32 +155,17 @@
   "app.appearance-settings.default-landing-page.library": {
     "message": "라이브러리"
   },
-  "app.appearance-settings.default-landing-page.title": {
-    "message": "기본 시작 화면"
-  },
   "app.appearance-settings.hide-nametag.description": {
     "message": "스킨 페이지의 플레이어 미리보기 위에 있는 사용자 이름을 숨깁니다."
   },
   "app.appearance-settings.hide-nametag.title": {
     "message": "이름표 숨기기"
   },
-  "app.appearance-settings.jump-back-into-worlds.description": {
-    "message": "홈페이지의 \"다시 시작하기\" 구역에 최근 플레이한 월드를 표시합니다."
-  },
-  "app.appearance-settings.jump-back-into-worlds.title": {
-    "message": "세계로 바로 입장"
-  },
   "app.appearance-settings.minimize-launcher.description": {
     "message": "마인크래프트가 시작되면 Modrinth 앱을 최소화 합니다."
   },
   "app.appearance-settings.minimize-launcher.title": {
     "message": "앱 최소화"
-  },
-  "app.appearance-settings.native-decorations.description": {
-    "message": "운영 체제의 제목 표시줄 및 창 제어 기능을 사용합니다. 앱 재시작이 필요합니다."
-  },
-  "app.appearance-settings.native-decorations.title": {
-    "message": "시스템 창 프레임"
   },
   "app.appearance-settings.show-play-time.description": {
     "message": "각 인스턴스를 얼마나 플레이했는지 표시합니다."
@@ -230,6 +206,15 @@
   "app.behavior-settings.startup-and-navigation.title": {
     "message": "시작 및 탐색"
   },
+  "app.behavior-settings.sync-across-devices.description": {
+    "message": "로그인한 모든 기기에서 이 설정을 사용합니다. 이 기기에서 별도의 설정을 사용하려면 이 옵션을 끄세요."
+  },
+  "app.behavior-settings.sync-across-devices.signed-out-tooltip": {
+    "message": "Modrinth 계정에 로그인하여 설정을 동기화하세요."
+  },
+  "app.behavior-settings.sync-across-devices.title": {
+    "message": "기기 간 동기화"
+  },
   "app.browse.add-servers-to-instance": {
     "message": "인스턴스에 서버 추가"
   },
@@ -263,11 +248,29 @@
   "app.browse.hide-installed-modpacks": {
     "message": "이미 설치된 항목 숨기기"
   },
+  "app.browse.project-actions.label": {
+    "message": ""
+  },
+  "app.browse.project-type.data-packs": {
+    "message": "데이터팩"
+  },
   "app.browse.project-type.modpacks": {
     "message": "모드팩"
   },
+  "app.browse.project-type.mods": {
+    "message": "모드"
+  },
+  "app.browse.project-type.resource-packs": {
+    "message": "리소스팩"
+  },
+  "app.browse.project-type.servers": {
+    "message": "서버"
+  },
+  "app.browse.project-type.shaders": {
+    "message": "쉐이더"
+  },
   "app.browse.server-instance-content-warning": {
-    "message": "콘텐츠를 추가하면 서버 접속 시 호환이 안 될 수 있습니다. 또한 서버 인스턴스 콘텐츠를 업데이트하면 임의로 추가된 콘텐츠는 모두 손실됩니다."
+    "message": "콘텐츠를 추가하면 이 서버에 접속하지 못할 수 있습니다. 관리되는 서버 콘텐츠가 업데이트되면 직접 추가한 모든 콘텐츠가 삭제됩니다."
   },
   "app.browse.server.installing": {
     "message": "설치 중"
@@ -275,11 +278,116 @@
   "app.content-install.no-compatible-versions": {
     "message": "{compatibilityLabel} 버전과 일치하는 버전이 없습니다. 설치할 버전을 선택하세요. 종속성은 자동으로 설치되지 않습니다."
   },
+  "app.content.desync-pack": {
+    "message": "동기화 해제"
+  },
+  "app.content.sync-data-packs-disabled": {
+    "message": "먼저 앱 설정에서 데이터 팩 동기화를 활성화하세요."
+  },
+  "app.content.sync-pack": {
+    "message": "동기화"
+  },
+  "app.content.sync-packs-override": {
+    "message": "먼저 이 인스턴스의 설정에서 팩 동기화 덮어쓰기를 끄세요."
+  },
+  "app.content.sync-resource-packs-disabled": {
+    "message": "먼저 앱 설정에서 리소스 팩 동기화를 켜세요."
+  },
+  "app.download-manager.active": {
+    "message": "진행 중"
+  },
+  "app.download-manager.attention": {
+    "message": "확인 필요"
+  },
+  "app.download-manager.cancel": {
+    "message": "설치 취소"
+  },
+  "app.download-manager.canceling": {
+    "message": "설치 취소 중..."
+  },
+  "app.download-manager.clear-all": {
+    "message": "모두 지우기"
+  },
+  "app.download-manager.clear-completed": {
+    "message": "완료된 작업 모두 비우기"
+  },
+  "app.download-manager.complete": {
+    "message": "완료"
+  },
+  "app.download-manager.duplicated-instance": {
+    "message": "복제된 인스턴스"
+  },
+  "app.download-manager.empty": {
+    "message": "설치 작업 없음"
+  },
+  "app.download-manager.estimated-rate": {
+    "message": "예상 다운로드 속도"
+  },
+  "app.download-manager.eta": {
+    "message": "다운로드에 남은 예상 시간"
+  },
+  "app.download-manager.hide": {
+    "message": "설치 작업 숨기기"
+  },
+  "app.download-manager.imported-instance": {
+    "message": "가져온 인스턴스"
+  },
+  "app.download-manager.instance-installation": {
+    "message": "인스턴스 설치"
+  },
+  "app.download-manager.modpack": {
+    "message": "모드팩"
+  },
+  "app.download-manager.modpack-installation": {
+    "message": "모드팩 설치"
+  },
+  "app.download-manager.new-instance": {
+    "message": "새 인스턴스"
+  },
+  "app.download-manager.pause": {
+    "message": "설치 일시정지"
+  },
+  "app.download-manager.paused": {
+    "message": "일시 중지"
+  },
+  "app.download-manager.remove": {
+    "message": "기록에서 삭제"
+  },
+  "app.download-manager.resume": {
+    "message": "설치 재개"
+  },
+  "app.download-manager.shared-instance": {
+    "message": "인스턴스 공유됨"
+  },
+  "app.download-manager.shared-instance-update": {
+    "message": "공유 인스턴스 업데이트"
+  },
+  "app.download-manager.show": {
+    "message": "설치 작업 보이기"
+  },
+  "app.download-manager.tasks": {
+    "message": "작업"
+  },
+  "app.download-manager.title": {
+    "message": "다운로드 관리자"
+  },
+  "app.download-manager.verifying": {
+    "message": "확인 중"
+  },
+  "app.error.state-init.open-backups-folder": {
+    "message": "백업 폴더 열기"
+  },
   "app.export-modal.description-placeholder": {
     "message": "모드팩 설명 입력..."
   },
   "app.export-modal.export-button": {
     "message": "내보내기"
+  },
+  "app.export-modal.export-complete": {
+    "message": "내보내기 완료"
+  },
+  "app.export-modal.export-complete-description": {
+    "message": "{name}을(를) 성공적으로 내보냈습니다."
   },
   "app.export-modal.header": {
     "message": "모드팩 내보내기"
@@ -295,6 +403,96 @@
   },
   "app.export-modal.version-number-placeholder": {
     "message": "1.0.0"
+  },
+  "app.features-settings.instance-pages.title": {
+    "message": "인스턴스"
+  },
+  "app.features-settings.play-page.title": {
+    "message": "플레이 페이지"
+  },
+  "app.features-settings.quick-instances.description": {
+    "message": "왼쪽 사이드바에 표시할 최근 인스턴스의 개수를 선택합니다. 슬라이더를 드래그하여 조정할 수도 있습니다."
+  },
+  "app.features-settings.quick-instances.title": {
+    "message": "사이드바에서 빠른 인스턴스"
+  },
+  "app.features-settings.show-all-screenshots.description": {
+    "message": "모든 인스턴스의 스크린샷을 보기 위한 버튼을 왼쪽 사이드바에 표시합니다."
+  },
+  "app.features-settings.show-all-screenshots.title": {
+    "message": "사이드바에서 모든 스크린샷 보이기"
+  },
+  "app.features-settings.show-files-tab.title": {
+    "message": "인스턴스에서 파일 탭 보이기"
+  },
+  "app.features-settings.show-jump-in.description": {
+    "message": "플레이 페이지의 상단에 최근에 플레이한 세계와 인스턴스를 표시합니다."
+  },
+  "app.features-settings.show-jump-in.title": {
+    "message": "섹션으로 점프 표시"
+  },
+  "app.features-settings.show-screenshots-tab.title": {
+    "message": "인스턴스에서 스크린샷 탭 보이기"
+  },
+  "app.features-settings.show-skin-selector.description": {
+    "message": "스킨 선택기를 여는 버튼을 왼쪽 사이드바에 표시합니다."
+  },
+  "app.features-settings.show-skin-selector.title": {
+    "message": "사이드바에서 스킨 선택기 보이기"
+  },
+  "app.features-settings.show-worlds-tab.title": {
+    "message": "인스턴스에서 세계 탭 보이기"
+  },
+  "app.features-settings.sidebar.title": {
+    "message": "사이드바"
+  },
+  "app.features-settings.sync-across-devices.description": {
+    "message": "로그인한 모든 곳에서 이 기능 설정을 사용합니다. 이를 끄면 이 기기에서의 설정을 분리하여 유지합니다."
+  },
+  "app.features-settings.sync-across-devices.signed-out-tooltip": {
+    "message": "Modrinth 계정에 로그인하여 설정을 동기화합니다."
+  },
+  "app.features-settings.sync-across-devices.title": {
+    "message": "기기 간 동기화"
+  },
+  "app.home.jump-back-in.actions.label": {
+    "message": "인스턴스 동작"
+  },
+  "app.home.jump-back-in.instance-locked": {
+    "message": "이 인스턴스는 잠겨있습니다"
+  },
+  "app.home.jump-back-in.instance-open": {
+    "message": "인스턴스가 이미 열려있습니다"
+  },
+  "app.home.jump-back-in.more-options": {
+    "message": "옵션 더보기"
+  },
+  "app.home.jump-back-in.never-played": {
+    "message": "플레이한 적 없음"
+  },
+  "app.home.jump-back-in.new-instance": {
+    "message": "새 인스턴스"
+  },
+  "app.home.jump-back-in.resize": {
+    "message": "드래그하여 크기 조절"
+  },
+  "app.home.jump-back-in.title": {
+    "message": "바로 입장"
+  },
+  "app.home.jump-back-in.view-instance": {
+    "message": "인스턴스 보기"
+  },
+  "app.hosting.update-required.description": {
+    "message": "업데이트해야 Modrinth 앱을 통해 Modrinth 호스팅을 사용할 수 있습니다"
+  },
+  "app.hosting.update-required.download": {
+    "message": "다운로드하여 업데이트"
+  },
+  "app.hosting.update-required.rinthbot-alt": {
+    "message": "신난 Modrinth Bot"
+  },
+  "app.hosting.update-required.title": {
+    "message": "BatxRinth 업데이트 필요"
   },
   "app.install.phase.downloading_content": {
     "message": "콘텐츠 다운로드 중"
@@ -350,6 +548,48 @@
   "app.install.phase.running_loader_processors": {
     "message": "로더 진행기 실행 중"
   },
+  "app.instance.action.add-content": {
+    "message": "콘텐츠 추가"
+  },
+  "app.instance.action.copy-path": {
+    "message": "경로 복사"
+  },
+  "app.instance.action.edit": {
+    "message": "수정"
+  },
+  "app.instance.action.open-folder": {
+    "message": "폴더 열기"
+  },
+  "app.instance.action.play": {
+    "message": "플레이"
+  },
+  "app.instance.action.stop": {
+    "message": "중지"
+  },
+  "app.instance.actions.label": {
+    "message": "인스턴스 동작"
+  },
+  "app.instance.add-server.add": {
+    "message": "추가"
+  },
+  "app.instance.add-server.added": {
+    "message": "추가됨"
+  },
+  "app.instance.add-server.adding": {
+    "message": "추가 중..."
+  },
+  "app.instance.add-server.cancel": {
+    "message": "취소"
+  },
+  "app.instance.add-server.compatibility-warning": {
+    "message": "이 서버와 호환되지 않는 인스턴스가 있을 수 있습니다."
+  },
+  "app.instance.add-server.search-placeholder": {
+    "message": "인스턴스 검색"
+  },
+  "app.instance.add-server.title": {
+    "message": "인스턴스에 서버 추가"
+  },
   "app.instance.admonitions.shared-instance.added-label": {
     "message": "추가됨"
   },
@@ -377,17 +617,32 @@
   "app.instance.admonitions.shared-instance.review-header": {
     "message": "Review changes"
   },
-  "app.instance.admonitions.shared-instance.review-update-button": {
-    "message": "업데이트 검토"
-  },
   "app.instance.admonitions.shared-instance.reviewing-button": {
     "message": "검토중..."
   },
-  "app.instance.admonitions.shared-instance.update-available-body": {
-    "message": "{name} 플레이를 위해 업데이트가 필요합니다. 게임을 실행하려면 최신 버전 업데이트를 진행하세요."
+  "app.instance.card.icon-alt": {
+    "message": "인스턴스 아이콘"
   },
-  "app.instance.admonitions.shared-instance.update-available-header": {
-    "message": "업데이트가 있습니다"
+  "app.instance.card.installing": {
+    "message": "설치 중..."
+  },
+  "app.instance.card.loading": {
+    "message": "인스턴스 로딩 중..."
+  },
+  "app.instance.card.never-played": {
+    "message": "플레이한 적 없음"
+  },
+  "app.instance.card.play": {
+    "message": "플레이"
+  },
+  "app.instance.card.played": {
+    "message": "{relativeTime} 동안 플레이 함"
+  },
+  "app.instance.card.repair": {
+    "message": "복구"
+  },
+  "app.instance.card.stop": {
+    "message": "중지"
   },
   "app.instance.confirm-delete.admonition-body": {
     "message": "인스턴스의 모든 데이터가 삭제됩니다. 세계 폴더, 설정 폴더 등 설치된 모든 컨텐츠가 포함됩니다."
@@ -395,14 +650,32 @@
   "app.instance.confirm-delete.admonition-header": {
     "message": "이 작업은 되돌릴 수 없습니다"
   },
+  "app.instance.confirm-delete.bulk-admonition-body": {
+    "message": "인스턴스 {count}개의 모든 데이터가 영구히 삭제됩니다. 여기에는 세계와 구성을 포함하여 설치된 모든 콘텐츠가 포함됩니다."
+  },
+  "app.instance.confirm-delete.bulk-delete-button": {
+    "message": "인스턴스 {count}개 삭제"
+  },
+  "app.instance.confirm-delete.bulk-header": {
+    "message": "인스턴스 {count}개 삭제"
+  },
   "app.instance.confirm-delete.delete-button": {
     "message": "인스턴스 삭제"
   },
   "app.instance.confirm-delete.header": {
     "message": "인스턴스 삭제"
   },
+  "app.instance.confirm-delete.instances-label": {
+    "message": "인스턴스 {count, plural, one {} other {({count}개)}}"
+  },
+  "app.instance.content.managed-content.modpack-header": {
+    "message": "모드팩 콘텐츠"
+  },
+  "app.instance.content.managed-content.shared-header": {
+    "message": "공유된 콘텐츠"
+  },
   "app.instance.modpack-already-installed.body": {
-    "message": "이 모드팩은 이미 <bold>{instanceName}</bold> 인스턴스에 설치되어 있습니다. 정말로 복제하시겠습니까?"
+    "message": "이 모드팩은 이미 <bold>{instanceName}</bold> 인스턴스에 설치되어 있습니다. 정말로 한 번 더 생성하시겠습니까?"
   },
   "app.instance.modpack-already-installed.create": {
     "message": "만들기"
@@ -413,17 +686,11 @@
   "app.instance.modpack-already-installed.instance": {
     "message": "인스턴스"
   },
-  "app.instance.mods.bulk-update.downloading-projects": {
-    "message": "{current, number}/{total, number} 프로젝트 다운로드 중..."
-  },
-  "app.instance.mods.bulk-update.finishing": {
-    "message": "업데이트 마무리 중..."
-  },
-  "app.instance.mods.bulk-update.resolving-versions": {
-    "message": "버전 해결 중..."
-  },
   "app.instance.mods.content-type-project": {
     "message": "프로젝트"
+  },
+  "app.instance.mods.freeze-content": {
+    "message": "버전 고정"
   },
   "app.instance.mods.locked-content": {
     "message": "잠긴 인스턴스의 콘텐츠는 변경할 수 없습니다."
@@ -442,6 +709,12 @@
   },
   "app.instance.mods.successfully-uploaded": {
     "message": "업로드 성공"
+  },
+  "app.instance.mods.unfreeze-content": {
+    "message": "버전 고정 해제"
+  },
+  "app.instance.navigation.back-to-instance": {
+    "message": "인스턴스로 돌아가기"
   },
   "app.instance.share.empty.description": {
     "message": "친구들과 이 인스턴스를 공유할 수 있습니다!"
@@ -554,6 +827,30 @@
   "app.instance.shared-instance-wrong-account.warning-header": {
     "message": "잘못된 Modrinth 계정을 사용하고 있습니다"
   },
+  "app.instance.shortcut.created": {
+    "message": "바로가기 생성됨"
+  },
+  "app.instance.shortcut.creation-error": {
+    "message": "바로가기 생성 중 오류 발생"
+  },
+  "app.instance.tab.content": {
+    "message": "콘텐츠"
+  },
+  "app.instance.tab.files": {
+    "message": "파일"
+  },
+  "app.instance.tab.logs": {
+    "message": "로그"
+  },
+  "app.instance.tab.screenshots": {
+    "message": "스크린샷들"
+  },
+  "app.instance.tab.share": {
+    "message": "공유"
+  },
+  "app.instance.tab.worlds": {
+    "message": "세계"
+  },
   "app.instance.worlds.add-server": {
     "message": "서버 추가"
   },
@@ -590,8 +887,23 @@
   "app.instance.worlds.no-worlds-heading": {
     "message": "추가된 서버 또는 세계 없음"
   },
+  "app.instance.worlds.refreshing": {
+    "message": "새로고침 중..."
+  },
   "app.instance.worlds.remove-server-modal.remove-button": {
     "message": "서버 제거"
+  },
+  "app.instance.worlds.remove-server-modal.remove-everywhere": {
+    "message": "모든 곳에서 제거"
+  },
+  "app.instance.worlds.remove-server-modal.remove-here": {
+    "message": "여기에서 제거"
+  },
+  "app.instance.worlds.remove-server-modal.synced-description": {
+    "message": "이 인스턴스에서만 제거하거나 동기화된모든 인스턴스에서 제거할 수 있습니다. 이 인스턴스에서만 제거하면 오버라이드를 활성화하며, 인스턴스는 더 이상 동기화된 서버 변경 사항을 받을 수 없습니다."
+  },
+  "app.instance.worlds.remove-server-modal.synced-header": {
+    "message": "동기화된 서버입니다"
   },
   "app.instance.worlds.remove-server-modal.title": {
     "message": "서버 제거"
@@ -650,6 +962,267 @@
   "app.java-selector.test-installation": {
     "message": "Java 설치 테스트"
   },
+  "app.library.actions.label": {
+    "message": "라이브러리 동작"
+  },
+  "app.library.context-menu.create-instance": {
+    "message": "새 인스턴스"
+  },
+  "app.library.filter.add": {
+    "message": "필터 추가"
+  },
+  "app.library.filter.clear": {
+    "message": "필터 초기화"
+  },
+  "app.library.filter.game-version": {
+    "message": "게임 버전"
+  },
+  "app.library.filter.instance-type": {
+    "message": "인스턴스 유형"
+  },
+  "app.library.filter.instance-type.custom": {
+    "message": "사용자 지정"
+  },
+  "app.library.filter.instance-type.modpack": {
+    "message": "모드팩"
+  },
+  "app.library.filter.instance-type.server": {
+    "message": "서버"
+  },
+  "app.library.filter.label": {
+    "message": "필터링 기준"
+  },
+  "app.library.filter.loader": {
+    "message": "로더"
+  },
+  "app.library.group-by.custom-group": {
+    "message": "사용자 지정 그룹"
+  },
+  "app.library.group-by.game-version": {
+    "message": "게임 버전"
+  },
+  "app.library.group-by.instance-type": {
+    "message": "인스턴스 유형"
+  },
+  "app.library.group-by.label": {
+    "message": "그룹화 기준"
+  },
+  "app.library.group-by.loader": {
+    "message": "로더"
+  },
+  "app.library.group-by.none": {
+    "message": "그룹 없음"
+  },
+  "app.library.group.actions.label": {
+    "message": "그룹 동작"
+  },
+  "app.library.group.collapse": {
+    "message": "그룹 접기"
+  },
+  "app.library.group.context-menu.add-to-group": {
+    "message": "그룹에 추가"
+  },
+  "app.library.group.create": {
+    "message": "그룹 생성"
+  },
+  "app.library.group.create.cancel": {
+    "message": "취소"
+  },
+  "app.library.group.delete": {
+    "message": "그룹 삭제"
+  },
+  "app.library.group.delete-description": {
+    "message": "이 그룹에 속한 인스턴스는 그룹에서 제외됩니다."
+  },
+  "app.library.group.edit-name": {
+    "message": "그룹 이름 수정"
+  },
+  "app.library.group.empty": {
+    "message": "드래그 앤 드롭하여 인스턴스를 추가하세요."
+  },
+  "app.library.group.expand": {
+    "message": "그룹 펼치기"
+  },
+  "app.library.group.favorites": {
+    "message": "즐겨찾기"
+  },
+  "app.library.group.instance.add": {
+    "message": "추가"
+  },
+  "app.library.group.instance.added": {
+    "message": "추가됨"
+  },
+  "app.library.group.instances-modal.add": {
+    "message": "추가"
+  },
+  "app.library.group.instances-modal.added": {
+    "message": "추가됨"
+  },
+  "app.library.group.instances-modal.no-instances-found": {
+    "message": "인스턴스를 찾을 수 없음"
+  },
+  "app.library.group.instances-modal.search-placeholder": {
+    "message": "인스턴스 검색"
+  },
+  "app.library.group.instances-modal.title": {
+    "message": "“{groupName}”에 인스턴스 추가"
+  },
+  "app.library.group.move-down": {
+    "message": "그룹 아래로 이동"
+  },
+  "app.library.group.move-up": {
+    "message": "그룹 위로 이동"
+  },
+  "app.library.group.name": {
+    "message": "그룹 이름"
+  },
+  "app.library.group.name-empty": {
+    "message": "그룹 이름은 비워 둘 수 없습니다."
+  },
+  "app.library.group.name-placeholder": {
+    "message": "그룹 이름 입력"
+  },
+  "app.library.group.name-reserved": {
+    "message": "“None”은 그룹 이름으로 사용할 수 없습니다."
+  },
+  "app.library.group.name-too-long": {
+    "message": "그룹 이름은 {maxLength}자 이내여야 합니다."
+  },
+  "app.library.group.new": {
+    "message": "새 그룹"
+  },
+  "app.library.group.no-instances-found": {
+    "message": "인스턴스를 찾을 수 없음"
+  },
+  "app.library.group.rename-failed": {
+    "message": "그룹 이름을 변경할 수 없음"
+  },
+  "app.library.group.search-instance": {
+    "message": "인스턴스 검색"
+  },
+  "app.library.group.ungrouped": {
+    "message": "그룹 해제"
+  },
+  "app.library.group.unknown": {
+    "message": "알 수 없는 그룹"
+  },
+  "app.library.instance.action.add-content": {
+    "message": "콘텐츠 추가"
+  },
+  "app.library.instance.action.add-to-favorites": {
+    "message": "즐겨찾기에 추가"
+  },
+  "app.library.instance.action.copy-path": {
+    "message": "경로 복사"
+  },
+  "app.library.instance.action.delete": {
+    "message": "삭제"
+  },
+  "app.library.instance.action.duplicate": {
+    "message": "인스턴스 복제"
+  },
+  "app.library.instance.action.open-folder": {
+    "message": "폴더 열기"
+  },
+  "app.library.instance.action.play": {
+    "message": "플레이"
+  },
+  "app.library.instance.action.remove-from-favorites": {
+    "message": "즐겨찾기에서 제거"
+  },
+  "app.library.instance.action.remove-from-group": {
+    "message": "그룹에서 삭제"
+  },
+  "app.library.instance.action.stop": {
+    "message": "중지"
+  },
+  "app.library.instance.action.view-instance": {
+    "message": "인스턴스 보기"
+  },
+  "app.library.instance.actions.label": {
+    "message": "인스턴스 동작"
+  },
+  "app.library.instance.deselect": {
+    "message": "인스턴스 선택 해제"
+  },
+  "app.library.instance.deselect-with-name": {
+    "message": "{name} 선택 해제"
+  },
+  "app.library.instance.installing": {
+    "message": "설치 중..."
+  },
+  "app.library.instance.loading": {
+    "message": "인스턴스 로딩 중..."
+  },
+  "app.library.instance.new": {
+    "message": "새 인스턴스"
+  },
+  "app.library.instance.open-with-name": {
+    "message": "{name} 열기"
+  },
+  "app.library.instance.play": {
+    "message": "플레이"
+  },
+  "app.library.instance.repair": {
+    "message": "복구"
+  },
+  "app.library.instance.select": {
+    "message": "인스턴스 선택"
+  },
+  "app.library.instance.select-with-name": {
+    "message": "{name} 선택"
+  },
+  "app.library.instance.stop": {
+    "message": "중지"
+  },
+  "app.library.search.no-results.title": {
+    "message": "검색 조건과 일치하는 인스턴스가 없습니다."
+  },
+  "app.library.search.placeholder": {
+    "message": "검색"
+  },
+  "app.library.selection.aria-label": {
+    "message": "선택한 인스턴스"
+  },
+  "app.library.selection.deleting": {
+    "message": "선택한 인스턴스 삭제 중"
+  },
+  "app.library.selection.new-group": {
+    "message": "새 그룹"
+  },
+  "app.library.selection.remove-from-group": {
+    "message": "그룹에서 삭제"
+  },
+  "app.library.selection.selected-count": {
+    "message": "{count} 선택됨"
+  },
+  "app.library.sort.date-created": {
+    "message": "생성일"
+  },
+  "app.library.sort.date-modified": {
+    "message": "수정한 날짜"
+  },
+  "app.library.sort.game-version": {
+    "message": "게임 버전"
+  },
+  "app.library.sort.hours-played": {
+    "message": "플레이한 시간"
+  },
+  "app.library.sort.label": {
+    "message": "정렬 기준"
+  },
+  "app.library.sort.last-played": {
+    "message": "마지막 플레이"
+  },
+  "app.library.sort.loader": {
+    "message": "로더"
+  },
+  "app.library.sort.name": {
+    "message": "이름"
+  },
+  "app.library.title": {
+    "message": "라이브러리"
+  },
   "app.modal.install-to-play.additional-context": {
     "message": "추가 정보"
   },
@@ -683,6 +1256,9 @@
   "app.modal.install-to-play.invite-warning-with-creator": {
     "message": "이 초대장은 Modrinth가 아닌 <creator>{username}</creator> 님이 생성했습니다. 신뢰할 수 있는 사람의 초대만 수락하세요."
   },
+  "app.modal.install-to-play.managed-content.modpack-header": {
+    "message": "모드팩 콘텐츠"
+  },
   "app.modal.install-to-play.mod-count": {
     "message": "{count, plural, one {모드 #개} other {모드 #개}}"
   },
@@ -701,15 +1277,6 @@
   "app.modal.install-to-play.report-reason": {
     "message": "이 인스턴스가 위반한 규칙은 무엇인가요?"
   },
-  "app.modal.install-to-play.report-reason.inappropriate": {
-    "message": "부적절함"
-  },
-  "app.modal.install-to-play.report-reason.malicious": {
-    "message": "악성/유해함"
-  },
-  "app.modal.install-to-play.report-reason.spam": {
-    "message": "스팸"
-  },
   "app.modal.install-to-play.report-shared-instance-header": {
     "message": "공유 인스턴스 신고"
   },
@@ -720,7 +1287,7 @@
     "message": "지원 요청은 <support-link>지원 팀</support-link> 문의를 이용해 주세요. 버그 제보는 <github-link>GitHub 이슈</github-link>를 등록하세요."
   },
   "app.modal.install-to-play.reviewed-files": {
-    "message": "모든 파일은 형식(.mrpack 포함)에 무관하게 Modrinth에 게시되어야만 검수를 거칩니다."
+    "message": "Modrinth에 게시되지 않은 파일은 검증되지 않았습니다."
   },
   "app.modal.install-to-play.shared-instance": {
     "message": "인스턴스 공유됨"
@@ -770,14 +1337,17 @@
   "app.modal.update-to-play.update-required-description": {
     "message": "{name} 플레이를 진행하려면 업데이트가 필요합니다. 게임을 실행하려면 최신 버전 업데이트를 진행하세요."
   },
+  "app.nav.add-account": {
+    "message": "계정 추가"
+  },
   "app.nav.create-new-instance": {
     "message": "새 인스턴스 만들기"
   },
   "app.nav.home": {
     "message": "홈"
   },
-  "app.nav.library": {
-    "message": "라이브러리"
+  "app.nav.loading-profile": {
+    "message": "프로필 불러오는 중..."
   },
   "app.nav.modrinth-account": {
     "message": "Modrinth 계정"
@@ -785,20 +1355,50 @@
   "app.nav.modrinth-hosting": {
     "message": "Modrinth 호스팅"
   },
-  "app.nav.sign-in-to-modrinth-account": {
-    "message": "Modrinth 계정으로 로그인"
+  "app.nav.remove-account": {
+    "message": "계정 제거"
   },
-  "app.nav.signed-in-as": {
-    "message": "<user>{username}</user> 으로 로그인됨"
+  "app.nav.screenshots": {
+    "message": "스크린샷들"
+  },
+  "app.nav.sign-in-to-modrinth-account": {
+    "message": "Modrinth에 로그인"
+  },
+  "app.nav.switch-account": {
+    "message": "계정 변경"
   },
   "app.nav.upgrade-to-modrinth-plus": {
     "message": "Modrinth+ 로 업그레이드"
+  },
+  "app.nav.view-profile": {
+    "message": "프로필 보기"
+  },
+  "app.navigation.go-back": {
+    "message": "뒤로 가기"
+  },
+  "app.navigation.go-forward": {
+    "message": "앞으로 가기"
+  },
+  "app.navigation.home": {
+    "message": "홈"
+  },
+  "app.navigation.next-image": {
+    "message": "다음 이미지"
   },
   "app.news.title": {
     "message": "뉴스"
   },
   "app.news.view-all": {
     "message": "모든 뉴스 보기"
+  },
+  "app.notification.warning": {
+    "message": "경고"
+  },
+  "app.project.actions.label": {
+    "message": "프로젝트 동작"
+  },
+  "app.project.coming-soon": {
+    "message": "제공 예정"
   },
   "app.project.install-button.already-installed": {
     "message": "이미 설치되어 있음"
@@ -812,6 +1412,21 @@
   "app.project.install-context.back-to-instance": {
     "message": "인스턴스 복귀"
   },
+  "app.project.load-error": {
+    "message": "프로젝트 데이터를 불러올 수 없습니다."
+  },
+  "app.project.more-options": {
+    "message": "더 많은 옵션"
+  },
+  "app.project.tab.description": {
+    "message": "설명"
+  },
+  "app.project.tab.gallery": {
+    "message": "갤러리"
+  },
+  "app.project.tab.versions": {
+    "message": "버전"
+  },
   "app.project.version.all-versions": {
     "message": "모든 버전"
   },
@@ -824,14 +1439,179 @@
   "app.project.versions.already-installed": {
     "message": "이미 설치됨"
   },
+  "app.quick-instance-switcher.actions.label": {
+    "message": "인스턴스 동작"
+  },
   "app.quick-instance-switcher.drag-show-tooltip": {
     "message": "드래그하여 최근 인스턴스 표시"
   },
   "app.quick-instance-switcher.drag-tooltip": {
     "message": "드래그하여 크기 조절"
   },
+  "app.quick-instance-switcher.instance-locked": {
+    "message": "이 인스턴스는 잠겨있습니다"
+  },
+  "app.quick-instance-switcher.title": {
+    "message": "최근 인스턴스"
+  },
+  "app.quick-instance-switcher.view-instance": {
+    "message": "인스턴스 보기"
+  },
   "app.restarting": {
     "message": "재시작 중..."
+  },
+  "app.screenshots.copied": {
+    "message": "복사됨"
+  },
+  "app.screenshots.copy": {
+    "message": "이미지 복사"
+  },
+  "app.screenshots.delete-description": {
+    "message": "{name} 사진을 영구적으로 삭제하시겠습니까? 되돌릴 수 없습니다."
+  },
+  "app.screenshots.delete-success": {
+    "message": "스크린샷 삭제됨"
+  },
+  "app.screenshots.delete-title": {
+    "message": "스크린샷 삭제"
+  },
+  "app.screenshots.deselect": {
+    "message": "{name} 선택 해제"
+  },
+  "app.screenshots.edit": {
+    "message": "스크린샷 수정"
+  },
+  "app.screenshots.empty-description": {
+    "message": "인게임에서 찍은 스크린샷이 여기에 나타납니다."
+  },
+  "app.screenshots.empty-heading": {
+    "message": "스크린샷 없음"
+  },
+  "app.screenshots.error-heading": {
+    "message": "스크린샷 불러오기 실패"
+  },
+  "app.screenshots.go-to-instance": {
+    "message": "인스턴스로 이동"
+  },
+  "app.screenshots.group-by": {
+    "message": "그룹 기준"
+  },
+  "app.screenshots.group.all-screenshots": {
+    "message": "모든 스크린샷"
+  },
+  "app.screenshots.group.collapse": {
+    "message": "그룹 접기"
+  },
+  "app.screenshots.group.custom": {
+    "message": "사용자 지정 그룹"
+  },
+  "app.screenshots.group.date": {
+    "message": "날짜"
+  },
+  "app.screenshots.group.delete": {
+    "message": "그룹 삭제"
+  },
+  "app.screenshots.group.delete-description": {
+    "message": "이 그룹에 있는 스크린샷은 그룹에서 제외됩니다."
+  },
+  "app.screenshots.group.edit": {
+    "message": "그룹 이름 편집"
+  },
+  "app.screenshots.group.empty": {
+    "message": "끌어다 놓아 스크린샷을 추가합니다."
+  },
+  "app.screenshots.group.expand": {
+    "message": "그룹 펼치기"
+  },
+  "app.screenshots.group.instance": {
+    "message": "인스턴스"
+  },
+  "app.screenshots.group.new": {
+    "message": "새 그룹"
+  },
+  "app.screenshots.group.none": {
+    "message": "그룹화 없음"
+  },
+  "app.screenshots.group.this-month": {
+    "message": "이번 달"
+  },
+  "app.screenshots.group.this-week": {
+    "message": "이번 주"
+  },
+  "app.screenshots.group.today": {
+    "message": "오늘"
+  },
+  "app.screenshots.group.ungrouped": {
+    "message": "그룹 없음"
+  },
+  "app.screenshots.group.yesterday": {
+    "message": "어제"
+  },
+  "app.screenshots.heading": {
+    "message": "스크린샷"
+  },
+  "app.screenshots.more-actions": {
+    "message": "더 많은 동작"
+  },
+  "app.screenshots.no-results-description": {
+    "message": "다른 검색어나 필터를 시도해 보세요."
+  },
+  "app.screenshots.no-results-heading": {
+    "message": "일치하는 스크린샷 없음"
+  },
+  "app.screenshots.preview.instance-and-date": {
+    "message": "{instance} · {date}"
+  },
+  "app.screenshots.search": {
+    "message": "검색"
+  },
+  "app.screenshots.select": {
+    "message": "{name} 선택"
+  },
+  "app.screenshots.selection.aria-label": {
+    "message": "선택된 스크린샷"
+  },
+  "app.screenshots.selection.delete-description": {
+    "message": "스크린샷 {count, plural, other {#}}개를 삭제합니까? 되돌릴 수 없습니다."
+  },
+  "app.screenshots.selection.delete-success": {
+    "message": "스크린샷 {count, plural, other {#}}개 삭제됨"
+  },
+  "app.screenshots.selection.delete-title": {
+    "message": "선택된 스크린샷 삭제"
+  },
+  "app.screenshots.selection.export-zip": {
+    "message": "ZIP 내보내기"
+  },
+  "app.screenshots.selection.global-export-filename": {
+    "message": "Modrinth 스크린샷.zip"
+  },
+  "app.screenshots.selection.instance-export-filename": {
+    "message": "{instance} 스크린샷.zip"
+  },
+  "app.screenshots.selection.remove-from-group": {
+    "message": "그룹에서 제거"
+  },
+  "app.screenshots.selection.selected-count": {
+    "message": "{count}개 선택됨"
+  },
+  "app.screenshots.selection.zip-archive": {
+    "message": "ZIP 압축 파일"
+  },
+  "app.screenshots.show-in-folder": {
+    "message": "폴더에서 보기"
+  },
+  "app.screenshots.sort-by": {
+    "message": "정렬 기준"
+  },
+  "app.screenshots.sort.name": {
+    "message": "이름"
+  },
+  "app.screenshots.sort.newest": {
+    "message": "최신"
+  },
+  "app.screenshots.sort.oldest": {
+    "message": "오래됨"
   },
   "app.settings.app-version": {
     "message": "Modrinth 앱 {version}"
@@ -860,6 +1640,9 @@
   "app.settings.default-instance-options.height.title": {
     "message": "높이"
   },
+  "app.settings.default-instance-options.java-and-memory.title": {
+    "message": "Java 및 메모리"
+  },
   "app.settings.default-instance-options.java-arguments.description": {
     "message": "인스턴스를 실행할 때 Java에 전달되는 인수입니다."
   },
@@ -868,6 +1651,9 @@
   },
   "app.settings.default-instance-options.java-arguments.title": {
     "message": "Java 인수"
+  },
+  "app.settings.default-instance-options.launch-hooks.title": {
+    "message": "실행 훅"
   },
   "app.settings.default-instance-options.memory-allocation.description": {
     "message": "각 인스턴스가 사용할 수 있는 최대 메모리입니다."
@@ -902,6 +1688,9 @@
   "app.settings.default-instance-options.width.title": {
     "message": "너비"
   },
+  "app.settings.default-instance-options.window.title": {
+    "message": "창"
+  },
   "app.settings.default-instance-options.wrapper-hook.description": {
     "message": "Minecraft 실행 프로세스를 감싸는 데 사용하는 명령어입니다."
   },
@@ -919,6 +1708,864 @@
   },
   "app.settings.downloading": {
     "message": "v{version} 다운로드 중"
+  },
+  "app.settings.game-options.category.accessibility.description": {
+    "message": "접근성 환경설정"
+  },
+  "app.settings.game-options.category.accessibility.label": {
+    "message": "접근성"
+  },
+  "app.settings.game-options.category.chat.description": {
+    "message": "채팅 표시 및 외형"
+  },
+  "app.settings.game-options.category.chat.label": {
+    "message": "채팅"
+  },
+  "app.settings.game-options.category.controls.description": {
+    "message": "마우스, 이동 및 키 할당"
+  },
+  "app.settings.game-options.category.controls.label": {
+    "message": "조작"
+  },
+  "app.settings.game-options.category.custom.description": {
+    "message": "모드에서 추가된 설정"
+  },
+  "app.settings.game-options.category.custom.label": {
+    "message": "사용자 지정 설정"
+  },
+  "app.settings.game-options.category.language.description": {
+    "message": "게임 언어"
+  },
+  "app.settings.game-options.category.language.label": {
+    "message": "언어"
+  },
+  "app.settings.game-options.category.music-and-sound.description": {
+    "message": "음량 및 오디오 환경설정"
+  },
+  "app.settings.game-options.category.music-and-sound.label": {
+    "message": "음악 및 소리"
+  },
+  "app.settings.game-options.category.online.description": {
+    "message": "온라인 및 Realms 환경설정"
+  },
+  "app.settings.game-options.category.online.label": {
+    "message": "온라인"
+  },
+  "app.settings.game-options.category.skin-customization.description": {
+    "message": "스킨 레이어 및 주 머리"
+  },
+  "app.settings.game-options.category.skin-customization.label": {
+    "message": "스킨 커스터마이징"
+  },
+  "app.settings.game-options.category.video.description": {
+    "message": "카메라 및 화면 설정"
+  },
+  "app.settings.game-options.category.video.label": {
+    "message": "비디오"
+  },
+  "app.settings.game-options.choice.all": {
+    "message": "전체"
+  },
+  "app.settings.game-options.choice.balanced": {
+    "message": "균형"
+  },
+  "app.settings.game-options.choice.by-player": {
+    "message": "플레이어별"
+  },
+  "app.settings.game-options.choice.chat": {
+    "message": "채팅"
+  },
+  "app.settings.game-options.choice.commands-only": {
+    "message": "명령어만"
+  },
+  "app.settings.game-options.choice.constant": {
+    "message": "상수"
+  },
+  "app.settings.game-options.choice.crosshair": {
+    "message": "조준선"
+  },
+  "app.settings.game-options.choice.custom": {
+    "message": "사용자 지정"
+  },
+  "app.settings.game-options.choice.decreased": {
+    "message": "감소됨"
+  },
+  "app.settings.game-options.choice.default": {
+    "message": "기본"
+  },
+  "app.settings.game-options.choice.fabulous": {
+    "message": "굉장함"
+  },
+  "app.settings.game-options.choice.fancy": {
+    "message": "화려함"
+  },
+  "app.settings.game-options.choice.far": {
+    "message": "멀리"
+  },
+  "app.settings.game-options.choice.fast": {
+    "message": "빠름"
+  },
+  "app.settings.game-options.choice.frequent": {
+    "message": "빈도"
+  },
+  "app.settings.game-options.choice.hidden": {
+    "message": "숨기기"
+  },
+  "app.settings.game-options.choice.hotbar": {
+    "message": "단축바"
+  },
+  "app.settings.game-options.choice.left": {
+    "message": "좌측"
+  },
+  "app.settings.game-options.choice.limited": {
+    "message": "제한적"
+  },
+  "app.settings.game-options.choice.max-fps": {
+    "message": "최대 FPS"
+  },
+  "app.settings.game-options.choice.maximum": {
+    "message": "최대"
+  },
+  "app.settings.game-options.choice.minimal": {
+    "message": "최소"
+  },
+  "app.settings.game-options.choice.minimum": {
+    "message": "최소"
+  },
+  "app.settings.game-options.choice.nearby": {
+    "message": "근처"
+  },
+  "app.settings.game-options.choice.never": {
+    "message": "안 함"
+  },
+  "app.settings.game-options.choice.none": {
+    "message": "없음"
+  },
+  "app.settings.game-options.choice.normal": {
+    "message": "보통"
+  },
+  "app.settings.game-options.choice.off": {
+    "message": "꺼짐"
+  },
+  "app.settings.game-options.choice.on": {
+    "message": "켜짐"
+  },
+  "app.settings.game-options.choice.opengl": {
+    "message": "OpenGL"
+  },
+  "app.settings.game-options.choice.pause": {
+    "message": "일시정지 메뉴"
+  },
+  "app.settings.game-options.choice.pause-and-toast": {
+    "message": "일시정지 메뉴 및 토스트"
+  },
+  "app.settings.game-options.choice.power-saver": {
+    "message": "절전"
+  },
+  "app.settings.game-options.choice.right": {
+    "message": "우측"
+  },
+  "app.settings.game-options.choice.short": {
+    "message": "짧음"
+  },
+  "app.settings.game-options.choice.shown": {
+    "message": "보이기"
+  },
+  "app.settings.game-options.choice.system": {
+    "message": "시스템"
+  },
+  "app.settings.game-options.choice.tiny": {
+    "message": "매우 짧음"
+  },
+  "app.settings.game-options.choice.vulkan": {
+    "message": "Vulkan"
+  },
+  "app.settings.game-options.choice.when-minimized": {
+    "message": "최소화 시"
+  },
+  "app.settings.game-options.choice.while-afk": {
+    "message": "AFK 중일 때"
+  },
+  "app.settings.game-options.compatibility.none": {
+    "message": "인스턴스 중 하나가 이 설정을 사용할 수 없습니다"
+  },
+  "app.settings.game-options.compatibility.reason.launcher-controlled": {
+    "message": "이 설정은 Modrinth의 실행 설정에 의해 관리됩니다."
+  },
+  "app.settings.game-options.custom-value.placeholder": {
+    "message": "값 입력"
+  },
+  "app.settings.game-options.keybind.assigned-status": {
+    "message": "{setting} 설정은 이제 {binding} 키로 할당됩니다."
+  },
+  "app.settings.game-options.keybind.cancelled-status": {
+    "message": "키 할당 변경이 취소됐습니다."
+  },
+  "app.settings.game-options.keybind.change": {
+    "message": "{setting}: {binding}. 활성화하여 할당을 변경합니다."
+  },
+  "app.settings.game-options.keybind.choose": {
+    "message": "키 선택"
+  },
+  "app.settings.game-options.keybind.conflict-description": {
+    "message": "이미 {settings} 설정에서 사용 중입니다."
+  },
+  "app.settings.game-options.keybind.key.arrow-down": {
+    "message": "아래쪽 화살표"
+  },
+  "app.settings.game-options.keybind.key.arrow-left": {
+    "message": "왼쪽 화살표"
+  },
+  "app.settings.game-options.keybind.key.arrow-right": {
+    "message": "오른쪽 화살표"
+  },
+  "app.settings.game-options.keybind.key.arrow-up": {
+    "message": "위쪽 화살표"
+  },
+  "app.settings.game-options.keybind.key.backspace": {
+    "message": "백스페이스"
+  },
+  "app.settings.game-options.keybind.key.caps-lock": {
+    "message": "Caps Lock"
+  },
+  "app.settings.game-options.keybind.key.delete": {
+    "message": "삭제"
+  },
+  "app.settings.game-options.keybind.key.end": {
+    "message": "End"
+  },
+  "app.settings.game-options.keybind.key.enter": {
+    "message": "Enter"
+  },
+  "app.settings.game-options.keybind.key.escape": {
+    "message": "Escape"
+  },
+  "app.settings.game-options.keybind.key.home": {
+    "message": "Home"
+  },
+  "app.settings.game-options.keybind.key.insert": {
+    "message": "Insert"
+  },
+  "app.settings.game-options.keybind.key.keypad-key": {
+    "message": "넘버패드 {key}"
+  },
+  "app.settings.game-options.keybind.key.left-alt": {
+    "message": "왼쪽 Alt"
+  },
+  "app.settings.game-options.keybind.key.left-command": {
+    "message": "왼쪽 Command"
+  },
+  "app.settings.game-options.keybind.key.left-control": {
+    "message": "왼쪽 Ctrl"
+  },
+  "app.settings.game-options.keybind.key.left-shift": {
+    "message": "왼쪽 Shift"
+  },
+  "app.settings.game-options.keybind.key.left-super": {
+    "message": "왼쪽 Super"
+  },
+  "app.settings.game-options.keybind.key.menu": {
+    "message": "Menu"
+  },
+  "app.settings.game-options.keybind.key.num-lock": {
+    "message": "Num Lock"
+  },
+  "app.settings.game-options.keybind.key.page-down": {
+    "message": "Page Down"
+  },
+  "app.settings.game-options.keybind.key.page-up": {
+    "message": "Page Up"
+  },
+  "app.settings.game-options.keybind.key.pause": {
+    "message": "Pause"
+  },
+  "app.settings.game-options.keybind.key.print-screen": {
+    "message": "Print Screen"
+  },
+  "app.settings.game-options.keybind.key.right-alt": {
+    "message": "오른쪽 Alt"
+  },
+  "app.settings.game-options.keybind.key.right-command": {
+    "message": "오른쪽 Command"
+  },
+  "app.settings.game-options.keybind.key.right-control": {
+    "message": "오른쪽 Ctrl"
+  },
+  "app.settings.game-options.keybind.key.right-shift": {
+    "message": "오른쪽 Shift"
+  },
+  "app.settings.game-options.keybind.key.right-super": {
+    "message": "오른쪽 Super"
+  },
+  "app.settings.game-options.keybind.key.scroll-lock": {
+    "message": "Scroll Lock"
+  },
+  "app.settings.game-options.keybind.key.space": {
+    "message": "Space"
+  },
+  "app.settings.game-options.keybind.key.tab": {
+    "message": "Tab"
+  },
+  "app.settings.game-options.keybind.key.unbound": {
+    "message": "미할당"
+  },
+  "app.settings.game-options.keybind.key.unknown": {
+    "message": "알 수 없는 키"
+  },
+  "app.settings.game-options.keybind.listen": {
+    "message": "키 입력..."
+  },
+  "app.settings.game-options.keybind.listening-status": {
+    "message": "키 또는 마우스 버튼을 기록 중입니다. Escape를 눌러 할당을 비웁니다."
+  },
+  "app.settings.game-options.keybind.mixed": {
+    "message": "인스턴스마다 다름"
+  },
+  "app.settings.game-options.keybind.modifier.alt": {
+    "message": "Alt"
+  },
+  "app.settings.game-options.keybind.modifier.command": {
+    "message": "Command"
+  },
+  "app.settings.game-options.keybind.modifier.control": {
+    "message": "Ctrl"
+  },
+  "app.settings.game-options.keybind.modifier.shift": {
+    "message": "Shift"
+  },
+  "app.settings.game-options.keybind.modifier.super": {
+    "message": "Super"
+  },
+  "app.settings.game-options.keybind.mouse.button": {
+    "message": "마우스 {button}"
+  },
+  "app.settings.game-options.keybind.mouse.left": {
+    "message": "좌클릭"
+  },
+  "app.settings.game-options.keybind.mouse.middle": {
+    "message": "휠클릭"
+  },
+  "app.settings.game-options.keybind.mouse.right": {
+    "message": "우클릭"
+  },
+  "app.settings.game-options.keybind.recording-label": {
+    "message": "{setting}: 키 또는 마우스 버튼을 기록 중입니다. Escape를 눌러 할당을 비웁니다."
+  },
+  "app.settings.game-options.keybind.scancode": {
+    "message": "스캔코드 {code}"
+  },
+  "app.settings.game-options.keybind.unsupported-status": {
+    "message": "해당 입력은 Minecraft에서 사용할 수 없습니다. 다른 키를 입력해 주세요."
+  },
+  "app.settings.game-options.setting.advanced-opengl.label": {
+    "message": "고급 OpenGL"
+  },
+  "app.settings.game-options.setting.allow-cursor-changes.label": {
+    "message": "커서 변경 허용"
+  },
+  "app.settings.game-options.setting.allow-server-listing.description": {
+    "message": "서버 목록에 플레이어 이름 표시를 허용합니다."
+  },
+  "app.settings.game-options.setting.allow-server-listing.label": {
+    "message": "서버 목록"
+  },
+  "app.settings.game-options.setting.alternate-blocks.label": {
+    "message": "대체 블록"
+  },
+  "app.settings.game-options.setting.ambient-occlusion.label": {
+    "message": "부드러운 조명"
+  },
+  "app.settings.game-options.setting.ambient-volume.label": {
+    "message": "배경음/환경"
+  },
+  "app.settings.game-options.setting.anaglyph-3d.label": {
+    "message": "3D 애너글리프"
+  },
+  "app.settings.game-options.setting.anisotropic-filtering.label": {
+    "message": "이방성 필터링"
+  },
+  "app.settings.game-options.setting.anisotropy.label": {
+    "message": "이방성"
+  },
+  "app.settings.game-options.setting.attack-indicator.label": {
+    "message": "공격 표시기"
+  },
+  "app.settings.game-options.setting.auto-jump.description": {
+    "message": "한 블록 높이의 장애물을 자동으로 뛰어 넘습니다."
+  },
+  "app.settings.game-options.setting.auto-jump.label": {
+    "message": "자동 점프"
+  },
+  "app.settings.game-options.setting.auto-suggestions.label": {
+    "message": "명령어 제안"
+  },
+  "app.settings.game-options.setting.autosave-indicator.label": {
+    "message": "자동 저장 표시기"
+  },
+  "app.settings.game-options.setting.biome-blend-radius.description": {
+    "message": "바이옴 색상이 전환되는 거리입니다."
+  },
+  "app.settings.game-options.setting.biome-blend-radius.label": {
+    "message": "바이옴 혼합"
+  },
+  "app.settings.game-options.setting.blocks-volume.label": {
+    "message": "블록"
+  },
+  "app.settings.game-options.setting.brightness.label": {
+    "message": "밝기"
+  },
+  "app.settings.game-options.setting.cape.description": {
+    "message": "겉날개 텍스처를 포함한 플레이어의 망토를 표시합니다."
+  },
+  "app.settings.game-options.setting.cape.label": {
+    "message": "망토"
+  },
+  "app.settings.game-options.setting.chat-background-only.label": {
+    "message": "채팅 배경만"
+  },
+  "app.settings.game-options.setting.chat-colors.label": {
+    "message": "채팅 색상"
+  },
+  "app.settings.game-options.setting.chat-delay.label": {
+    "message": "채팅 지연"
+  },
+  "app.settings.game-options.setting.chat-line-spacing.label": {
+    "message": "채팅 줄 간격"
+  },
+  "app.settings.game-options.setting.chat-links-prompt.description": {
+    "message": "채팅에서 링크를 열기 전 묻습니다."
+  },
+  "app.settings.game-options.setting.chat-links-prompt.label": {
+    "message": "링크 확인"
+  },
+  "app.settings.game-options.setting.chat-links.description": {
+    "message": "채팅의 웹 링크를 열 수 있게 합니다."
+  },
+  "app.settings.game-options.setting.chat-links.label": {
+    "message": "웹 링크"
+  },
+  "app.settings.game-options.setting.chat-opacity.description": {
+    "message": "채팅 텍스트의 불투명도입니다."
+  },
+  "app.settings.game-options.setting.chat-opacity.label": {
+    "message": "채팅 불투명도"
+  },
+  "app.settings.game-options.setting.chat-preview.label": {
+    "message": "채팅 미리보기"
+  },
+  "app.settings.game-options.setting.chat-scale.label": {
+    "message": "채팅 배율"
+  },
+  "app.settings.game-options.setting.chat-visibility.label": {
+    "message": "채팅 표시"
+  },
+  "app.settings.game-options.setting.chat-width.label": {
+    "message": "채팅 폭"
+  },
+  "app.settings.game-options.setting.chunk-fade-time.label": {
+    "message": "청크 페이드 시간"
+  },
+  "app.settings.game-options.setting.cloud-range.label": {
+    "message": "구름 거리"
+  },
+  "app.settings.game-options.setting.clouds.label": {
+    "message": "구름"
+  },
+  "app.settings.game-options.setting.ctrl-click-right-click.label": {
+    "message": "컨트롤 클릭을 우클릭으로 취급"
+  },
+  "app.settings.game-options.setting.cutout-leaves.label": {
+    "message": "나뭇잎 자르기"
+  },
+  "app.settings.game-options.setting.damage-tilt.label": {
+    "message": "피해 기울임"
+  },
+  "app.settings.game-options.setting.dark-splash.description": {
+    "message": "Mojang Studios 불러오기 화면을 빨강에서 검정으로 바꿉니다."
+  },
+  "app.settings.game-options.setting.dark-splash.label": {
+    "message": "단색 로고"
+  },
+  "app.settings.game-options.setting.darkness-pulsing.label": {
+    "message": "어두움 펄스"
+  },
+  "app.settings.game-options.setting.debug-gui-scale.label": {
+    "message": "디버그 GUI 배율"
+  },
+  "app.settings.game-options.setting.directional-audio.label": {
+    "message": "지향성 오디오"
+  },
+  "app.settings.game-options.setting.discrete-mouse-scroll.description": {
+    "message": "각 마우스 휠 입력을 단일 스크롤 단계로 처리합니다."
+  },
+  "app.settings.game-options.setting.discrete-mouse-scroll.label": {
+    "message": "개별 스크롤"
+  },
+  "app.settings.game-options.setting.entity-distance.label": {
+    "message": "엔티티 거리"
+  },
+  "app.settings.game-options.setting.entity-shadows.label": {
+    "message": "엔티티 그림자"
+  },
+  "app.settings.game-options.setting.exclusive-fullscreen.label": {
+    "message": "독점 전체 화면"
+  },
+  "app.settings.game-options.setting.extra-telemetry.label": {
+    "message": "선택적 원격 측정"
+  },
+  "app.settings.game-options.setting.focused-chat-height.label": {
+    "message": "포커스된 채팅 높이"
+  },
+  "app.settings.game-options.setting.force-unicode-font.label": {
+    "message": "유니코드 글꼴 강제"
+  },
+  "app.settings.game-options.setting.fov-effects.label": {
+    "message": "시야각 효과"
+  },
+  "app.settings.game-options.setting.fov.label": {
+    "message": "시야각"
+  },
+  "app.settings.game-options.setting.fullscreen.label": {
+    "message": "전체 화면"
+  },
+  "app.settings.game-options.setting.glint-speed.label": {
+    "message": "반짝임 속도"
+  },
+  "app.settings.game-options.setting.glint-strength.label": {
+    "message": "반짝임 강도"
+  },
+  "app.settings.game-options.setting.graphics-backend.label": {
+    "message": "그래픽 백엔드"
+  },
+  "app.settings.game-options.setting.graphics.description": {
+    "message": "시각 품질 및 성능을 제어합니다."
+  },
+  "app.settings.game-options.setting.graphics.label": {
+    "message": "그래픽"
+  },
+  "app.settings.game-options.setting.gui-scale.description": {
+    "message": "게임 인터페이스 및 HUD의 크기입니다."
+  },
+  "app.settings.game-options.setting.gui-scale.label": {
+    "message": "GUI 배율"
+  },
+  "app.settings.game-options.setting.hat.description": {
+    "message": "모자 스킨 레이어를 표시합니다."
+  },
+  "app.settings.game-options.setting.hat.label": {
+    "message": "모자"
+  },
+  "app.settings.game-options.setting.held-item-tooltips.label": {
+    "message": "들고 있는 아이템 툴팁"
+  },
+  "app.settings.game-options.setting.hide-lightning-flashes.label": {
+    "message": "번개 섬광 숨기기"
+  },
+  "app.settings.game-options.setting.hide-matched-names.label": {
+    "message": "일치하는 이름 숨기기"
+  },
+  "app.settings.game-options.setting.hide-server-address.label": {
+    "message": "서버 주소 숨기기"
+  },
+  "app.settings.game-options.setting.hide-splash-texts.label": {
+    "message": "스플래시 텍스트 숨기기"
+  },
+  "app.settings.game-options.setting.high-contrast-outline.label": {
+    "message": "고대비 블록 외곽선"
+  },
+  "app.settings.game-options.setting.high-contrast.description": {
+    "message": "인터페이스 요소의 대비를 증가합니다."
+  },
+  "app.settings.game-options.setting.high-contrast.label": {
+    "message": "고대비"
+  },
+  "app.settings.game-options.setting.hostile-volume.label": {
+    "message": "적대적 생명체"
+  },
+  "app.settings.game-options.setting.improved-transparency.label": {
+    "message": "개선된 투명성"
+  },
+  "app.settings.game-options.setting.in-game-notifications.label": {
+    "message": "인게임 알림"
+  },
+  "app.settings.game-options.setting.inactivity-framerate-limit.label": {
+    "message": "감소된 프레임 속도"
+  },
+  "app.settings.game-options.setting.invert-horizontal-mouse.label": {
+    "message": "수직 마우스 반전"
+  },
+  "app.settings.game-options.setting.invert-mouse.description": {
+    "message": "마우스의 수직 입력을 반전시킵니다."
+  },
+  "app.settings.game-options.setting.invert-mouse.label": {
+    "message": "마우스 반전"
+  },
+  "app.settings.game-options.setting.jacket.description": {
+    "message": "재킷 스킨 레이어를 표시합니다."
+  },
+  "app.settings.game-options.setting.jacket.label": {
+    "message": "재킷"
+  },
+  "app.settings.game-options.setting.japanese-glyph-variants.label": {
+    "message": "일본어 문자 변형"
+  },
+  "app.settings.game-options.setting.key-advancements.label": {
+    "message": "발전 과제"
+  },
+  "app.settings.game-options.setting.key-attack.label": {
+    "message": "공격"
+  },
+  "app.settings.game-options.setting.key-back.label": {
+    "message": "뒤로 이동"
+  },
+  "app.settings.game-options.setting.key-chat.label": {
+    "message": "채팅 열기"
+  },
+  "app.settings.game-options.setting.key-command.label": {
+    "message": "명령어"
+  },
+  "app.settings.game-options.setting.key-debug-advanced-tooltips.label": {
+    "message": "고급 툴팁 표시"
+  },
+  "app.settings.game-options.setting.key-debug-chunk-borders.label": {
+    "message": "청크 경계선 표시"
+  },
+  "app.settings.game-options.setting.key-debug-clear-chat.label": {
+    "message": "채팅 비우기"
+  },
+  "app.settings.game-options.setting.key-debug-copy-location.label": {
+    "message": "위치 복사"
+  },
+  "app.settings.game-options.setting.key-debug-copy-recreate-command.label": {
+    "message": "재생성 명령어 복사"
+  },
+  "app.settings.game-options.setting.key-debug-crash.label": {
+    "message": "디버그 충돌 작동"
+  },
+  "app.settings.game-options.setting.key-debug-dump-dynamic-textures.label": {
+    "message": "동적 텍스처 덤프"
+  },
+  "app.settings.game-options.setting.key-debug-dump-version.label": {
+    "message": "덤프 버전"
+  },
+  "app.settings.game-options.setting.key-debug-focus-pause.label": {
+    "message": "포커스 잃을 시 일시정지"
+  },
+  "app.settings.game-options.setting.key-debug-fps-charts.label": {
+    "message": "FPS 차트"
+  },
+  "app.settings.game-options.setting.key-debug-hitboxes.label": {
+    "message": "히트박스 표시"
+  },
+  "app.settings.game-options.setting.key-debug-improved-transparency.label": {
+    "message": "향상된 디버그 보기 투명성"
+  },
+  "app.settings.game-options.setting.key-debug-lightmap-texture.label": {
+    "message": "라이트맵 텍스처"
+  },
+  "app.settings.game-options.setting.key-debug-modifier.label": {
+    "message": "디버그 수정자"
+  },
+  "app.settings.game-options.setting.key-debug-network-charts.label": {
+    "message": "네트워크 차트"
+  },
+  "app.settings.game-options.setting.key-debug-options.label": {
+    "message": "디버그 옵션"
+  },
+  "app.settings.game-options.setting.key-debug-overlay.label": {
+    "message": "디버그 오버레이"
+  },
+  "app.settings.game-options.setting.key-debug-profiling-chart.label": {
+    "message": "프로파일링 차트"
+  },
+  "app.settings.game-options.setting.key-debug-profiling.label": {
+    "message": "프로파일링 시작"
+  },
+  "app.settings.game-options.setting.key-debug-reload-chunks.label": {
+    "message": "청크 다시 불러오기"
+  },
+  "app.settings.game-options.setting.key-debug-reload-resource-packs.label": {
+    "message": "리소스팩 다시 불러오기"
+  },
+  "app.settings.game-options.setting.key-debug-spectate.label": {
+    "message": "엔티티 관전"
+  },
+  "app.settings.game-options.setting.key-debug-switch-game-mode.label": {
+    "message": "게임 모드 변경"
+  },
+  "app.settings.game-options.setting.key-drop.label": {
+    "message": "아이템 떨어뜨리기"
+  },
+  "app.settings.game-options.setting.key-forward.label": {
+    "message": "앞으로 이동"
+  },
+  "app.settings.game-options.setting.key-friends.label": {
+    "message": "친구"
+  },
+  "app.settings.game-options.setting.key-fullscreen.label": {
+    "message": "전체 화면 전환"
+  },
+  "app.settings.game-options.setting.key-hotbar-1.label": {
+    "message": "단축바 1"
+  },
+  "app.settings.game-options.setting.key-hotbar-2.label": {
+    "message": "단축바 2"
+  },
+  "app.settings.game-options.setting.key-hotbar-3.label": {
+    "message": "단축바 3"
+  },
+  "app.settings.game-options.setting.key-hotbar-4.label": {
+    "message": "단축바 4"
+  },
+  "app.settings.game-options.setting.key-hotbar-5.label": {
+    "message": "단축바 5"
+  },
+  "app.settings.game-options.setting.key-hotbar-6.label": {
+    "message": "단축바 6"
+  },
+  "app.settings.game-options.setting.key-hotbar-7.label": {
+    "message": "단축바 7"
+  },
+  "app.settings.game-options.setting.key-hotbar-8.label": {
+    "message": "단축바 8"
+  },
+  "app.settings.game-options.setting.key-hotbar-9.label": {
+    "message": "단축바 9"
+  },
+  "app.settings.game-options.setting.key-inventory.label": {
+    "message": "인벤토리"
+  },
+  "app.settings.game-options.setting.key-jump.label": {
+    "message": "점프"
+  },
+  "app.settings.game-options.setting.key-left.label": {
+    "message": "왼쪽으로 이동"
+  },
+  "app.settings.game-options.setting.key-load-toolbar.label": {
+    "message": "단축바 불러오기"
+  },
+  "app.settings.game-options.setting.key-perspective.label": {
+    "message": "시점 변경"
+  },
+  "app.settings.game-options.setting.key-pick-item.label": {
+    "message": "블록 집기"
+  },
+  "app.settings.game-options.setting.key-player-list.label": {
+    "message": "플레이어 목록"
+  },
+  "app.settings.game-options.setting.key-quick-actions.label": {
+    "message": "빠른 동작"
+  },
+  "app.settings.game-options.setting.key-right.label": {
+    "message": "오른쪽으로 이동"
+  },
+  "app.settings.game-options.setting.key-save-toolbar.label": {
+    "message": "단축바 저장"
+  },
+  "app.settings.game-options.setting.key-screenshot.label": {
+    "message": "스크린샷"
+  },
+  "app.settings.game-options.setting.key-smooth-camera.label": {
+    "message": "시네마틱 카메라 전환"
+  },
+  "app.settings.game-options.setting.key-sneak.label": {
+    "message": "웅크리기"
+  },
+  "app.settings.game-options.setting.key-social-interactions.label": {
+    "message": "사회적 상호작용"
+  },
+  "app.settings.game-options.setting.key-spectator-hotbar.label": {
+    "message": "관전자 단축바"
+  },
+  "app.settings.game-options.setting.key-spectator-outlines.label": {
+    "message": "관전자 강조 표시"
+  },
+  "app.settings.game-options.setting.key-sprint.label": {
+    "message": "달리기"
+  },
+  "app.settings.game-options.setting.key-swap-offhand.label": {
+    "message": "손 맞바꾸기"
+  },
+  "app.settings.game-options.setting.key-toggle-gui.label": {
+    "message": "HUD 전환"
+  },
+  "app.settings.game-options.setting.key-toggle-spectator-shader.label": {
+    "message": "관전자 셰이더 전환"
+  },
+  "app.settings.game-options.setting.key-use.label": {
+    "message": "아이템 사용"
+  },
+  "app.settings.game-options.setting.language.label": {
+    "message": "언어"
+  },
+  "app.settings.game-options.setting.left-pants-leg.label": {
+    "message": "왼쪽 바지 다리"
+  },
+  "app.settings.game-options.setting.left-sleeve.label": {
+    "message": "왼쪽 소매"
+  },
+  "app.settings.game-options.setting.legacy-framerate-limit.label": {
+    "message": "프레임 속도 제한"
+  },
+  "app.settings.game-options.setting.legacy-view-distance.label": {
+    "message": "가시거리"
+  },
+  "app.settings.game-options.setting.mac-fullscreen-menu.label": {
+    "message": "전체화면에서 macOS 메뉴 표시"
+  },
+  "app.settings.game-options.setting.main-hand.description": {
+    "message": "주 손이 왼쪽인지 오른쪽인지 선택합니다."
+  },
+  "app.settings.game-options.setting.main-hand.label": {
+    "message": "주 손"
+  },
+  "app.settings.game-options.setting.master-volume.label": {
+    "message": "주 음량"
+  },
+  "app.settings.game-options.setting.max-framerate.label": {
+    "message": "최대 프레임 속도"
+  },
+  "app.settings.game-options.setting.unfocused-chat-height.label": {
+    "message": "포커스 없는 채팅 높이"
+  },
+  "app.settings.game-options.setting.use-vbo.label": {
+    "message": "VBO 사용"
+  },
+  "app.settings.game-options.setting.view-bobbing.description": {
+    "message": "걷는 동안 카메라에 튀는 행동을 추가합니다."
+  },
+  "app.settings.game-options.setting.view-bobbing.label": {
+    "message": "시점 흔들림"
+  },
+  "app.settings.game-options.setting.vignette.label": {
+    "message": "비네트"
+  },
+  "app.settings.game-options.setting.voice-volume.label": {
+    "message": "음성 및 말하기"
+  },
+  "app.settings.game-options.setting.vsync.description": {
+    "message": "화면 찢어짐을 방지하기 위해 프레임 속도를 디스플레이의 주사율로 제한합니다."
+  },
+  "app.settings.game-options.setting.vsync.label": {
+    "message": "수직 동기화"
+  },
+  "app.settings.game-options.setting.weather-radius.label": {
+    "message": "날씨 반지름"
+  },
+  "app.settings.game-options.setting.weather-volume.label": {
+    "message": "날씨"
+  },
+  "app.settings.game-options.validation.changed-since-opened": {
+    "message": "이 설정은 다른 곳에서 변경되었습니다. 확인 후 다시 시도해 주세요."
+  },
+  "app.settings.game-options.validation.invalid-value": {
+    "message": "유효한 값을 선택하세요."
+  },
+  "app.settings.game-options.validation.missing-value": {
+    "message": "먼저 값을 선택하세요."
+  },
+  "app.settings.game-options.validation.no-compatible-instances": {
+    "message": "인스턴스 중 하나가 이 설정을 사용할 수 없습니다"
   },
   "app.settings.java-installations.location.title": {
     "message": "Java {version, number} 위치"
@@ -986,6 +2633,27 @@
   "app.settings.resource-management.maximum-concurrent-writes.title": {
     "message": "최대 동시 쓰기 수"
   },
+  "app.settings.resource-management.store.attention": {
+    "message": "아직 일부 파일에 확인이 필요합니다"
+  },
+  "app.settings.resource-management.store.cache-limit.unit": {
+    "message": "GiB"
+  },
+  "app.settings.resource-management.store.calculating": {
+    "message": "계산 중"
+  },
+  "app.settings.resource-management.store.clear": {
+    "message": "미사용 항목 비우기"
+  },
+  "app.settings.resource-management.store.clear.description": {
+    "message": "미사용된 다운로드한 콘텐츠를 삭제합니다"
+  },
+  "app.settings.resource-management.store.cleared": {
+    "message": "{size}의 디스크 여유 공간을 확보했습니다."
+  },
+  "app.settings.resource-management.store.clearing": {
+    "message": "비우는 중..."
+  },
   "app.settings.sidebar.label.instances": {
     "message": "인스턴스"
   },
@@ -994,9 +2662,6 @@
   },
   "app.settings.tabs.behavior": {
     "message": "동작"
-  },
-  "app.settings.tabs.default-instance-options": {
-    "message": "기본 게임 옵션"
   },
   "app.settings.tabs.java-installations": {
     "message": "Java 설치"
@@ -1151,18 +2816,6 @@
   "app.skins.section.tiny-takeover": {
     "message": "Tiny Takeover"
   },
-  "app.skins.sign-in.button": {
-    "message": "로그인"
-  },
-  "app.skins.sign-in.description": {
-    "message": "Modrinth 앱의 스킨 관리 기능을 사용하려면 Minecraft 계정에 로그인하세요."
-  },
-  "app.skins.sign-in.rinthbot-alt": {
-    "message": "Excited Modrinth Bot"
-  },
-  "app.skins.sign-in.title": {
-    "message": "로그인하세요"
-  },
   "app.skins.title": {
     "message": "스킨 선택"
   },
@@ -1231,9 +2884,6 @@
   },
   "app.world.world-item.offline": {
     "message": "오프라인"
-  },
-  "app.world.world-item.players-online": {
-    "message": "{count}명 온라인"
   },
   "content.shared-instance.change-version-body": {
     "message": "버전을 변경해도 로컬 사본만 변경됩니다. 향후 공유 인스턴스를 업데이트할 때 다시 복구되거나 변경될 수 있습니다."
@@ -1398,7 +3048,7 @@
     "message": "시작중..."
   },
   "instance.action.stopping": {
-    "message": "정지중..."
+    "message": "중지중..."
   },
   "instance.add-server.add-and-play": {
     "message": "추가 후 플레이"
@@ -1442,6 +3092,9 @@
   "instance.files.save-as": {
     "message": "다른 이름으로 저장..."
   },
+  "instance.icon-editor.symbol": {
+    "message": "문양"
+  },
   "instance.locked.delete-button": {
     "message": "인스턴스 삭제"
   },
@@ -1449,7 +3102,7 @@
     "message": "이 인스턴스는 잠겼습니다"
   },
   "instance.playtime.never-played": {
-    "message": "아직 플레이 하지 않음"
+    "message": "플레이한 적 없음"
   },
   "instance.server-modal.address": {
     "message": "주소"
@@ -1541,18 +3194,6 @@
   "instance.settings.tabs.general.edit-icon.select": {
     "message": "아이콘 선택"
   },
-  "instance.settings.tabs.general.library-groups": {
-    "message": "라이브러리 그룹"
-  },
-  "instance.settings.tabs.general.library-groups.create": {
-    "message": "새 그룹 만들기"
-  },
-  "instance.settings.tabs.general.library-groups.description": {
-    "message": "라이브러리 그룹을 사용하면 인스턴스를 라이브러리 내 여러 섹션으로 나눠서 정리할 수 있습니다."
-  },
-  "instance.settings.tabs.general.library-groups.enter-name": {
-    "message": "그룹 이름 입력"
-  },
   "instance.settings.tabs.general.name": {
     "message": "이름"
   },
@@ -1580,15 +3221,6 @@
   "instance.settings.tabs.general.update-channel.select": {
     "message": "업데이트 채널 선택"
   },
-  "instance.settings.tabs.hooks": {
-    "message": "실행 후크"
-  },
-  "instance.settings.tabs.hooks.custom-hooks": {
-    "message": "사용자 지정 실행 후크"
-  },
-  "instance.settings.tabs.hooks.description": {
-    "message": "후크 기능을 사용하면 고급 사용자가 게임 실행 전후에 특정 시스템 명령을 실행할 수 있습니다."
-  },
   "instance.settings.tabs.hooks.post-exit": {
     "message": "종료 후"
   },
@@ -1606,9 +3238,6 @@
   },
   "instance.settings.tabs.hooks.pre-launch.enter": {
     "message": "실행 전 명령어 입력..."
-  },
-  "instance.settings.tabs.hooks.title": {
-    "message": "게임 실행 후크"
   },
   "instance.settings.tabs.hooks.wrapper": {
     "message": "래퍼"
@@ -1628,53 +3257,20 @@
   "instance.settings.tabs.installation.locked": {
     "message": "이 인스턴스가 잠긴 상태에서는 설치 설정을 사용할 수 없습니다."
   },
-  "instance.settings.tabs.java": {
-    "message": "Java 및 메모리"
-  },
-  "instance.settings.tabs.java.custom-environment-variables": {
-    "message": "사용자 지정 환경 변수"
-  },
-  "instance.settings.tabs.java.custom-java-arguments": {
-    "message": "사용자 지정 Java 매개변수"
-  },
-  "instance.settings.tabs.java.custom-java-installation": {
-    "message": "사용자 지정 Java 설치"
-  },
-  "instance.settings.tabs.java.custom-memory-allocation": {
-    "message": "사용자 지정 메모리 할당"
-  },
   "instance.settings.tabs.java.enter-environment-variables": {
     "message": "환경 변수를 입력하세요..."
   },
   "instance.settings.tabs.java.enter-java-arguments": {
     "message": "Java 인수를 입력하세요..."
   },
-  "instance.settings.tabs.java.environment-variables": {
-    "message": "환경 변수"
-  },
   "instance.settings.tabs.java.hooks": {
     "message": "후크"
-  },
-  "instance.settings.tabs.java.java-arguments": {
-    "message": "Java 매개변수"
-  },
-  "instance.settings.tabs.java.java-installation": {
-    "message": "Java 설치"
-  },
-  "instance.settings.tabs.java.java-memory": {
-    "message": "할당된 메모리"
   },
   "instance.settings.tabs.java.java-path-placeholder": {
     "message": "/path/to/java"
   },
   "instance.settings.tabs.sharing": {
     "message": "공유"
-  },
-  "instance.settings.tabs.window": {
-    "message": "창"
-  },
-  "instance.settings.tabs.window.custom-window-settings": {
-    "message": "창 맞춤 설정"
   },
   "instance.settings.tabs.window.fullscreen": {
     "message": "전체 화면"
@@ -1788,10 +3384,10 @@
     "message": "서버가 응답하지 않음"
   },
   "instance.worlds.no_server_quick_play": {
-    "message": "Minecraft 알파 1.0.5 이후 버전에서만 서버에 바로 진입할 수 있습니다"
+    "message": "Minecraft 알파 1.0.5 이후 버전에서만 서버에 바로 입장할 수 있습니다"
   },
   "instance.worlds.no_singleplayer_quick_play": {
-    "message": "Minecraft 1.20 이후 버전에서만 싱글플레이 세계로 바로 진입할 수 있습니다"
+    "message": "Minecraft 1.20 이후 버전에서만 싱글플레이 세계에 바로 입장할 수 있습니다"
   },
   "instance.worlds.play_instance": {
     "message": "인스턴스 플레이"
@@ -1844,9 +3440,6 @@
   "modal.modrinth-account-required.browser-description": {
     "message": "로그인을 위한 새 탭이 열렸습니다. 해당 탭에서 로그인을 완료한 후 앱 돌아오세요."
   },
-  "modal.modrinth-account-required.cancel-button": {
-    "message": "취소"
-  },
   "modal.modrinth-account-required.continue-in-browser-heading": {
     "message": "브라우저에서 계속 진행"
   },
@@ -1889,17 +3482,8 @@
   "search.filter.locked.instance.sync": {
     "message": "인스턴스와 동기화"
   },
-  "search.filter.locked.server": {
-    "message": "서버에 의해 관리됨"
-  },
   "search.filter.locked.server-environment.title": {
     "message": "서버 인스턴스에는 클라이언트 전용 모드만 추가할 수 있습니다"
-  },
-  "search.filter.locked.server-game-version.title": {
-    "message": "게임 버전이 서버에 의해 제공됩니다"
-  },
-  "search.filter.locked.server-loader.title": {
-    "message": "로더가 서버에 의해 제공됩니다"
   },
   "settings.sidebar.label.account": {
     "message": "계정"

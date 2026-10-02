@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChevronDownIcon, ChevronUpIcon } from '@modrinth/assets'
-import { computed, getCurrentInstance, ref, toRef } from 'vue'
+import { computed, getCurrentInstance, ref, toRef, watch } from 'vue'
 
 import Checkbox from '#ui/components/base/Checkbox.vue'
 import { useVIntl } from '#ui/composables/i18n'
@@ -19,6 +19,7 @@ const { formatMessage } = useVIntl()
 
 interface Props {
 	items: ContentCardTableItem[]
+	highlightedItemId?: string
 	showSelection?: boolean
 	sortable?: boolean
 	sortBy?: ContentCardTableSortColumn
@@ -28,6 +29,7 @@ interface Props {
 	hideHeader?: boolean
 	flat?: boolean
 	showItemActions?: boolean
+	showVersion?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -40,6 +42,7 @@ const props = withDefaults(defineProps<Props>(), {
 	hideHeader: false,
 	flat: false,
 	showItemActions: false,
+	showVersion: true,
 })
 
 const stickyHeaderRef = ref<HTMLElement | null>(null)
@@ -87,14 +90,22 @@ const hasAnyActions = computed(() => {
 })
 
 // Virtualization
-const { listContainer, totalHeight, visibleRange, visibleTop, visibleItems } = useVirtualScroll(
-	toRef(props, 'items'),
-	{
+const { listContainer, totalHeight, visibleRange, visibleTop, visibleItems, scrollToIndex } =
+	useVirtualScroll(toRef(props, 'items'), {
 		itemHeight: 74,
 		bufferSize: 5,
 		initialItemCount: 20,
 		enabled: toRef(props, 'virtualized'),
+	})
+
+watch(
+	[() => props.items.findIndex((item) => item.id === props.highlightedItemId), listContainer],
+	([index, container], _, onCleanup) => {
+		if (index < 0 || !container) return
+		const frame = requestAnimationFrame(() => scrollToIndex(index))
+		onCleanup(() => cancelAnimationFrame(frame))
 	},
+	{ flush: 'post' },
 )
 
 // Expose for perf monitoring
@@ -104,20 +115,24 @@ defineExpose({
 })
 
 // Selection logic
+const selectableItems = computed(() => props.items.filter((item) => !item.disabled))
+
 const allSelected = computed(() => {
-	if (props.items.length === 0) return false
-	return props.items.every((item) => selectedIds.value.includes(item.id))
+	if (selectableItems.value.length === 0) return false
+	return selectableItems.value.every((item) => selectedIds.value.includes(item.id))
 })
 
 const someSelected = computed(() => {
-	return props.items.some((item) => selectedIds.value.includes(item.id)) && !allSelected.value
+	return (
+		selectableItems.value.some((item) => selectedIds.value.includes(item.id)) && !allSelected.value
+	)
 })
 
 function toggleSelectAll() {
 	if (allSelected.value || someSelected.value) {
 		selectedIds.value = []
 	} else {
-		selectedIds.value = props.items.map((item) => item.id)
+		selectedIds.value = selectableItems.value.map((item) => item.id)
 	}
 }
 
@@ -132,7 +147,10 @@ function toggleItemSelection(
 	if (selected && event?.shiftKey && lastSelectedIndex.value !== null && index !== undefined) {
 		const start = Math.min(lastSelectedIndex.value, index)
 		const end = Math.max(lastSelectedIndex.value, index)
-		const rangeIds = props.items.slice(start, end + 1).map((item) => item.id)
+		const rangeIds = props.items
+			.slice(start, end + 1)
+			.filter((item) => !item.disabled)
+			.map((item) => item.id)
 		const merged = new Set([...selectedIds.value, ...rangeIds])
 		selectedIds.value = [...merged]
 	} else if (selected) {
@@ -184,7 +202,9 @@ function handleSort(column: ContentCardTableSortColumn) {
 				role="row"
 				class="flex min-w-0 items-center gap-4"
 				:class="
-					hasAnyActions ? 'flex-1 @[800px]:w-[45%] @[800px]:shrink-0 @[800px]:flex-none' : 'flex-1'
+					hasAnyActions && showVersion
+						? 'flex-1 @[800px]:w-[45%] @[800px]:shrink-0 @[800px]:flex-none'
+						: 'flex-1'
 				"
 			>
 				<Checkbox
@@ -192,6 +212,7 @@ function handleSort(column: ContentCardTableSortColumn) {
 					:model-value="allSelected"
 					:indeterminate="someSelected"
 					:aria-label="formatMessage(commonMessages.selectAllLabel)"
+					:disabled="selectableItems.length === 0"
 					class="shrink-0"
 					@update:model-value="toggleSelectAll"
 				/>
@@ -217,7 +238,11 @@ function handleSort(column: ContentCardTableSortColumn) {
 				}}</span>
 			</div>
 
-			<div class="hidden @[800px]:flex" :class="hasAnyActions ? 'flex-1 min-w-0' : 'flex-1'">
+			<div
+				v-if="showVersion"
+				class="hidden @[800px]:flex"
+				:class="hasAnyActions ? 'flex-1 min-w-0' : 'flex-1'"
+			>
 				<button
 					v-if="sortable"
 					role="columnheader"
@@ -258,24 +283,31 @@ function handleSort(column: ContentCardTableSortColumn) {
 				<ContentCardItem
 					v-for="(item, idx) in visibleItems"
 					:key="item.id"
-					data-content-card-item
+					:data-content-card-item="item.id"
 					:project="item.project"
 					:project-link="item.projectLink"
 					:version="item.version"
+					:show-version="showVersion"
 					:version-link="item.versionLink"
 					:owner="item.owner"
 					:source="item.source"
+					:external="item.external"
 					:enabled="item.enabled"
+					:locked="item.locked"
 					:installing="item.installing"
+					:install-progress="item.installProgress"
 					:has-update="item.hasUpdate"
 					:is-client-only="item.isClientOnly"
 					:client-warning="item.clientWarning"
+					:synced="item.synced"
+					:sync-update-pending="item.syncUpdatePending"
 					:hide-switch-version="item.hideSwitchVersion"
 					:overflow-options="item.overflowOptions"
 					:disabled="item.disabled"
 					:disabled-tooltip="item.disabledTooltip"
 					:toggle-disabled="item.toggleDisabled"
 					:toggle-disabled-tooltip="item.toggleDisabledTooltip"
+					:hide-toggle="item.hideToggle"
 					:show-checkbox="showSelection"
 					:hide-delete="hideDelete || item.hideDelete"
 					:hide-actions="!hasAnyActions"
@@ -287,6 +319,9 @@ function handleSort(column: ContentCardTableSortColumn) {
 								? 'bg-surface-1.5'
 								: 'bg-surface-2',
 						'border-0 border-t border-solid border-surface-4',
+						item.id === highlightedItemId
+							? 'outline outline-2 -outline-offset-2 outline-brand'
+							: '',
 						visibleRange.start + idx === items.length - 1 && !flat ? 'rounded-b-[20px]' : '',
 					]"
 					@select="
@@ -322,24 +357,31 @@ function handleSort(column: ContentCardTableSortColumn) {
 			<ContentCardItem
 				v-for="(item, index) in items"
 				:key="item.id"
-				data-content-card-item
+				:data-content-card-item="item.id"
 				:project="item.project"
 				:project-link="item.projectLink"
 				:version="item.version"
+				:show-version="showVersion"
 				:version-link="item.versionLink"
 				:owner="item.owner"
 				:source="item.source"
+				:external="item.external"
 				:enabled="item.enabled"
+				:locked="item.locked"
 				:installing="item.installing"
+				:install-progress="item.installProgress"
 				:has-update="item.hasUpdate"
 				:is-client-only="item.isClientOnly"
 				:client-warning="item.clientWarning"
+				:synced="item.synced"
+				:sync-update-pending="item.syncUpdatePending"
 				:hide-switch-version="item.hideSwitchVersion"
 				:overflow-options="item.overflowOptions"
 				:disabled="item.disabled"
 				:disabled-tooltip="item.disabledTooltip"
 				:toggle-disabled="item.toggleDisabled"
 				:toggle-disabled-tooltip="item.toggleDisabledTooltip"
+				:hide-toggle="item.hideToggle"
 				:show-checkbox="showSelection"
 				:hide-delete="hideDelete || item.hideDelete"
 				:hide-actions="!hasAnyActions"
@@ -351,6 +393,7 @@ function handleSort(column: ContentCardTableSortColumn) {
 							? 'bg-surface-1.5'
 							: 'bg-surface-2',
 					'border-0 border-t border-solid border-surface-4',
+					item.id === highlightedItemId ? 'outline outline-2 -outline-offset-2 outline-brand' : '',
 					index === items.length - 1 && !flat ? 'rounded-b-[20px]' : '',
 				]"
 				@select="(val, event) => toggleItemSelection(item.id, val ?? false, index, event)"

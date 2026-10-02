@@ -5,7 +5,11 @@
 			@contextmenu.prevent.stop="(event) => handleRightClick(event)"
 		>
 			<ExportModal v-if="!instance.quarantined" ref="exportModal" :instance="instance" />
-			<ConfirmDeleteInstanceModal ref="deleteConfirmModal" @delete="deleteSelectedInstance" />
+			<ConfirmDeleteInstanceModal
+				ref="deleteConfirmModal"
+				:instances="selectedInstanceToDelete ? [selectedInstanceToDelete] : []"
+				@delete="deleteSelectedInstance"
+			/>
 			<InstanceSettingsModal
 				:key="instance.id"
 				ref="settingsModal"
@@ -37,18 +41,15 @@
 				:loading-server-ping="loadingServerPing"
 				:players-online="playersOnline"
 				:status-online="statusOnline"
-				:recent-plays="recentPlays"
 				:ping="ping"
 				:minecraft-server="minecraftServer"
-				:linked-project-v3="linkedProjectV3"
-				:shared-instance-manager="sharedInstanceManager"
 				@repair="() => repairInstance()"
 				@stop="() => stopInstance('InstancePage')"
 				@play="() => startInstance('InstancePage')"
 				@play-server="() => handlePlayServer()"
 				@settings="() => settingsModal?.show()"
 				@open-folder="() => instance && showInstanceInFolder(instance.id)"
-				@export="() => !instance.quarantined && exportModal?.show()"
+				@export="() => !instance?.quarantined && exportModal?.show()"
 				@create-shortcut="() => createShortcut()"
 				@report="reportSharedInstance"
 			/>
@@ -64,10 +65,8 @@
 				:shared-instance-expected-user-id="sharedInstanceExpectedUserId"
 				:shared-instance-role="instance.shared_instance?.role"
 				:shared-instance-signed-out="sharedInstanceSignedOut"
-				:shared-instance-update-available="showSharedInstanceUpdateAdmonition"
 				@published="refreshInstance"
 				@delete="requestInstanceDeletion"
-				@review-update="reviewSharedInstanceUpdate"
 			/>
 		</div>
 		<div :class="['p-6 pt-4', { 'min-h-0 flex-1 overflow-y-auto': isFixedRender }]">
@@ -83,14 +82,7 @@
 				</template>
 			</RouterView>
 		</div>
-		<ContextMenu ref="options" @option-clicked="handleOptionsClick">
-			<template #play> <PlayIcon /> Play </template>
-			<template #stop> <StopCircleIcon /> Stop </template>
-			<template #add_content> <PlusIcon /> Add content </template>
-			<template #edit> <EditIcon /> Edit </template>
-			<template #copy_path> <ClipboardCopyIcon /> Copy path </template>
-			<template #open_folder> <FolderOpenIcon /> Open folder </template>
-		</ContextMenu>
+		<ContextMenu ref="options" :label="formatMessage(messages.instanceActionsLabel)" />
 	</div>
 </template>
 <script setup lang="ts">
@@ -100,6 +92,7 @@ import {
 	EditIcon,
 	FolderOpenIcon,
 	GlobeIcon,
+	ImageIcon,
 	PlayIcon,
 	PlusIcon,
 	StopCircleIcon,
@@ -108,20 +101,20 @@ import {
 } from '@modrinth/assets'
 import {
 	commonMessages,
+	ContextMenu,
+	defineMessages,
 	injectNotificationManager,
 	NavTabs,
 	useLoadingBarToken,
 	useVIntl,
 } from '@modrinth/ui'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
-import { convertFileSrc } from '@tauri-apps/api/core'
 import { useOnline } from '@vueuse/core'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { computed, type ComputedRef, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, type ComputedRef, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 
-import ContextMenu from '@/components/ui/ContextMenu.vue'
 import ExportModal from '@/components/ui/ExportModal.vue'
 import ConfirmDeleteInstanceModal from '@/components/ui/modal/ConfirmDeleteInstanceModal.vue'
 import UpdateToPlayModal from '@/components/ui/modal/UpdateToPlayModal.vue'
@@ -131,9 +124,12 @@ import {
 	fetchCachedServerStatus,
 	getFreshCachedServerStatus,
 } from '@/composables/instances/use-server-status-query'
+import { useAppEvent } from '@/composables/use-app-event'
+import { useAppSettings } from '@/composables/use-app-settings.ts'
+import { handleSevereError } from '@/composables/use-error.js'
 import { useInstanceConsole } from '@/composables/useInstanceConsole'
 import { trackEvent } from '@/helpers/analytics'
-import { instance_listener, process_listener } from '@/helpers/events'
+import { toError } from '@/helpers/errors'
 import {
 	getSharedInstanceUnavailableReason,
 	install_existing_instance,
@@ -142,7 +138,15 @@ import {
 	isSharedInstanceUnavailableError,
 	type SharedInstanceUnavailableReason,
 } from '@/helpers/install'
-import { get_full_path, kill, remove, run } from '@/helpers/instance'
+import {
+	get_full_path,
+	getInstanceIconUrl,
+	kill,
+	refresh_content_updates,
+	remove,
+	run,
+	sync_content_files,
+} from '@/helpers/instance'
 import { useSharedInstanceErrors } from '@/helpers/shared-instance-errors'
 import type { GameInstance } from '@/helpers/types'
 import { createInstanceShortcut, showInstanceInFolder } from '@/helpers/utils.js'
@@ -150,8 +154,6 @@ import type { ServerStatus } from '@/helpers/worlds'
 import { useRootBreadcrumb } from '@/providers/breadcrumbs'
 import { provideInstanceBackup } from '@/providers/instance-backup'
 import { injectServerInstall } from '@/providers/server-install'
-import { handleSevereError } from '@/store/error.js'
-import { useTheming } from '@/store/state'
 
 import InstanceAdmonitions from './components/admonitions/index.vue'
 import InstancePageHeader from './components/page-header/index.vue'
@@ -174,13 +176,50 @@ const queryClient = useQueryClient()
 const route = useRoute()
 const { formatMessage } = useVIntl()
 
+const messages = defineMessages({
+	play: { id: 'app.instance.action.play', defaultMessage: 'Play' },
+	stop: { id: 'app.instance.action.stop', defaultMessage: 'Stop' },
+	addContent: { id: 'app.instance.action.add-content', defaultMessage: 'Add content' },
+	edit: { id: 'app.instance.action.edit', defaultMessage: 'Edit' },
+	copyPath: { id: 'app.instance.action.copy-path', defaultMessage: 'Copy path' },
+	openFolder: { id: 'app.instance.action.open-folder', defaultMessage: 'Open folder' },
+	instanceActionsLabel: {
+		id: 'app.instance.actions.label',
+		defaultMessage: 'Instance actions',
+	},
+	contentTab: { id: 'app.instance.tab.content', defaultMessage: 'Content' },
+	filesTab: { id: 'app.instance.tab.files', defaultMessage: 'Files' },
+	screenshotsTab: { id: 'app.instance.tab.screenshots', defaultMessage: 'Screenshots' },
+	worldsTab: { id: 'app.instance.tab.worlds', defaultMessage: 'Worlds' },
+	logsTab: { id: 'app.instance.tab.logs', defaultMessage: 'Logs' },
+	shareTab: { id: 'app.instance.tab.share', defaultMessage: 'Share' },
+	shortcutCreated: {
+		id: 'app.instance.shortcut.created',
+		defaultMessage: 'Shortcut created',
+	},
+	shortcutCreationError: {
+		id: 'app.instance.shortcut.creation-error',
+		defaultMessage: 'Error creating shortcut',
+	},
+})
+
 const router = useRouter()
-const themeStore = useTheming()
-const showInstancePlayTime = computed(() => themeStore.getFeatureFlag('show_instance_play_time'))
+const displayedInstanceRoute = shallowRef(router.currentRoute.value)
+watch(
+	() => router.currentRoute.value,
+	(nextRoute) => {
+		if (nextRoute.path.startsWith('/instance/')) {
+			displayedInstanceRoute.value = nextRoute
+		}
+	},
+	{ immediate: true },
+)
+const appSettings = useAppSettings()
+const showInstancePlayTime = computed(() => appSettings.showPlayTime)
 
 const online = useOnline()
 const offline = computed(() => !online.value)
-const instanceId = computed(() => String(route.params.id ?? ''))
+const instanceId = computed(() => String(displayedInstanceRoute.value.params.id ?? ''))
 const instanceQuery = useQuery(
 	computed(() => ({
 		...instanceDetailQueryOptions(instanceId.value),
@@ -189,12 +228,67 @@ const instanceQuery = useQuery(
 )
 useQuery(
 	computed(() => ({
-		...instanceContentQueryOptions(instanceId.value, (error) => handleError(error)),
+		...instanceContentQueryOptions(instanceId.value, (error) => handleError(toError(error))),
 		enabled: !!instanceId.value,
 	})),
 )
 const instance = computed(() => instanceQuery.data.value)
-const linkedProjectId = computed(() => instance.value?.link?.project_id ?? '')
+async function invalidateContent(targetInstanceId: string) {
+	await Promise.all([
+		queryClient.invalidateQueries({ queryKey: instanceKeys.content(targetInstanceId) }),
+		queryClient.invalidateQueries({ queryKey: instanceKeys.linkedContent(targetInstanceId) }),
+	])
+}
+
+const contentSyncQuery = useQuery(
+	computed(() => {
+		const targetInstanceId = instanceId.value
+		return {
+			queryKey: instanceKeys.contentSync(targetInstanceId),
+			queryFn: async () => {
+				try {
+					await sync_content_files(targetInstanceId)
+					await invalidateContent(targetInstanceId)
+					return targetInstanceId
+				} catch (error) {
+					handleError(toError(error))
+					throw error
+				}
+			},
+			enabled: !!targetInstanceId && instance.value?.install_stage === 'installed',
+			networkMode: 'always' as const,
+			staleTime: 0,
+			gcTime: 0,
+			refetchOnWindowFocus: false,
+			refetchOnReconnect: false,
+			retry: false,
+		}
+	}),
+)
+useQuery(
+	computed(() => ({
+		queryKey: instanceKeys.contentUpdateCheck(instanceId.value),
+		queryFn: async () => {
+			const targetInstanceId = instanceId.value
+			await refresh_content_updates(targetInstanceId)
+			await invalidateContent(targetInstanceId)
+			return targetInstanceId
+		},
+		enabled:
+			!!instanceId.value &&
+			!offline.value &&
+			instance.value?.install_stage === 'installed' &&
+			contentSyncQuery.isSuccess.value &&
+			!contentSyncQuery.isFetching.value &&
+			contentSyncQuery.data.value === instanceId.value,
+		staleTime: 10 * 60_000,
+		gcTime: 30 * 60_000,
+		retry: false,
+	})),
+)
+const linkedProjectId = computed(
+	() => instance.value?.link?.server_project_id ?? instance.value?.link?.project_id ?? '',
+)
 const linkedProjectQuery = useQuery(
 	computed(() => ({
 		...instanceLinkedProjectQueryOptions(linkedProjectId.value),
@@ -213,7 +307,7 @@ const playing = computed(() => (processesQuery.data.value?.length ?? 0) > 0)
 
 async function ensureCriticalContent(targetInstanceId: string) {
 	await queryClient.ensureQueryData(
-		instanceContentQueryOptions(targetInstanceId, (error) => handleError(error)),
+		instanceContentQueryOptions(targetInstanceId, (error) => handleError(toError(error))),
 	)
 }
 
@@ -232,7 +326,7 @@ try {
 	await ensureCriticalInstanceData(instanceId.value)
 } catch (error) {
 	if (isUnmanagedInstanceError(error)) await router.replace('/')
-	else handleError(error)
+	else handleError(toError(error))
 }
 
 onBeforeRouteUpdate(async (to, from) => {
@@ -242,9 +336,10 @@ onBeforeRouteUpdate(async (to, from) => {
 
 	try {
 		await ensureCriticalInstanceData(targetInstanceId)
+		instanceId.value = targetInstanceId
 	} catch (error) {
 		if (isUnmanagedInstanceError(error)) return { path: '/' }
-		handleError(error)
+		handleError(toError(error))
 		return false
 	}
 })
@@ -255,7 +350,7 @@ useRootBreadcrumb({
 	label: () => instance.value?.name ?? formatMessage(commonMessages.loadingLabel),
 	visual: () => ({
 		type: 'image',
-		src: instance.value?.icon_path ? convertFileSrc(instance.value.icon_path) : undefined,
+		src: getInstanceIconUrl(instance.value?.icon_path),
 		alt: instance.value?.name,
 		tintBy: instance.value?.id ?? instanceId.value,
 	}),
@@ -284,9 +379,6 @@ const minecraftServer = computed(() => linkedProjectV3.value?.minecraft_server)
 const javaServerPingData = computed(() => linkedProjectV3.value?.minecraft_java_server?.ping?.data)
 const liveServerStatusOnline = ref(false)
 const statusOnline = computed(() => liveServerStatusOnline.value || !!javaServerPingData.value)
-const recentPlays = computed(
-	() => linkedProjectV3.value?.minecraft_java_server?.verified_plays_2w ?? undefined,
-)
 const playersOnline = ref<number | undefined>(undefined)
 const ping = ref<number | undefined>(undefined)
 const loadingServerPing = ref(false)
@@ -299,7 +391,6 @@ provideSharedInstance(sharedInstanceState)
 const {
 	actionsLocked: sharedInstanceActionsLocked,
 	expectedUserId: sharedInstanceExpectedUserId,
-	manager: sharedInstanceManager,
 	refreshUpdatePreview: refreshSharedInstanceUpdatePreview,
 	setUnavailable: setSharedInstanceUnavailable,
 	signedOut: sharedInstanceSignedOut,
@@ -313,7 +404,7 @@ const sharedInstanceUpdateKey = computed(() => {
 	const latestVersion = sharedInstanceUpdatePreview.value?.latestVersion
 	return instanceId && latestVersion !== undefined ? `${instanceId}:${latestVersion}` : null
 })
-const showSharedInstanceUpdateAdmonition = computed(
+const sharedInstanceUpdateAvailable = computed(
 	() =>
 		sharedInstanceUpdatePreview.value?.updateAvailable === true &&
 		sharedInstanceUpdateKey.value !== hiddenSharedInstanceUpdateKey.value,
@@ -380,14 +471,14 @@ watch(
 	(error) => {
 		if (!error) return
 		if (error.message.includes('is not managed')) void router.replace('/')
-		else handleError(error)
+		else handleError(toError(error))
 	},
 	{ immediate: true },
 )
 watch(
 	linkedProjectQuery.error,
 	(error) => {
-		if (error) handleError(error)
+		if (error) handleError(toError(error))
 	},
 	{ immediate: true },
 )
@@ -422,30 +513,45 @@ const showShareTab = computed(() => {
 const tabs = computed(() => {
 	const instanceTabs = [
 		{
-			label: 'Content',
+			label: formatMessage(messages.contentTab),
 			href: `${basePath.value}`,
 			icon: BoxesIcon,
 		},
-		{
-			label: 'Files',
+	]
+
+	if (appSettings.showFilesTabInInstances) {
+		instanceTabs.push({
+			label: formatMessage(messages.filesTab),
 			href: `${basePath.value}/files`,
 			icon: FolderOpenIcon,
-		},
-		{
-			label: 'Worlds',
+		})
+	}
+
+	if (appSettings.showScreenshotsTabInInstances) {
+		instanceTabs.push({
+			label: formatMessage(messages.screenshotsTab),
+			href: `${basePath.value}/screenshots`,
+			icon: ImageIcon,
+		})
+	}
+
+	if (appSettings.showWorldsTabInInstances) {
+		instanceTabs.push({
+			label: formatMessage(messages.worldsTab),
 			href: `${basePath.value}/worlds`,
 			icon: GlobeIcon,
-		},
-		{
-			label: 'Logs',
-			href: `${basePath.value}/logs`,
-			icon: TerminalSquareIcon,
-		},
-	]
+		})
+	}
+
+	instanceTabs.push({
+		label: formatMessage(messages.logsTab),
+		href: `${basePath.value}/logs`,
+		icon: TerminalSquareIcon,
+	})
 
 	if (showShareTab.value) {
 		instanceTabs.push({
-			label: 'Share',
+			label: formatMessage(messages.shareTab),
 			href: `${basePath.value}/share`,
 			icon: UserPlusIcon,
 		})
@@ -497,7 +603,7 @@ async function handleSharedInstanceUnavailable(
 	setSharedInstanceUnavailable(reason)
 }
 
-function reviewSharedInstanceUpdate(event: MouseEvent) {
+function reviewSharedInstanceUpdate(event?: MouseEvent) {
 	const currentInstance = instance.value
 	const preview = sharedInstanceUpdatePreview.value
 	if (
@@ -582,7 +688,7 @@ const stopInstance = async (context: string) => {
 	const currentInstance = instance.value
 	if (!currentInstance) return
 	stopping.value = true
-	await kill(currentInstance.id).catch(handleError)
+	await kill(currentInstance.id).catch((error) => handleError(toError(error)))
 	stopping.value = false
 	queryClient.setQueryData(instanceKeys.processes(currentInstance.id), [])
 
@@ -638,9 +744,11 @@ const repairInstance = async () => {
 			project_id: currentInstance.link.project_id ?? currentInstance.link.server_project_id ?? '',
 			version_id: currentInstance.link.version_id ?? currentInstance.link.content_version_id ?? '',
 			title: currentInstance.name,
-		}).catch(handleError)
+		}).catch((error) => handleError(toError(error)))
 	} else {
-		await install_existing_instance(currentInstance.id, false).catch(handleError)
+		await install_existing_instance(currentInstance.id, false).catch((error) =>
+			handleError(toError(error)),
+		)
 	}
 }
 
@@ -652,12 +760,12 @@ const createShortcut = async () => {
 
 		addNotification({
 			type: 'success',
-			title: 'Shortcut created',
+			title: formatMessage(messages.shortcutCreated),
 		})
 	} catch (error: unknown) {
 		addNotification({
 			type: 'error',
-			title: `Error creating shortcut`,
+			title: formatMessage(messages.shortcutCreationError),
 			text: `${error}`,
 		})
 	}
@@ -702,78 +810,72 @@ async function deleteSelectedInstance() {
 		game_version: selectedInstance.game_version,
 	})
 	await router.push({ path: '/' })
-	await remove(selectedInstance.id).catch(handleError)
+	await remove(selectedInstance.id).catch((error) => handleError(toError(error)))
 }
 
 const handleRightClick = (event: MouseEvent) => {
-	const baseOptions = [
-		...(instance.value?.quarantined ? [] : [{ name: 'add_content' }, { type: 'divider' }]),
-		{ name: 'edit' },
-		{ name: 'open_folder' },
-		{ name: 'copy_path' },
-	]
+	const canAddContent = !instance.value?.quarantined
 
-	options.value?.showMenu(
-		event,
-		instance.value,
-		playing.value
-			? [
-					{
-						name: 'stop',
-						color: 'danger',
-					},
-					...baseOptions,
-				]
-			: [
-					...(instance.value?.quarantined
-						? []
-						: [
-								{
-									name: 'play',
-									color: 'primary',
-								},
-							]),
-					...baseOptions,
-				],
-	)
+	options.value?.open(event, [
+		{
+			id: 'stop',
+			label: formatMessage(messages.stop),
+			icon: StopCircleIcon,
+			shown: playing.value,
+			tone: 'red',
+			action: () => void stopInstance('InstancePageContextMenu'),
+		},
+		{
+			id: 'play',
+			label: formatMessage(messages.play),
+			icon: PlayIcon,
+			shown: !playing.value && canAddContent,
+			tone: 'brand',
+			action: () => void startInstance('InstancePageContextMenu'),
+		},
+		{
+			id: 'add_content',
+			label: formatMessage(messages.addContent),
+			icon: PlusIcon,
+			shown: canAddContent,
+			action: () => void browseContent(instance.value?.loader === 'vanilla' ? 'datapack' : 'mod'),
+		},
+		{ type: 'divider', shown: canAddContent },
+		{
+			id: 'edit',
+			label: formatMessage(messages.edit),
+			icon: EditIcon,
+			action: openSettings,
+		},
+		{
+			id: 'open_folder',
+			label: formatMessage(messages.openFolder),
+			icon: FolderOpenIcon,
+			action: () => {
+				if (instance.value) void showInstanceInFolder(instance.value.id)
+			},
+		},
+		{
+			id: 'copy_path',
+			label: formatMessage(messages.copyPath),
+			icon: ClipboardCopyIcon,
+			action: () => void copyInstancePath(),
+		},
+	])
 }
 
-const handleOptionsClick = async (args: { option: string; item: unknown }) => {
-	switch (args.option) {
-		case 'play':
-			await startInstance('InstancePageContextMenu')
-			break
-		case 'stop':
-			await stopInstance('InstancePageContextMenu')
-			break
-		case 'add_content':
-			await browseContent(instance.value?.loader === 'vanilla' ? 'datapack' : 'mod')
-			break
-		case 'edit':
-			openSettings()
-			break
-		case 'open_folder':
-			if (instance.value) await showInstanceInFolder(instance.value.id)
-			break
-		case 'copy_path': {
-			if (instance.value) {
-				const fullPath = await get_full_path(instance.value.id)
-				await navigator.clipboard.writeText(fullPath)
-			}
-			break
-		}
-	}
+const copyInstancePath = async () => {
+	if (!instance.value) return
+	const fullPath = await get_full_path(instance.value.id)
+	await navigator.clipboard.writeText(fullPath)
 }
-
-let unlistenInstances: (() => void) | null = null
-let unlistenProcesses: (() => void) | null = null
-let instancePageAlive = true
 
 provideInstancePage({
 	instanceId,
 	instance: instance as ComputedRef<GameInstance>,
 	linkedProject: linkedProjectV3,
 	isServerInstance,
+	sharedInstanceUpdateAvailable,
 	offline,
 	playing,
 	loading,
@@ -786,6 +888,7 @@ provideInstancePage({
 	openSettings,
 	browseContent,
 	browseServers,
+	reviewSharedInstanceUpdate,
 })
 provideInstanceBackup(() => instance.value!)
 
@@ -799,44 +902,23 @@ watch(instanceId, (currentInstanceId, previousInstanceId) => {
 	destroyInstanceConsole(previousInstanceId)
 })
 
-onMounted(() => {
-	void instance_listener(async (event: { instance_id: string; event: string }) => {
-		if (event.instance_id !== instanceId.value) return
-		if (event.event === 'removed' || route.path === '/') {
-			if (route.path !== '/') await router.push({ path: '/' })
-			return
-		}
-		await queryClient.invalidateQueries({
-			queryKey: instanceKeys.detail(event.instance_id),
-			exact: true,
-		})
-	})
-		.then((unlisten) => {
-			if (instancePageAlive) unlistenInstances = unlisten
-			else unlisten()
-		})
-		.catch(handleError)
-
-	void process_listener((event: { event: string; instance_id: string }) => {
-		if (event.instance_id !== instanceId.value) return
-		if (event.event === 'finished') {
-			queryClient.setQueryData(instanceKeys.processes(event.instance_id), [])
-			useInstanceConsole(event.instance_id).invalidate()
-			void queryClient.invalidateQueries({ queryKey: instanceKeys.logs(event.instance_id) })
-		} else if (event.event === 'launched') {
-			queryClient.setQueryData(instanceKeys.processes(event.instance_id), [true])
-		}
-	})
-		.then((unlisten) => {
-			if (instancePageAlive) unlistenProcesses = unlisten
-			else unlisten()
-		})
-		.catch(handleError)
+useAppEvent('instance', async (event) => {
+	if (event.instance_id !== instanceId.value || event.event !== 'removed') return
+	if (route.path !== '/') await router.push({ path: '/' })
 })
 
-const icon = computed(() =>
-	instance.value?.icon_path ? convertFileSrc(instance.value.icon_path) : null,
-)
+useAppEvent('process', (event) => {
+	if (event.instance_id !== instanceId.value) return
+	if (event.event === 'finished') {
+		queryClient.setQueryData(instanceKeys.processes(event.instance_id), [])
+		useInstanceConsole(event.instance_id).invalidate()
+		void queryClient.invalidateQueries({ queryKey: instanceKeys.logs(event.instance_id) })
+	} else if (event.event === 'launched') {
+		queryClient.setQueryData(instanceKeys.processes(event.instance_id), [true])
+	}
+})
+
+const icon = computed(() => getInstanceIconUrl(instance.value?.icon_path))
 
 const timePlayed = computed(() => {
 	return instance.value
@@ -845,9 +927,6 @@ const timePlayed = computed(() => {
 })
 
 onUnmounted(() => {
-	instancePageAlive = false
-	unlistenProcesses?.()
-	unlistenInstances?.()
 	if (instanceId.value) {
 		destroyInstanceConsole(instanceId.value)
 	}

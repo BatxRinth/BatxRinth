@@ -1,8 +1,8 @@
 <template>
 	<div class="flex flex-col gap-4">
-		<div class="flex flex-col gap-4">
+		<div class="flex flex-col gap-2">
 			<div class="flex items-center gap-2">
-				<StyledInput
+				<Input
 					v-model="search"
 					:icon="SearchIcon"
 					:placeholder="`Search ${rows.length} users...`"
@@ -151,8 +151,8 @@ import {
 	AutoLink,
 	Avatar,
 	defineMessages,
+	Input,
 	type SortDirection,
-	StyledInput,
 	Table,
 	type TableColumn,
 	truncatedTooltip,
@@ -283,7 +283,7 @@ function filterClass(active: boolean) {
 	return [
 		'cursor-pointer rounded-full border border-solid px-3 py-1.5 text-base font-semibold leading-5 transition-all duration-100 active:scale-[0.97]',
 		active
-			? 'border-green bg-brand-highlight text-brand'
+			? 'border-brand bg-brand-highlight text-brand'
 			: 'border-surface-5 bg-surface-4 text-primary hover:bg-surface-5',
 	]
 }

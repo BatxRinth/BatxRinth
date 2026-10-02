@@ -2,12 +2,12 @@
 import {
 	CheckIcon,
 	EditIcon,
-	ExcitedRinthbot,
 	EyeIcon,
-	LogInIcon,
+	InfoIcon,
 	RotateCounterClockwiseIcon,
 	ShirtIcon,
 	SpinnerIcon,
+	WindowsIcon,
 } from '@modrinth/assets'
 import {
 	Button,
@@ -32,14 +32,11 @@ import EarsModIcon from '@/assets/skins/ears-mod.png'
 import type AccountsCard from '@/components/ui/AccountsCard.vue'
 import EditSkinModal from '@/components/ui/skin/EditSkinModal.vue'
 import VirtualSkinSectionList from '@/components/ui/skin/VirtualSkinSectionList.vue'
+import { useAppSettings } from '@/composables/use-app-settings.ts'
+import { handleSevereError } from '@/composables/use-error.js'
 import { trackEvent } from '@/helpers/analytics'
 import { check_reachable, get_default_user, login as login_flow, users } from '@/helpers/auth'
-import type { RenderResult } from '@/helpers/rendering/batch-skin-renderer.ts'
-import {
-	generateSkinPreviews,
-	getSkinPreviewKey,
-	skinBlobUrlMap,
-} from '@/helpers/rendering/batch-skin-renderer.ts'
+import { cleanupUnusedPreviews } from '@/helpers/rendering/skin-previews'
 import type { Cape, Skin, SkinTextureUrl } from '@/helpers/skins.ts'
 import {
 	equip_skin,
@@ -58,8 +55,6 @@ import {
 } from '@/helpers/skins.ts'
 import { hasPride26Badge } from '@/helpers/user-campaigns.ts'
 import { useRootBreadcrumb } from '@/providers/breadcrumbs'
-import { handleSevereError } from '@/store/error'
-import { useTheming } from '@/store/state'
 import { appMessages } from '@/utils/app-messages'
 
 useRootBreadcrumb({
@@ -132,6 +127,18 @@ const messages = defineMessages({
 		id: 'app.skins.section.chaos-cubed',
 		defaultMessage: 'Chaos Cubed',
 	},
+	dungeonsHeroSection: {
+		id: 'app.skins.section.dungeons-hero',
+		defaultMessage: 'Dungeons Hero',
+	},
+	dungeonsIIHeroSection: {
+		id: 'app.skins.section.dungeons-ii-hero',
+		defaultMessage: 'Dungeons II Hero',
+	},
+	wildernessBoundSection: {
+		id: 'app.skins.section.wilderness-bound',
+		defaultMessage: 'Wilderness Bound',
+	},
 	rateLimitTitle: {
 		id: 'app.skins.rate-limit.title',
 		defaultMessage: 'Slow down!',
@@ -173,6 +180,10 @@ const messages = defineMessages({
 		id: 'app.skins.apply-button',
 		defaultMessage: 'Apply',
 	},
+	demoApplyTooltip: {
+		id: 'app.skins.demo.apply-tooltip',
+		defaultMessage: 'Sign in to apply skins.',
+	},
 	editSkinButton: {
 		id: 'app.skins.preview.edit-button',
 		defaultMessage: 'Edit skin',
@@ -189,22 +200,17 @@ const messages = defineMessages({
 		id: 'app.skins.toggle-ears-features-on',
 		defaultMessage: 'Toggle on',
 	},
-	excitedRinthbotAlt: {
-		id: 'app.skins.sign-in.rinthbot-alt',
-		defaultMessage: 'Excited Modrinth Bot',
+	demoTitle: {
+		id: 'app.skins.demo.title',
+		defaultMessage: 'Editing with a demo account',
 	},
-	signInTitle: {
-		id: 'app.skins.sign-in.title',
-		defaultMessage: 'Please sign in',
-	},
-	signInDescription: {
-		id: 'app.skins.sign-in.description',
-		defaultMessage:
-			'Please sign into your Minecraft account to use the skin management features of BatxRinth.',
+	demoDescription: {
+		id: 'app.skins.demo.description',
+		defaultMessage: 'Sign in to your Minecraft account to save and apply skins!',
 	},
 	signInButton: {
 		id: 'app.skins.sign-in.button',
-		defaultMessage: 'Sign In',
+		defaultMessage: 'Sign in to Microsoft',
 	},
 })
 
@@ -218,7 +224,7 @@ const { addNotification, handleError } = notifications
 const auth = injectAuth()
 const client = injectModrinthClient()
 
-const themeStore = useTheming()
+const appSettings = useAppSettings()
 const skins = ref<Skin[]>([])
 const capes = ref<Cape[]>([])
 const offline = ref(!navigator.onLine)
@@ -340,9 +346,11 @@ const skinTexture = computedAsync(async () => {
 })
 const capeTexture = computed(() => currentCape.value?.texture)
 const skinVariant = computed(() => selectedSkin.value?.variant)
-const skinNametag = computed(() => (themeStore.hideNametagSkinsPage ? undefined : username.value))
+const skinNametag = computed(() => (appSettings.hideNametagSkinsPage ? undefined : username.value))
 const isSkinManagementReadOnly = computed(
-	() => offline.value || (authServerQuery.isError.value && !authServerQuery.isLoading.value),
+	() =>
+		!!currentUser.value &&
+		(offline.value || (authServerQuery.isError.value && !authServerQuery.isLoading.value)),
 )
 const hasPendingSkinChange = computed(
 	() => !skinsMatch(selectedSkin.value, originalSelectedSkin.value),
@@ -411,7 +419,9 @@ async function loadSkins() {
 			shouldPreserveKnownEquippedSkin && locallyKnownEquippedSkin
 				? mergeEquippedSkin(loadedSkins, locallyKnownEquippedSkin)
 				: loadedSkins
-		generateSkinPreviews(skins.value, capes.value)
+		void cleanupUnusedPreviews(skins.value).catch((error) =>
+			console.warn('Could not clean skin previews', error),
+		)
 		selectedSkin.value = skins.value.find((s) => s.is_equipped) ?? null
 		originalSelectedSkin.value = selectedSkin.value
 	} catch (error) {
@@ -501,6 +511,12 @@ function getDefaultSkinSectionTitle(section?: string) {
 			return formatMessage(messages.tinyTakeoverSection)
 		case 'Chaos Cubed':
 			return formatMessage(messages.chaosCubedSection)
+		case 'Dungeons Hero':
+			return formatMessage(messages.dungeonsHeroSection)
+		case 'Dungeons II Hero':
+			return formatMessage(messages.dungeonsIIHeroSection)
+		case 'Wilderness Bound':
+			return formatMessage(messages.wildernessBoundSection)
 		case 'Default skins':
 			return formatMessage(messages.defaultSkinsSection)
 		default:
@@ -549,7 +565,9 @@ function removeLocalSkin(deletedSkin: Skin) {
 		originalSelectedSkin.value = nextSkins.find((skin) => skin.is_equipped) ?? null
 	}
 
-	generateSkinPreviews(skins.value, capes.value)
+	void cleanupUnusedPreviews(skins.value).catch((error) =>
+		console.warn('Could not clean skin previews', error),
+	)
 }
 
 function setLocallyEquippedSkin(skinToApply: Skin) {
@@ -630,7 +648,9 @@ function updateLocalSkin(savedSkin: Skin, applied: boolean, previousSkin?: Skin)
 		}
 	}
 
-	generateSkinPreviews(skins.value, capes.value)
+	void cleanupUnusedPreviews(skins.value).catch((error) =>
+		console.warn('Could not clean skin previews', error),
+	)
 }
 
 async function reorderSavedSkins(orderedSkins: Skin[]) {
@@ -646,14 +666,18 @@ async function reorderSavedSkins(orderedSkins: Skin[]) {
 	const nextSavedSkins = [...orderedSkins, ...remainingSavedSkins]
 
 	skins.value = [...nextSavedSkins, ...defaultSkins]
-	generateSkinPreviews(skins.value, capes.value)
+	void cleanupUnusedPreviews(skins.value).catch((error) =>
+		console.warn('Could not clean skin previews', error),
+	)
 
 	try {
 		const persistedSavedSkins = await preserveExternalSkins(nextSavedSkins)
 
 		if (persistedSavedSkins.some((skin, index) => skin !== nextSavedSkins[index])) {
 			skins.value = [...persistedSavedSkins, ...defaultSkins]
-			generateSkinPreviews(skins.value, capes.value)
+			void cleanupUnusedPreviews(skins.value).catch((error) =>
+				console.warn('Could not clean skin previews', error),
+			)
 		}
 
 		await set_custom_skin_order(
@@ -665,7 +689,9 @@ async function reorderSavedSkins(orderedSkins: Skin[]) {
 		skins.value = previousSkins
 		selectedSkin.value = previousSelectedSkin
 		originalSelectedSkin.value = previousOriginalSelectedSkin
-		generateSkinPreviews(skins.value, capes.value)
+		void cleanupUnusedPreviews(skins.value).catch((error) =>
+			console.warn('Could not clean skin previews', error),
+		)
 		addNotification({
 			type: 'error',
 			title: formatMessage(messages.reorderSkinErrorTitle),
@@ -746,6 +772,7 @@ function schedulePendingSkinRefresh() {
 async function applySelectedSkin() {
 	const skinToApply = selectedSkin.value
 	if (
+		!currentUser.value ||
 		!skinToApply ||
 		!hasPendingSkinChange.value ||
 		isApplyingSkin.value ||
@@ -800,10 +827,6 @@ async function loadCurrentUser() {
 		currentUser.value = undefined
 		currentUserId.value = undefined
 	}
-}
-
-function getBakedSkinTextures(skin: Skin): RenderResult | undefined {
-	return skinBlobUrlMap.get(getSkinPreviewKey(skin))
 }
 
 async function login() {
@@ -1058,6 +1081,7 @@ await loadSkins()
 	<EditSkinModal
 		ref="editSkinModal"
 		:capes="capes"
+		:demo="!currentUser"
 		@saved="onSkinSaved"
 		@deleted="() => loadSkins()"
 	/>
@@ -1076,7 +1100,7 @@ await loadSkins()
 		@proceed="deleteSkin"
 	/>
 
-	<div v-if="currentUser" class="skin-layout box-border min-h-full p-4">
+	<div class="skin-layout box-border grow p-4" :class="{ 'pb-40': !currentUser }">
 		<div class="sticky top-6 self-start p-2 pt-0">
 			<h1 class="m-0 text-2xl font-bold flex items-center gap-2">
 				{{ formatMessage(appMessages.skinSelectorLabel) }}
@@ -1132,13 +1156,17 @@ await loadSkins()
 								</Button>
 								<Button
 									v-tooltip="
-										selectedSkinHasEarsFeatures ? formatMessage(messages.applyButton) : undefined
+										!currentUser
+											? formatMessage(messages.demoApplyTooltip)
+											: selectedSkinHasEarsFeatures
+												? formatMessage(messages.applyButton)
+												: undefined
 									"
 									type="colored"
 									color="brand"
 									size="lg"
 									class="skin-preview-action-button"
-									:disabled="isApplyingSkin || isSkinManagementReadOnly"
+									:disabled="!currentUser || isApplyingSkin || isSkinManagementReadOnly"
 									:aria-label="formatMessage(messages.applyButton)"
 									@click="applySelectedSkin"
 								>
@@ -1220,13 +1248,6 @@ await loadSkins()
 									"
 									small
 									class="ears-feature-toggle-switch"
-									:aria-label="
-										formatMessage(
-											earsFeaturesEnabled
-												? messages.toggleEarsFeaturesOff
-												: messages.toggleEarsFeaturesOn,
-										)
-									"
 								/>
 							</div>
 						</div>
@@ -1240,7 +1261,7 @@ await loadSkins()
 				ref="skinSectionList"
 				:saved-skins="savedSkins"
 				:default-skin-sections="defaultSkinSections"
-				:get-baked-skin-textures="getBakedSkinTextures"
+				:capes="capes"
 				:is-skin-selected="isSkinSelected"
 				:is-skin-active="isSkinActive"
 				:is-add-skin-button-drag-active="isAddSkinButtonDragActive"
@@ -1258,45 +1279,32 @@ await loadSkins()
 		</div>
 	</div>
 
-	<div v-else class="box-border flex min-h-full items-center justify-center pt-[25%]">
+	<div v-if="!currentUser" class="sticky w-full bottom-0 z-20 p-4 pt-0">
 		<div
-			class="relative mx-auto flex w-full max-w-xl flex-col gap-5 rounded-lg bg-bg-raised p-7 shadow-lg"
+			class="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 rounded-[20px] border border-solid border-surface-5 bg-surface-3 p-4"
 		>
-			<img
-				:src="ExcitedRinthbot"
-				:alt="formatMessage(messages.excitedRinthbotAlt)"
-				class="absolute -top-28 right-8 md:right-20 h-28 w-auto"
-			/>
-			<div
-				class="absolute top-0 left-0 w-full h-[1px] opacity-40 bg-gradient-to-r from-transparent via-green-500 to-transparent"
-				style="
-					background: linear-gradient(
-						to right,
-						transparent 2rem,
-						var(--color-green) calc(100% - 13rem),
-						var(--color-green) calc(100% - 5rem),
-						transparent calc(100% - 2rem)
-					);
-				"
-			></div>
-
-			<div class="flex flex-col gap-5">
-				<h1 class="text-3xl font-extrabold m-0">{{ formatMessage(messages.signInTitle) }}</h1>
-				<p class="text-lg m-0">
-					{{ formatMessage(messages.signInDescription) }}
-				</p>
-				<Button
-					v-show="accountsCard"
-					type="colored"
-					color="brand"
-					:disabled="accountsCard.loginDisabled"
-					@click="login"
-				>
-					<LogInIcon v-if="!accountsCard.loginDisabled" />
-					<SpinnerIcon v-else class="animate-spin" />
-					{{ formatMessage(messages.signInButton) }}
-				</Button>
+			<div class="flex min-w-0 grow items-start gap-3">
+				<InfoIcon class="size-6 shrink-0 text-blue" />
+				<div class="flex min-w-0 flex-col gap-1">
+					<p class="m-0 text-lg font-semibold leading-6 text-contrast">
+						{{ formatMessage(messages.demoTitle) }}
+					</p>
+					<p class="m-0 text-base leading-6 text-primary">
+						{{ formatMessage(messages.demoDescription) }}
+					</p>
+				</div>
 			</div>
+			<Button
+				v-show="accountsCard"
+				type="colored"
+				color="brand"
+				:disabled="accountsCard.loginDisabled"
+				@click="login"
+			>
+				<SpinnerIcon v-if="accountsCard.loginDisabled" class="animate-spin" />
+				<WindowsIcon v-else />
+				{{ formatMessage(messages.signInButton) }}
+			</Button>
 		</div>
 	</div>
 </template>

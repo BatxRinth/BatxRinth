@@ -23,6 +23,10 @@ pub struct LabrinthError {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[cfg_attr(
+    feature = "export-ts",
+    derive(ts_rs::TS, postcard_bindgen::PostcardBindings)
+)]
 #[serde(rename_all = "snake_case")]
 pub enum SharedInstanceUnavailableReason {
     Deleted,
@@ -46,6 +50,9 @@ use crate::state::offline_auth::OfflineProfileError;
 pub enum ErrorKind {
     #[error("Offline profile error: {0}")]
     OfflineProfileError(#[from] OfflineProfileError),
+
+    #[error("Pack sync inputs changed during preparation")]
+    PackSyncChanged,
 
     #[error("{0:?}")]
     Any(eyre::Report),

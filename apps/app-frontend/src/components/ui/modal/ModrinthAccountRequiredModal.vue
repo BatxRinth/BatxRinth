@@ -73,7 +73,7 @@
 				<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 					<Button type="outlined" class="w-full" native-type="button" @click="modal?.hide()">
 						<XIcon aria-hidden="true" />
-						{{ formatMessage(messages.cancelButton) }}
+						{{ formatMessage(commonMessages.cancelButton) }}
 					</Button>
 					<Button
 						class="w-full"
@@ -106,14 +106,21 @@
 
 <script setup lang="ts">
 import { LogInIcon, RefreshCwIcon, SpinnerIcon, UserPlusIcon, XIcon } from '@modrinth/assets'
-import { Button, defineMessages, IntlFormatted, NewModal, useVIntl } from '@modrinth/ui'
+import {
+	Button,
+	commonMessages,
+	defineMessages,
+	IntlFormatted,
+	NewModal,
+	useVIntl,
+} from '@modrinth/ui'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { ref } from 'vue'
 
 import { cancelLogin, type ModrinthAuthFlow } from '@/helpers/mr_auth'
 
 const props = defineProps<{
-	requestAuth: (flow: ModrinthAuthFlow) => Promise<boolean>
+	requestAuth: (flow: ModrinthAuthFlow, addAccount?: boolean) => Promise<boolean>
 }>()
 
 const { formatMessage } = useVIntl()
@@ -123,6 +130,7 @@ const reopeningBrowser = ref(false)
 let resolveShow: ((signedIn: boolean) => void) | undefined
 let authenticationId = 0
 let activeAuthentication: Promise<void> | undefined
+let addingAccount = false
 
 function show(event?: MouseEvent) {
 	resetAuthentication(true)
@@ -136,9 +144,9 @@ function show(event?: MouseEvent) {
 	})
 }
 
-function showSigningIn(flow: ModrinthAuthFlow = 'sign-in', event?: MouseEvent) {
+function showSigningIn(flow: ModrinthAuthFlow = 'sign-in', addAccount = false, event?: MouseEvent) {
 	const result = show(event)
-	authenticate(flow)
+	authenticate(flow, addAccount)
 	return result
 }
 
@@ -147,13 +155,14 @@ function finish(signedIn: boolean) {
 	resolveShow = undefined
 }
 
-function authenticate(flow: ModrinthAuthFlow) {
+function authenticate(flow: ModrinthAuthFlow, addAccount = false) {
 	const id = ++authenticationId
 	authenticating.value = flow
+	addingAccount = addAccount
 
 	const authentication = (async () => {
 		try {
-			if ((await props.requestAuth(flow)) && authenticationId === id) {
+			if ((await props.requestAuth(flow, addAccount)) && authenticationId === id) {
 				authenticating.value = null
 				activeAuthentication = undefined
 				finish(true)
@@ -181,7 +190,7 @@ async function reopenBrowser() {
 	try {
 		await cancelLogin()
 		await previousAuthentication?.catch(() => undefined)
-		if (authenticating.value === flow) authenticate(flow)
+		if (authenticating.value === flow) authenticate(flow, addingAccount)
 	} finally {
 		reopeningBrowser.value = false
 	}
@@ -244,10 +253,6 @@ const messages = defineMessages({
 	waitingForBrowser: {
 		id: 'modal.modrinth-account-required.waiting-for-browser',
 		defaultMessage: 'Waiting for browser confirmation...',
-	},
-	cancelButton: {
-		id: 'modal.modrinth-account-required.cancel-button',
-		defaultMessage: 'Cancel',
 	},
 	openBrowserAgainButton: {
 		id: 'modal.modrinth-account-required.open-browser-again-button',

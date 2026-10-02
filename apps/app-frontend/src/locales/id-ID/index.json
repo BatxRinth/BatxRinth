@@ -44,26 +44,14 @@
   "app.action-bar.view-logs": {
     "message": "Lihat catatan"
   },
-  "app.appearance-settings.advanced-rendering.title": {
-    "message": "Renderasi tingkat lanjut"
-  },
-  "app.appearance-settings.color-theme.title": {
-    "message": "Tema warna"
-  },
   "app.appearance-settings.default-landing-page.home": {
     "message": "Beranda"
   },
   "app.appearance-settings.default-landing-page.library": {
     "message": "Pustaka"
   },
-  "app.appearance-settings.default-landing-page.title": {
-    "message": "Halaman arahan bawaan"
-  },
   "app.appearance-settings.hide-nametag.title": {
     "message": "Sembunyikan label nama"
-  },
-  "app.appearance-settings.jump-back-into-worlds.title": {
-    "message": "Masuk kembali ke dunia"
   },
   "app.appearance-settings.show-play-time.title": {
     "message": "Tampilkan waktu bermain"
@@ -103,9 +91,6 @@
   },
   "app.browse.project-type.modpacks": {
     "message": "Paket Mod"
-  },
-  "app.browse.server-instance-content-warning": {
-    "message": "Menambah konten dapat merusak kompatibilitas saat bergabung ke server. Konten tambahan apa pun akan hilang ketika Anda memperbarui konten instans server."
   },
   "app.browse.server.installing": {
     "message": "Memasang"
@@ -377,18 +362,6 @@
   "app.skins.section.tiny-takeover": {
     "message": "Tiny Takeover"
   },
-  "app.skins.sign-in.button": {
-    "message": "Masuk"
-  },
-  "app.skins.sign-in.description": {
-    "message": "Mohon masuk ke akun Minecraft Anda untuk menggunakan fitur pengelolaan rupa dari BatxRinth."
-  },
-  "app.skins.sign-in.rinthbot-alt": {
-    "message": "Bot Modrinth penuh antusias"
-  },
-  "app.skins.sign-in.title": {
-    "message": "Silakan masuk"
-  },
   "app.skins.title": {
     "message": "Pemilih rupa"
   },
@@ -436,9 +409,6 @@
   },
   "app.world.world-item.offline": {
     "message": "Luring"
-  },
-  "app.world.world-item.players-online": {
-    "message": "{count} orang daring"
   },
   "friends.action.add-friend": {
     "message": "Tambah teman"
@@ -596,18 +566,6 @@
   "instance.settings.tabs.general.edit-icon.select": {
     "message": "Pilih ikon"
   },
-  "instance.settings.tabs.general.library-groups": {
-    "message": "Pengelompokan koleksi"
-  },
-  "instance.settings.tabs.general.library-groups.create": {
-    "message": "Buat kelompok baru"
-  },
-  "instance.settings.tabs.general.library-groups.description": {
-    "message": "Pengelompokan koleksi membolehkan Anda mengorganisasi instans ke dalam bagian-bagian berbeda dalam koleksi Anda."
-  },
-  "instance.settings.tabs.general.library-groups.enter-name": {
-    "message": "Masukkan nama kelompok"
-  },
   "instance.settings.tabs.general.name": {
     "message": "Nama"
   },
@@ -635,15 +593,6 @@
   "instance.settings.tabs.general.update-channel.select": {
     "message": "Pilih kanal pembaruan"
   },
-  "instance.settings.tabs.hooks": {
-    "message": "Luncurkan kait"
-  },
-  "instance.settings.tabs.hooks.custom-hooks": {
-    "message": "Luncurkan kait tersuai"
-  },
-  "instance.settings.tabs.hooks.description": {
-    "message": "Kait membolehkan pengguna ahli untuk menjalankan beberapa perintah sistem sebelum dan setelah meluncurkan permainan."
-  },
   "instance.settings.tabs.hooks.post-exit": {
     "message": "Pascakeluar"
   },
@@ -662,9 +611,6 @@
   "instance.settings.tabs.hooks.pre-launch.enter": {
     "message": "Masukkan perintah praluncur..."
   },
-  "instance.settings.tabs.hooks.title": {
-    "message": "Kait peluncuran permainan"
-  },
   "instance.settings.tabs.hooks.wrapper": {
     "message": "Pembungkus"
   },
@@ -680,50 +626,17 @@
   "instance.settings.tabs.installation.loader-version": {
     "message": "Versi {loader}"
   },
-  "instance.settings.tabs.java": {
-    "message": "Java dan memori"
-  },
-  "instance.settings.tabs.java.custom-environment-variables": {
-    "message": "Variabel lingkungan tersuai"
-  },
-  "instance.settings.tabs.java.custom-java-arguments": {
-    "message": "Argumen Java tersuai"
-  },
-  "instance.settings.tabs.java.custom-java-installation": {
-    "message": "Pemasangan Java tersuai"
-  },
-  "instance.settings.tabs.java.custom-memory-allocation": {
-    "message": "Alokasi memori tersuai"
-  },
   "instance.settings.tabs.java.enter-environment-variables": {
     "message": "Masukkan variabel lingkungan..."
   },
   "instance.settings.tabs.java.enter-java-arguments": {
     "message": "Masukkan argumen Java..."
   },
-  "instance.settings.tabs.java.environment-variables": {
-    "message": "Variabel lingkungan"
-  },
   "instance.settings.tabs.java.hooks": {
     "message": "Kait"
   },
-  "instance.settings.tabs.java.java-arguments": {
-    "message": "Argumen Java"
-  },
-  "instance.settings.tabs.java.java-installation": {
-    "message": "Pemasangan Java"
-  },
-  "instance.settings.tabs.java.java-memory": {
-    "message": "Memori yang teralokasikan"
-  },
   "instance.settings.tabs.java.java-path-placeholder": {
     "message": "/jalur/ke/java"
-  },
-  "instance.settings.tabs.window": {
-    "message": "Jendela"
-  },
-  "instance.settings.tabs.window.custom-window-settings": {
-    "message": "Pengaturan jendela tersuai"
   },
   "instance.settings.tabs.window.fullscreen": {
     "message": "Layar penuh"
@@ -821,16 +734,7 @@
   "search.filter.locked.instance.sync": {
     "message": "Sinkronkan dengan instans"
   },
-  "search.filter.locked.server": {
-    "message": "Disediakan oleh server"
-  },
   "search.filter.locked.server-environment.title": {
     "message": "Anda hanya dapat menambahkan mod sisi klien pada instans server"
-  },
-  "search.filter.locked.server-game-version.title": {
-    "message": "Versi permainan disediakan oleh server"
-  },
-  "search.filter.locked.server-loader.title": {
-    "message": "Pemuat disediakan oleh server"
   }
 }

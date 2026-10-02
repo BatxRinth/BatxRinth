@@ -1,5 +1,8 @@
 use crate::server_address::ServerAddress;
-use crate::state::{Credentials, ProcessMetadata, Settings, State};
+use crate::state::{
+    Credentials, ProcessMetadata, Settings, State,
+    game_options_sync_is_enabled, load_game_option_preferences,
+};
 use crate::util::io::IOError;
 use tokio::process::Command;
 
@@ -26,6 +29,16 @@ pub async fn run(
             "This instance has been quarantined".to_string(),
         )
         .into());
+    }
+    {
+        let _priority =
+            state.content_store.legacy_migration_priority.write().await;
+        crate::state::instances::commands::migrate_legacy_content(
+            instance_id,
+            &state,
+            false,
+        )
+        .await?;
     }
     super::shared::check_shared_instance_availability_before_launch(
         instance_id,
@@ -59,6 +72,19 @@ async fn run_credentials(
                 "Tried to run a nonexistent instance {instance_id}!"
             ))
         })?;
+    let instance_sync_preferences =
+        crate::state::instances::adapters::sqlite::instance_rows::get_instance_sync_preferences(
+            instance_id,
+            &state.pool,
+        )
+        .await?;
+    let fullscreen_is_shared = game_options_sync_is_enabled(&state.pool)
+        .await?
+        && instance_sync_preferences.game_options
+        && load_game_option_preferences(&state.pool)
+            .await?
+            .get("fullscreen")
+            .is_some_and(|preference| preference.enabled);
     if crate::state::instances::adapters::sqlite::instance_rows::is_instance_quarantined(
         instance_id,
         &state.pool,
@@ -206,7 +232,7 @@ async fn run_credentials(
     let mut mc_set_options: Vec<(String, String)> = vec![];
     if let Some(fullscreen) = context.launch_overrides.force_fullscreen {
         mc_set_options.push(("fullscreen".to_string(), fullscreen.to_string()));
-    } else if settings.force_fullscreen {
+    } else if settings.force_fullscreen && !fullscreen_is_shared {
         mc_set_options.push(("fullscreen".to_string(), "true".to_string()));
     }
 

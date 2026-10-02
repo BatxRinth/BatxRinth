@@ -1,13 +1,15 @@
 <script setup>
-import { XIcon } from '@modrinth/assets'
+import { FolderOpenIcon, XIcon } from '@modrinth/assets'
 import {
 	Button,
 	commonMessages,
 	defineMessages,
 	FileTreeSelect,
 	injectNotificationManager,
+	injectPopupNotificationManager,
+	Input,
 	NewModal,
-	StyledInput,
+	Textarea,
 	useVIntl,
 } from '@modrinth/ui'
 import { save } from '@tauri-apps/plugin-dialog'
@@ -15,8 +17,10 @@ import { ref, shallowRef } from 'vue'
 
 import { PackageIcon } from '@/assets/icons'
 import { export_instance_mrpack, get_pack_export_candidates } from '@/helpers/instance'
+import { highlightInFolder } from '@/helpers/utils'
 
 const { handleError } = injectNotificationManager()
+const popupNotificationManager = injectPopupNotificationManager()
 const { formatMessage } = useVIntl()
 
 const messages = defineMessages({
@@ -39,6 +43,14 @@ const messages = defineMessages({
 		defaultMessage: 'Enter modpack description...',
 	},
 	exportButton: { id: 'app.export-modal.export-button', defaultMessage: 'Export' },
+	exportComplete: {
+		id: 'app.export-modal.export-complete',
+		defaultMessage: 'Export complete',
+	},
+	exportCompleteDescription: {
+		id: 'app.export-modal.export-complete-description',
+		defaultMessage: '{name} was exported successfully.',
+	},
 })
 
 const props = defineProps({
@@ -93,16 +105,35 @@ const exportPack = async () => {
 	})
 
 	if (outputPath) {
-		export_instance_mrpack(
-			props.instance.id,
-			outputPath,
-			includedFilePaths.value,
-			excludedFilePaths.value,
-			versionInput.value,
-			exportDescription.value,
-			nameInput.value,
-		).catch((err) => handleError(err))
 		exportModal.value.hide()
+
+		try {
+			await export_instance_mrpack(
+				props.instance.id,
+				outputPath,
+				includedFilePaths.value,
+				excludedFilePaths.value,
+				versionInput.value,
+				exportDescription.value,
+				nameInput.value,
+			)
+
+			const fileName = outputPath.split(/[\\/]/).pop() ?? outputPath
+			popupNotificationManager.addPopupNotification({
+				title: formatMessage(messages.exportComplete),
+				text: formatMessage(messages.exportCompleteDescription, { name: fileName }),
+				type: 'success',
+				buttons: [
+					{
+						label: formatMessage(commonMessages.openInFolderButton),
+						icon: FolderOpenIcon,
+						action: () => highlightInFolder(outputPath).catch(handleError),
+					},
+				],
+			})
+		} catch (error) {
+			handleError(error)
+		}
 	}
 }
 
@@ -164,7 +195,7 @@ function normalizeExportPath(path) {
 			<div class="grid grid-cols-2 gap-4">
 				<div class="labeled_input w-full">
 					<p class="text-contrast font-semibold">{{ formatMessage(messages.modpackNameLabel) }}</p>
-					<StyledInput
+					<Input
 						v-model="nameInput"
 						type="text"
 						:placeholder="formatMessage(messages.modpackNamePlaceholder)"
@@ -176,7 +207,7 @@ function normalizeExportPath(path) {
 					<p class="text-contrast font-semibold">
 						{{ formatMessage(messages.versionNumberLabel) }}
 					</p>
-					<StyledInput
+					<Input
 						v-model="versionInput"
 						type="text"
 						:placeholder="formatMessage(messages.versionNumberPlaceholder)"
@@ -189,9 +220,8 @@ function normalizeExportPath(path) {
 				<p class="m-0 text-contrast font-semibold">
 					{{ formatMessage(commonMessages.descriptionLabel) }}
 				</p>
-				<StyledInput
+				<Textarea
 					v-model="exportDescription"
-					multiline
 					:placeholder="formatMessage(messages.descriptionPlaceholder)"
 					wrapper-class="w-full"
 				/>

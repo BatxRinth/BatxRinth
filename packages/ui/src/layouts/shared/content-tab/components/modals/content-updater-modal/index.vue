@@ -15,7 +15,7 @@
 		>
 			<div class="w-[300px] flex flex-col relative bg-surface-3">
 				<div class="p-4 pb-2">
-					<StyledInput
+					<Input
 						v-model="searchQuery"
 						:icon="SearchIcon"
 						type="text"
@@ -292,7 +292,7 @@ import { computed, ref, toRef } from 'vue'
 
 import Avatar from '#ui/components/base/Avatar.vue'
 import { Button } from '#ui/components/base/buttons'
-import StyledInput from '#ui/components/base/StyledInput.vue'
+import Input from '#ui/components/base/inputs/Input.vue'
 import ConfirmModal from '#ui/components/modal/ConfirmModal.vue'
 import NewModal from '#ui/components/modal/NewModal.vue'
 import VersionChannelIndicator from '#ui/components/version/VersionChannelIndicator.vue'
@@ -566,7 +566,7 @@ function getBadgeClasses(version: Labrinth.Versions.v2.Version): string {
 	// Version type badges
 	switch (version.version_type) {
 		case 'release':
-			return 'bg-highlight-green border-brand text-brand'
+			return 'bg-highlight-green border-green text-green'
 		case 'beta':
 			return 'bg-highlight-blue border-brand-blue text-brand-blue'
 		case 'alpha':
@@ -579,7 +579,7 @@ function getBadgeClasses(version: Labrinth.Versions.v2.Version): string {
 function getVersionTypeBadgeClasses(version: Labrinth.Versions.v2.Version): string {
 	switch (version.version_type) {
 		case 'release':
-			return 'bg-highlight-green border-brand text-brand'
+			return 'bg-highlight-green border-green text-green'
 		case 'beta':
 			return 'bg-highlight-blue border-brand-blue text-brand-blue'
 		case 'alpha':

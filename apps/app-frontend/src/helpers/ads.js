@@ -6,6 +6,14 @@ export async function show_ads_window() {
 	return null
 }
 
+export async function take_ads_window_hold() {
+	return null
+}
+
+export async function release_ads_window_hold() {
+	return null
+}
+
 export async function hide_ads_window() {
 	return null
 }

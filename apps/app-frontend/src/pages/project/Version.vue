@@ -1,11 +1,8 @@
 <template>
 	<div class="flex flex-col">
-		<router-link
-			class="mb-4 flex w-fit items-center gap-2 rounded-lg px-2 py-0.5 pl-0 text-link"
-			:to="buildProjectHref(`/project/${route.params.id}/versions`)"
-		>
-			<ChevronLeftIcon class="shrink-0" /> {{ formatMessage(messages.allVersions) }}
-		</router-link>
+		<BackToParentLink :to="buildProjectHref(`/project/${route.params.id}/versions`)">
+			{{ formatMessage(messages.allVersions) }}
+		</BackToParentLink>
 		<VersionPage
 			v-if="version"
 			:version="version"
@@ -14,8 +11,13 @@
 			:members="members"
 			:dependency-link-creator="createDependencyLink"
 		>
-			<template #headerActions>
+			<template #headerActions="{ primaryFile }">
 				<Button
+					v-tooltip="
+						primaryFile?.url
+							? primaryFile.filename + ' (' + formatBytes(primaryFile.size) + ')'
+							: undefined
+					"
 					type="colored"
 					color="brand"
 					:disabled="installing || (installed && installedVersion === version.id)"
@@ -80,18 +82,18 @@
 import type { Labrinth } from '@modrinth/api-client'
 import {
 	CheckIcon,
-	ChevronLeftIcon,
 	DownloadIcon,
 	ExternalIcon,
 	MoreVerticalIcon,
 	ReportIcon,
 	VersionIcon,
 } from '@modrinth/assets'
-import { Button, ButtonLink, TeleportOverflowMenu } from '@modrinth/ui'
+import { BackToParentLink, Button, ButtonLink, TeleportOverflowMenu } from '@modrinth/ui'
 import {
 	commonMessages,
 	defineMessages,
 	type DependencyContext,
+	useFormatBytes,
 	useVIntl,
 	VersionPage,
 } from '@modrinth/ui'
@@ -103,6 +105,7 @@ import { get_project_many, get_version_many } from '@/helpers/cache.js'
 import { useBreadcrumb } from '@/providers/breadcrumbs'
 
 const { formatMessage } = useVIntl()
+const formatBytes = useFormatBytes()
 
 const messages = defineMessages({
 	allVersions: {

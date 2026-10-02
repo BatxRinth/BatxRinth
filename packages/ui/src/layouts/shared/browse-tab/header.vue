@@ -10,7 +10,7 @@ import { IconButton } from '#ui/components/base/buttons'
 import PageHeader from '#ui/components/base/page-header/index.vue'
 import PageHeaderMetadata from '#ui/components/base/page-header/metadata/index.vue'
 import PageHeaderMetadataItem from '#ui/components/base/page-header/metadata/page-header-metadata-item.vue'
-import LoaderIcon from '#ui/components/servers/icons/LoaderIcon.vue'
+import TagIcon from '#ui/components/base/TagIcon.vue'
 import { useServerImage } from '#ui/composables/use-server-image'
 import { formatLoaderLabel } from '#ui/utils/loaders'
 
@@ -18,7 +18,7 @@ import SelectedProjectsLeaveModal from './components/SelectedProjectsLeaveModal.
 import { injectBrowseManager } from './providers/browse-manager'
 import type { BrowseInstallContext } from './types'
 
-const MEDAL_ICON_URL = 'https://cdn-raw.modrinth.com/medal_icon.webp'
+const MEDAL_ICON_URL = 'https://cdn.modrinth.com/medal_icon.webp'
 
 const router = useRouter()
 const props = defineProps<{
@@ -51,6 +51,8 @@ const iconSrc = computed(() => {
 	return fetchedIcon.value ?? installContext.value?.iconSrc ?? null
 })
 
+const isInstanceIcon = computed(() => !installContext.value?.serverId)
+
 const metadataItems = computed(() => {
 	const context = installContext.value
 	if (!context) return []
@@ -77,8 +79,8 @@ const metadataItems = computed(() => {
 		items.push({
 			id: 'loader',
 			label: loaderLabel,
-			icon: LoaderIcon,
-			iconProps: { loader: loaderName },
+			icon: TagIcon,
+			iconProps: { tag: loaderName, enforceType: 'loader' },
 			class: '!text-primary',
 		})
 	}
@@ -161,6 +163,7 @@ async function handleSelectedProjectsLeaveResult(
 					:alt="installContext.name"
 					size="48px"
 					class="shrink-0"
+					:pad-transparent-corners="isInstanceIcon"
 				/>
 			</template>
 
@@ -178,7 +181,7 @@ async function handleSelectedProjectsLeaveResult(
 				</PageHeaderMetadata>
 			</template>
 		</PageHeader>
-		<Admonition v-if="installContext.warning" type="warning" class="mb-1">
+		<Admonition v-if="installContext.warning" type="warning" class="mt-4 mb-1">
 			{{ installContext.warning }}
 		</Admonition>
 	</template>

@@ -70,9 +70,9 @@ const messages = defineMessages({
 		id: 'servers.purchase.step.plan.most-popular',
 		defaultMessage: 'Most Popular',
 	},
-	billingSubtitle: {
-		id: 'servers.purchase.step.plan.billing-subtitle',
-		defaultMessage: 'Available in North America, Europe, and Southeast Asia.',
+	hardwareSubtitle: {
+		id: 'servers.purchase.step.plan.hardware-subtitle',
+		defaultMessage: 'Powered by AMD Ryzen 7950X, 9950X, or equivalent, with DDR5 memory.',
 	},
 	customHeading: {
 		id: 'servers.purchase.step.plan.custom.heading',
@@ -165,7 +165,7 @@ function selectCustom() {
 </script>
 
 <template>
-	<div class="flex flex-col items-center gap-2 mb-5 !mt-0">
+	<div class="flex flex-col items-center gap-2 mb-5 pb-1.5 !mt-0">
 		<OptionGroup
 			v-slot="{ option }"
 			v-model="selectedInterval"
@@ -178,7 +178,7 @@ function selectCustom() {
 			</span>
 		</OptionGroup>
 		<div class="text-sm text-secondary text-center">
-			{{ formatMessage(messages.billingSubtitle) }}
+			{{ formatMessage(messages.hardwareSubtitle) }}
 		</div>
 	</div>
 	<Transition
@@ -246,9 +246,7 @@ function selectCustom() {
 			<div
 				class="z-10 -mb-3.5 rounded-full text-sm font-medium text-brand whitespace-nowrap absolute -top-3 right-4 bg-surface-3"
 			>
-				<div
-					class="bg-brand-highlight border border-solid border-highlight-green px-2.5 py-0.5 rounded-full"
-				>
+				<div class="bg-brand-highlight border border-solid border-brand px-2.5 py-0.5 rounded-full">
 					{{ formatMessage(messages.mostPopular) }}
 				</div>
 			</div>
