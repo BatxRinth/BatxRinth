@@ -2742,10 +2742,28 @@
     "message": "Check for updates"
   },
   "app.settings.privacy.discord-rich-presence.description": {
-    "message": "Show BatxRinth as your current activity on Discord. Requires explicit opt-in and an app restart."
+    "message": "Show BatxRinth as your current activity on Discord. Off unless you turn it on."
   },
   "app.settings.privacy.discord-rich-presence.title": {
     "message": "Discord Rich Presence"
+  },
+  "app.settings.privacy.discord.show-instance-name.description": {
+    "message": "Show which instance you are playing. When off, Discord just says Minecraft."
+  },
+  "app.settings.privacy.discord.show-instance-name.title": {
+    "message": "Show instance name"
+  },
+  "app.settings.privacy.discord.show-launcher-activity.description": {
+    "message": "Show BatxRinth on Discord while no game is running."
+  },
+  "app.settings.privacy.discord.show-launcher-activity.title": {
+    "message": "Show when idle"
+  },
+  "app.settings.privacy.discord.show-play-time.description": {
+    "message": "Show how long you have been playing."
+  },
+  "app.settings.privacy.discord.show-play-time.title": {
+    "message": "Show play time"
   },
   "app.settings.privacy.guarantee": {
     "message": "BatxRinth is private by default and entirely free of analytics, telemetry, and advertisements. No behavioral tracking data or device identifiers are collected or uploaded."

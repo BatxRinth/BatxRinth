@@ -43,9 +43,51 @@ const messages = defineMessages({
 	discordRichPresenceDescription: {
 		id: 'app.settings.privacy.discord-rich-presence.description',
 		defaultMessage:
-			'Show BatxRinth as your current activity on Discord. Requires explicit opt-in and an app restart.',
+			'Show BatxRinth as your current activity on Discord. Off unless you turn it on.',
+	},
+	discordShowInstanceNameTitle: {
+		id: 'app.settings.privacy.discord.show-instance-name.title',
+		defaultMessage: 'Show instance name',
+	},
+	discordShowInstanceNameDescription: {
+		id: 'app.settings.privacy.discord.show-instance-name.description',
+		defaultMessage: 'Show which instance you are playing. When off, Discord just says Minecraft.',
+	},
+	discordShowPlayTimeTitle: {
+		id: 'app.settings.privacy.discord.show-play-time.title',
+		defaultMessage: 'Show play time',
+	},
+	discordShowPlayTimeDescription: {
+		id: 'app.settings.privacy.discord.show-play-time.description',
+		defaultMessage: 'Show how long you have been playing.',
+	},
+	discordShowLauncherActivityTitle: {
+		id: 'app.settings.privacy.discord.show-launcher-activity.title',
+		defaultMessage: 'Show when idle',
+	},
+	discordShowLauncherActivityDescription: {
+		id: 'app.settings.privacy.discord.show-launcher-activity.description',
+		defaultMessage: 'Show BatxRinth on Discord while no game is running.',
 	},
 })
+
+const discordOptions = [
+	{
+		key: 'discord_rpc_show_instance_name',
+		title: messages.discordShowInstanceNameTitle,
+		description: messages.discordShowInstanceNameDescription,
+	},
+	{
+		key: 'discord_rpc_show_play_time',
+		title: messages.discordShowPlayTimeTitle,
+		description: messages.discordShowPlayTimeDescription,
+	},
+	{
+		key: 'discord_rpc_show_launcher_activity',
+		title: messages.discordShowLauncherActivityTitle,
+		description: messages.discordShowLauncherActivityDescription,
+	},
+] as const
 
 watch(
 	settings,
@@ -128,6 +170,20 @@ watch(
 			</p>
 		</div>
 		<Toggle id="disable-discord-rpc" v-model="settings.discord_rpc" />
+	</div>
+
+	<div v-if="settings.discord_rpc" class="mt-3 ml-4 flex flex-col gap-3">
+		<div
+			v-for="option in discordOptions"
+			:key="option.key"
+			class="flex items-center justify-between gap-4"
+		>
+			<div>
+				<h3 class="m-0 text-base font-medium text-contrast">{{ formatMessage(option.title) }}</h3>
+				<p class="m-0 mt-1 text-sm">{{ formatMessage(option.description) }}</p>
+			</div>
+			<Toggle :id="option.key" v-model="settings[option.key]" />
+		</div>
 	</div>
 
 	<div class="mt-8 rounded-lg bg-surface-elevated p-4 text-xs text-secondary border border-border">

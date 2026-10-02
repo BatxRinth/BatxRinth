@@ -55,6 +55,9 @@ export type AppSettings = {
 
 	telemetry: boolean
 	discord_rpc: boolean
+	discord_rpc_show_instance_name: boolean
+	discord_rpc_show_play_time: boolean
+	discord_rpc_show_launcher_activity: boolean
 	personalized_ads: boolean
 
 	extra_launch_args: string[]

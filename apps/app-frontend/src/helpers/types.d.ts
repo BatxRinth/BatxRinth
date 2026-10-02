@@ -234,6 +234,9 @@ type AppSettings = {
 
 	telemetry: boolean
 	discord_rpc: boolean
+	discord_rpc_show_instance_name: boolean
+	discord_rpc_show_play_time: boolean
+	discord_rpc_show_launcher_activity: boolean
 	developer_mode: boolean
 	personalized_ads: boolean
 

@@ -102,7 +102,22 @@ pub async fn set(settings: Settings) -> crate::Result<()> {
         } else {
             false
         };
+    let discord_changed = (
+        current_settings.discord_rpc,
+        current_settings.discord_rpc_show_instance_name,
+        current_settings.discord_rpc_show_play_time,
+        current_settings.discord_rpc_show_launcher_activity,
+    ) != (
+        settings.discord_rpc,
+        settings.discord_rpc_show_instance_name,
+        settings.discord_rpc_show_play_time,
+        settings.discord_rpc_show_launcher_activity,
+    );
     settings.update(&state.pool).await?;
+
+    if discord_changed {
+        let _ = state.discord_rpc.update_presence(None).await;
+    }
 
     if shared_fullscreen_changed {
         let result =

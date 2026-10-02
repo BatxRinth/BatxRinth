@@ -53,6 +53,12 @@ pub struct Settings {
 
     pub telemetry: bool,
     pub discord_rpc: bool,
+    #[serde(default = "default_true")]
+    pub discord_rpc_show_instance_name: bool,
+    #[serde(default = "default_true")]
+    pub discord_rpc_show_play_time: bool,
+    #[serde(default = "default_true")]
+    pub discord_rpc_show_launcher_activity: bool,
     pub personalized_ads: bool,
 
     pub extra_launch_args: Vec<String>,
@@ -119,6 +125,7 @@ impl Settings {
                 max_concurrent_writes, max_concurrent_downloads,
                 theme, locale, default_page, collapsed_navigation, hide_nametag_skins_page, advanced_rendering, native_decorations,
                 discord_rpc, developer_mode, telemetry, personalized_ads,
+                discord_rpc_show_instance_name, discord_rpc_show_play_time, discord_rpc_show_launcher_activity,
                 json(extra_launch_args) extra_launch_args, json(custom_env_vars) custom_env_vars,
                 mc_memory_max, mc_force_fullscreen, mc_game_resolution_x, mc_game_resolution_y, hide_on_process_start,
                 hook_pre_launch, hook_wrapper, hook_post_exit,
@@ -168,6 +175,12 @@ impl Settings {
             friends_pending_collapsed: res.friends_pending_collapsed == 1,
             telemetry: false,
             discord_rpc: res.discord_rpc == 1,
+            discord_rpc_show_instance_name: res.discord_rpc_show_instance_name
+                == 1,
+            discord_rpc_show_play_time: res.discord_rpc_show_play_time == 1,
+            discord_rpc_show_launcher_activity: res
+                .discord_rpc_show_launcher_activity
+                == 1,
             developer_mode: res.developer_mode == 1,
             personalized_ads: false,
             extra_launch_args: res
@@ -303,7 +316,10 @@ impl Settings {
 				friends_active_collapsed = $50,
 				friends_online_collapsed = $51,
 				friends_offline_collapsed = $52,
-				friends_pending_collapsed = $53
+				friends_pending_collapsed = $53,
+				discord_rpc_show_instance_name = $54,
+				discord_rpc_show_play_time = $55,
+				discord_rpc_show_launcher_activity = $56
             ",
             max_concurrent_writes,
             max_concurrent_downloads,
@@ -358,6 +374,9 @@ impl Settings {
             self.friends_online_collapsed,
             self.friends_offline_collapsed,
             self.friends_pending_collapsed,
+            self.discord_rpc_show_instance_name,
+            self.discord_rpc_show_play_time,
+            self.discord_rpc_show_launcher_activity,
         )
         .execute(exec)
         .await?;
