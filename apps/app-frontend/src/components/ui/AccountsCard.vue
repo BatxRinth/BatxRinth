@@ -17,10 +17,7 @@
 			<SpinnerIcon v-else class="animate-spin" />
 			{{ formatMessage(messages.signInToMinecraft) }}
 		</Button>
-		<AlternativeAccountForms
-			offline-button-label="Use Offline Local Profile"
-			@signed-in="setAccount"
-		/>
+		<AlternativeAccountForms @signed-in="setAccount" />
 	</div>
 	<Accordion
 		v-else
@@ -92,10 +89,7 @@
 					<PlusIcon />
 					{{ formatMessage(messages.addAccount) }}
 				</Button>
-				<AlternativeAccountForms
-					offline-button-label="Add Offline Local Profile"
-					@signed-in="setAccount"
-				/>
+				<AlternativeAccountForms @signed-in="setAccount" />
 			</div>
 		</div>
 	</Accordion>
@@ -154,8 +148,8 @@ type MinecraftCredential = {
 }
 
 function accountKind(account: MinecraftCredential | undefined) {
-	if (account?.refresh_token?.startsWith('elyby:')) return 'Ely.by account'
-	if (account?.access_token === 'OFFLINE_LOCAL_TOKEN') return 'Offline profile'
+	if (account?.refresh_token?.startsWith('elyby:')) return formatMessage(messages.elybyAccount)
+	if (account?.access_token === 'OFFLINE_LOCAL_TOKEN') return formatMessage(messages.offlineProfile)
 	return formatMessage(messages.minecraftAccount)
 }
 
@@ -311,6 +305,14 @@ const messages = defineMessages({
 	minecraftAccount: {
 		id: 'minecraft-account.label',
 		defaultMessage: 'Minecraft account',
+	},
+	elybyAccount: {
+		id: 'minecraft-account.kind.elyby',
+		defaultMessage: 'Ely.by account',
+	},
+	offlineProfile: {
+		id: 'minecraft-account.kind.offline',
+		defaultMessage: 'Offline profile',
 	},
 	signInToMinecraft: {
 		id: 'minecraft-account.sign-in',

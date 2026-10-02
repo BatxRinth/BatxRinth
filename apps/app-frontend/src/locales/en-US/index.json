@@ -146,6 +146,45 @@
   "app.ads-consent.title": {
     "message": "Your privacy and how ads support Modrinth"
   },
+  "app.alternative-accounts.cancel": {
+    "message": "Cancel"
+  },
+  "app.alternative-accounts.elyby.heading": {
+    "message": "Ely.by account"
+  },
+  "app.alternative-accounts.elyby.note": {
+    "message": "Signs in through authserver.ely.by. Your password is sent only to Ely.by and is not stored. Ely.by skins and Ely.by-enabled servers work in game."
+  },
+  "app.alternative-accounts.elyby.password": {
+    "message": "Password"
+  },
+  "app.alternative-accounts.elyby.submit": {
+    "message": "Sign in with Ely.by"
+  },
+  "app.alternative-accounts.elyby.totp": {
+    "message": "2FA code (only if enabled)"
+  },
+  "app.alternative-accounts.elyby.username": {
+    "message": "Username or email"
+  },
+  "app.alternative-accounts.offline.heading": {
+    "message": "Offline username"
+  },
+  "app.alternative-accounts.offline.note": {
+    "message": "Local testing profile only. It does not prove game ownership, and cannot join online-mode servers or use Mojang skins and capes."
+  },
+  "app.alternative-accounts.offline.placeholder": {
+    "message": "e.g. Steve"
+  },
+  "app.alternative-accounts.offline.submit": {
+    "message": "Sign in offline"
+  },
+  "app.alternative-accounts.use-elyby": {
+    "message": "Sign in with Ely.by"
+  },
+  "app.alternative-accounts.use-offline": {
+    "message": "Use an offline profile"
+  },
   "app.appearance-settings.compact-mode.description": {
     "message": "Display library instances in a compact row layout."
   },
@@ -4474,6 +4513,12 @@
   },
   "minecraft-account.add-account": {
     "message": "Add account"
+  },
+  "minecraft-account.kind.elyby": {
+    "message": "Ely.by account"
+  },
+  "minecraft-account.kind.offline": {
+    "message": "Offline profile"
   },
   "minecraft-account.label": {
     "message": "Minecraft account"

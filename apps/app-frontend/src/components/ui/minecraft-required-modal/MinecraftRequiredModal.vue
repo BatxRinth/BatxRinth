@@ -57,11 +57,7 @@
 						{{ formatMessage(messages.signIn) }}
 					</Button>
 				</div>
-				<AlternativeAccountForms
-					class="mt-1"
-					offline-button-label="Use Offline Local Profile (No Microsoft Account)"
-					@signed-in="onAlternativeSignIn"
-				/>
+				<AlternativeAccountForms class="mt-1" @signed-in="onAlternativeSignIn" />
 			</div>
 			<p class="m-0 text-center text-sm text-secondary">
 				{{ formatMessage(messages.dontHaveAccount) }}

@@ -146,6 +146,45 @@
   "app.ads-consent.title": {
     "message": "Ваша приватність і як реклама підтримує Modrinth"
   },
+  "app.alternative-accounts.cancel": {
+    "message": "Скасувати"
+  },
+  "app.alternative-accounts.elyby.heading": {
+    "message": "Обліковий запис Ely.by"
+  },
+  "app.alternative-accounts.elyby.note": {
+    "message": "Вхід через authserver.ely.by. Пароль надсилається лише Ely.by і не зберігається. Скіни Ely.by і сервери з підтримкою Ely.by працюють у грі."
+  },
+  "app.alternative-accounts.elyby.password": {
+    "message": "Пароль"
+  },
+  "app.alternative-accounts.elyby.submit": {
+    "message": "Увійти через Ely.by"
+  },
+  "app.alternative-accounts.elyby.totp": {
+    "message": "Код 2FA (якщо увімкнено)"
+  },
+  "app.alternative-accounts.elyby.username": {
+    "message": "Ім'я користувача або e-mail"
+  },
+  "app.alternative-accounts.offline.heading": {
+    "message": "Ім'я офлайн-профілю"
+  },
+  "app.alternative-accounts.offline.note": {
+    "message": "Лише локальний тестовий профіль. Він не підтверджує володіння грою, не може заходити на сервери в онлайн-режимі та використовувати скіни й плащі Mojang."
+  },
+  "app.alternative-accounts.offline.placeholder": {
+    "message": "наприклад, Steve"
+  },
+  "app.alternative-accounts.offline.submit": {
+    "message": "Увійти офлайн"
+  },
+  "app.alternative-accounts.use-elyby": {
+    "message": "Увійти через Ely.by"
+  },
+  "app.alternative-accounts.use-offline": {
+    "message": "Використати офлайн-профіль"
+  },
   "app.appearance-settings.compact-mode.description": {
     "message": "Показувати примірники у вигляді компактних рядків."
   },
@@ -2717,11 +2756,35 @@
   "app.settings.operating-system.macos": {
     "message": "macOS"
   },
+  "app.settings.privacy.check-for-updates.description": {
+    "message": "Раз на годину запитувати GitHub, чи вийшла нова версія BatxRinth. Надсилається лише запит про реліз."
+  },
+  "app.settings.privacy.check-for-updates.title": {
+    "message": "Перевіряти оновлення"
+  },
   "app.settings.privacy.discord-rich-presence.description": {
-    "message": "Показувати застосунок Modrinth як вашу поточну активність у Discord. Це не впливає на активність, додану модами. Потребує перезапуску застосунку."
+    "message": "Показувати BatxRinth як вашу поточну активність у Discord. Вимкнено, доки ви не ввімкнете."
   },
   "app.settings.privacy.discord-rich-presence.title": {
     "message": "Discord Rich Presence"
+  },
+  "app.settings.privacy.discord.show-instance-name.description": {
+    "message": "Показувати, у який примірник ви граєте. Якщо вимкнено, Discord пише просто Minecraft."
+  },
+  "app.settings.privacy.discord.show-instance-name.title": {
+    "message": "Показувати назву примірника"
+  },
+  "app.settings.privacy.discord.show-launcher-activity.description": {
+    "message": "Показувати BatxRinth у Discord, коли гра не запущена."
+  },
+  "app.settings.privacy.discord.show-launcher-activity.title": {
+    "message": "Показувати в режимі очікування"
+  },
+  "app.settings.privacy.discord.show-play-time.description": {
+    "message": "Показувати, скільки ви вже граєте."
+  },
+  "app.settings.privacy.discord.show-play-time.title": {
+    "message": "Показувати час гри"
   },
   "app.settings.resource-management.always-show-copy-details.description": {
     "message": "Показувати кнопку «Копіювати деталі», коли встановлення перебуває в черзі або виконується. Вона завжди доступна для невдалих або перерваних встановлень."
@@ -3413,11 +3476,14 @@
   "app.update-popup.body.metered": {
     "message": "BatxRinth v{version} вже доступно! Оскільки ви використовуєте лімітне підключення, ми не завантажили його автоматично."
   },
+  "app.update-popup.body.release": {
+    "message": "Доступна версія BatxRinth v{version}. Завантажте її, щоб отримати нові функції та виправлення!"
+  },
   "app.update-popup.changelog": {
     "message": "Список змін"
   },
   "app.update-popup.download": {
-    "message": "Завантажити ({size})"
+    "message": "Завантажити"
   },
   "app.update-popup.download-complete": {
     "message": "Завантаження завершено"
@@ -3456,7 +3522,7 @@
     "message": "Натисніть <shortcut>N</shortcut> для створення примірника"
   },
   "app.welcome-screen.title": {
-    "message": "Вітаємо в Modrinth"
+    "message": "Вітаємо в BatxRinth"
   },
   "app.world.server-modal.placeholder-address": {
     "message": "example.modrinth.gg"
@@ -4414,6 +4480,12 @@
   },
   "minecraft-account.add-account": {
     "message": "Додати обліковий запис"
+  },
+  "minecraft-account.kind.elyby": {
+    "message": "Обліковий запис Ely.by"
+  },
+  "minecraft-account.kind.offline": {
+    "message": "Офлайн-профіль"
   },
   "minecraft-account.label": {
     "message": "Обліковий запис Minecraft"

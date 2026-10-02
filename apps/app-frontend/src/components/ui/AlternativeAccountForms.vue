@@ -2,11 +2,11 @@
 	<div v-if="mode === 'none'" class="flex flex-col gap-2">
 		<Button type="outlined" :class="secondaryButtonClass" @click="mode = 'elyby'">
 			<PlusIcon />
-			Sign in with Ely.by
+			{{ formatMessage(messages.useElyby) }}
 		</Button>
 		<Button type="outlined" :class="secondaryButtonClass" @click="mode = 'offline'">
 			<PlusIcon />
-			{{ offlineButtonLabel }}
+			{{ formatMessage(messages.useOffline) }}
 		</Button>
 	</div>
 	<form
@@ -16,14 +16,14 @@
 	>
 		<div class="flex items-center justify-between">
 			<span class="text-xs text-secondary font-semibold">
-				{{ mode === 'elyby' ? 'Ely.by account' : 'Offline Username' }}
+				{{ formatMessage(mode === 'elyby' ? messages.elybyHeading : messages.offlineHeading) }}
 			</span>
 			<button
 				type="button"
 				class="text-xs text-secondary hover:text-primary bg-transparent border-0 cursor-pointer p-0 underline"
 				@click="reset"
 			>
-				Cancel
+				{{ formatMessage(messages.cancel) }}
 			</button>
 		</div>
 
@@ -32,14 +32,14 @@
 				v-model="username"
 				type="text"
 				autocomplete="username"
-				placeholder="Username or email"
+				:placeholder="formatMessage(messages.elybyUsername)"
 				:class="inputClass"
 			/>
 			<input
 				v-model="password"
 				type="password"
 				autocomplete="current-password"
-				placeholder="Password"
+				:placeholder="formatMessage(messages.elybyPassword)"
 				:class="inputClass"
 			/>
 			<input
@@ -48,26 +48,20 @@
 				inputmode="numeric"
 				autocomplete="one-time-code"
 				maxlength="6"
-				placeholder="2FA code (only if enabled)"
+				:placeholder="formatMessage(messages.elybyTotp)"
 				:class="inputClass"
 			/>
-			<p class="m-0 text-xs text-secondary">
-				Signs in through authserver.ely.by. Your password is sent only to Ely.by and is not stored.
-				Ely.by skins and Ely.by-enabled servers work in game.
-			</p>
+			<p class="m-0 text-xs text-secondary">{{ formatMessage(messages.elybyNote) }}</p>
 		</template>
 		<template v-else>
 			<input
 				v-model="username"
 				type="text"
-				placeholder="e.g. Steve"
+				:placeholder="formatMessage(messages.offlinePlaceholder)"
 				maxlength="16"
 				:class="inputClass"
 			/>
-			<p class="m-0 text-xs text-secondary">
-				Local testing profile only. It does not prove game ownership, and cannot join online-mode
-				servers or use Mojang skins and capes.
-			</p>
+			<p class="m-0 text-xs text-secondary">{{ formatMessage(messages.offlineNote) }}</p>
 		</template>
 
 		<Button
@@ -79,24 +73,23 @@
 		>
 			<LogInIcon v-if="!busy" />
 			<SpinnerIcon v-else class="animate-spin" />
-			{{ mode === 'elyby' ? 'Sign In with Ely.by' : 'Sign In Offline' }}
+			{{ formatMessage(mode === 'elyby' ? messages.elybySubmit : messages.offlineSubmit) }}
 		</Button>
 	</form>
 </template>
 
 <script setup lang="ts">
 import { LogInIcon, PlusIcon, SpinnerIcon } from '@modrinth/assets'
-import { Button, injectNotificationManager } from '@modrinth/ui'
+import { Button, defineMessages, injectNotificationManager, useVIntl } from '@modrinth/ui'
 import { computed, ref } from 'vue'
 
 import { login_elyby, login_offline } from '@/helpers/auth'
-
-defineProps<{ offlineButtonLabel: string }>()
 
 const emit = defineEmits<{
 	signedIn: [credentials: { profile: { id: string; name: string } }]
 }>()
 
+const { formatMessage } = useVIntl()
 const { handleError } = injectNotificationManager()
 
 const secondaryButtonClass =
@@ -140,4 +133,61 @@ async function submit() {
 		busy.value = false
 	}
 }
+
+const messages = defineMessages({
+	useElyby: {
+		id: 'app.alternative-accounts.use-elyby',
+		defaultMessage: 'Sign in with Ely.by',
+	},
+	useOffline: {
+		id: 'app.alternative-accounts.use-offline',
+		defaultMessage: 'Use an offline profile',
+	},
+	cancel: {
+		id: 'app.alternative-accounts.cancel',
+		defaultMessage: 'Cancel',
+	},
+	elybyHeading: {
+		id: 'app.alternative-accounts.elyby.heading',
+		defaultMessage: 'Ely.by account',
+	},
+	elybyUsername: {
+		id: 'app.alternative-accounts.elyby.username',
+		defaultMessage: 'Username or email',
+	},
+	elybyPassword: {
+		id: 'app.alternative-accounts.elyby.password',
+		defaultMessage: 'Password',
+	},
+	elybyTotp: {
+		id: 'app.alternative-accounts.elyby.totp',
+		defaultMessage: '2FA code (only if enabled)',
+	},
+	elybyNote: {
+		id: 'app.alternative-accounts.elyby.note',
+		defaultMessage:
+			'Signs in through authserver.ely.by. Your password is sent only to Ely.by and is not stored. Ely.by skins and Ely.by-enabled servers work in game.',
+	},
+	elybySubmit: {
+		id: 'app.alternative-accounts.elyby.submit',
+		defaultMessage: 'Sign in with Ely.by',
+	},
+	offlineHeading: {
+		id: 'app.alternative-accounts.offline.heading',
+		defaultMessage: 'Offline username',
+	},
+	offlinePlaceholder: {
+		id: 'app.alternative-accounts.offline.placeholder',
+		defaultMessage: 'e.g. Steve',
+	},
+	offlineNote: {
+		id: 'app.alternative-accounts.offline.note',
+		defaultMessage:
+			'Local testing profile only. It does not prove game ownership, and cannot join online-mode servers or use Mojang skins and capes.',
+	},
+	offlineSubmit: {
+		id: 'app.alternative-accounts.offline.submit',
+		defaultMessage: 'Sign in offline',
+	},
+})
 </script>

@@ -146,6 +146,45 @@
   "app.ads-consent.title": {
     "message": "Конфиденциальность и реклама на Modrinth"
   },
+  "app.alternative-accounts.cancel": {
+    "message": "Отмена"
+  },
+  "app.alternative-accounts.elyby.heading": {
+    "message": "Аккаунт Ely.by"
+  },
+  "app.alternative-accounts.elyby.note": {
+    "message": "Вход через authserver.ely.by. Пароль передаётся только Ely.by и не сохраняется. Скины Ely.by и серверы с поддержкой Ely.by работают в игре."
+  },
+  "app.alternative-accounts.elyby.password": {
+    "message": "Пароль"
+  },
+  "app.alternative-accounts.elyby.submit": {
+    "message": "Войти через Ely.by"
+  },
+  "app.alternative-accounts.elyby.totp": {
+    "message": "Код 2FA (если включена)"
+  },
+  "app.alternative-accounts.elyby.username": {
+    "message": "Имя пользователя или e-mail"
+  },
+  "app.alternative-accounts.offline.heading": {
+    "message": "Имя офлайн-профиля"
+  },
+  "app.alternative-accounts.offline.note": {
+    "message": "Только локальный тестовый профиль. Он не подтверждает владение игрой, не может заходить на серверы в онлайн-режиме и использовать скины и плащи Mojang."
+  },
+  "app.alternative-accounts.offline.placeholder": {
+    "message": "например, Steve"
+  },
+  "app.alternative-accounts.offline.submit": {
+    "message": "Войти офлайн"
+  },
+  "app.alternative-accounts.use-elyby": {
+    "message": "Войти через Ely.by"
+  },
+  "app.alternative-accounts.use-offline": {
+    "message": "Использовать офлайн-профиль"
+  },
   "app.appearance-settings.compact-mode.description": {
     "message": "Отображать сборки в библиотеке компактным списком."
   },
@@ -2705,11 +2744,35 @@
   "app.settings.operating-system.macos": {
     "message": "macOS"
   },
+  "app.settings.privacy.check-for-updates.description": {
+    "message": "Раз в час спрашивать GitHub, вышла ли новая версия BatxRinth. Отправляется только запрос о релизе."
+  },
+  "app.settings.privacy.check-for-updates.title": {
+    "message": "Проверять обновления"
+  },
   "app.settings.privacy.discord-rich-presence.description": {
-    "message": "Показывать Modrinth App в текущей активности Discord. Не влияет на Rich Presence модов. Требуется перезапуск."
+    "message": "Показывать BatxRinth как вашу текущую активность в Discord. Выключено, пока вы не включите."
   },
   "app.settings.privacy.discord-rich-presence.title": {
     "message": "Discord Rich Presence"
+  },
+  "app.settings.privacy.discord.show-instance-name.description": {
+    "message": "Показывать, в какую сборку вы играете. Если выключено, Discord пишет просто Minecraft."
+  },
+  "app.settings.privacy.discord.show-instance-name.title": {
+    "message": "Показывать название сборки"
+  },
+  "app.settings.privacy.discord.show-launcher-activity.description": {
+    "message": "Показывать BatxRinth в Discord, когда игра не запущена."
+  },
+  "app.settings.privacy.discord.show-launcher-activity.title": {
+    "message": "Показывать в простое"
+  },
+  "app.settings.privacy.discord.show-play-time.description": {
+    "message": "Показывать, сколько вы уже играете."
+  },
+  "app.settings.privacy.discord.show-play-time.title": {
+    "message": "Показывать время игры"
   },
   "app.settings.resource-management.always-show-copy-details.description": {
     "message": "Показывать кнопку «Получить отчёт» на всех этапах установки. Для прерванных установок кнопка видна всегда."
@@ -3401,11 +3464,14 @@
   "app.update-popup.body.metered": {
     "message": "Версия Modrinth App {version} доступна для скачивания! Используется сеть с лимитным тарифным планом, поэтому скачивание не началось автоматически."
   },
+  "app.update-popup.body.release": {
+    "message": "Доступна версия BatxRinth v{version}. Скачайте её, чтобы получить новые функции и исправления!"
+  },
   "app.update-popup.changelog": {
     "message": "Список изменений"
   },
   "app.update-popup.download": {
-    "message": "Скачать ({size})"
+    "message": "Скачать"
   },
   "app.update-popup.download-complete": {
     "message": "Скачивание завершено"
@@ -3444,7 +3510,7 @@
     "message": "Нажмите <shortcut>Т</shortcut> быстрого создания сборки"
   },
   "app.welcome-screen.title": {
-    "message": "Добро пожаловать в Modrinth"
+    "message": "Добро пожаловать в BatxRinth"
   },
   "app.world.server-modal.placeholder-address": {
     "message": "example.modrinth.gg"
@@ -4399,6 +4465,12 @@
   },
   "minecraft-account.add-account": {
     "message": "Добавить аккаунт"
+  },
+  "minecraft-account.kind.elyby": {
+    "message": "Аккаунт Ely.by"
+  },
+  "minecraft-account.kind.offline": {
+    "message": "Офлайн-профиль"
   },
   "minecraft-account.label": {
     "message": "Аккаунт Minecraft"
