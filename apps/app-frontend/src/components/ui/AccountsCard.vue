@@ -17,53 +17,10 @@
 			<SpinnerIcon v-else class="animate-spin" />
 			{{ formatMessage(messages.signInToMinecraft) }}
 		</Button>
-		<Button
-			v-if="!showOfflineInput"
-			type="outlined"
-			class="w-full !bg-surface-2 !text-primary border border-solid border-surface-5 hover:!bg-surface-3 cursor-pointer justify-center"
-			@click="showOfflineInput = true"
-		>
-			<PlusIcon />
-			Use Offline Local Profile
-		</Button>
-		<div
-			v-else
-			class="flex flex-col gap-2.5 p-3 bg-surface-2 rounded-xl border border-solid border-surface-5 w-full box-border"
-		>
-			<div class="flex items-center justify-between">
-				<span class="text-xs text-secondary font-semibold">Offline Username</span>
-				<button
-					type="button"
-					class="text-xs text-secondary hover:text-primary bg-transparent border-0 cursor-pointer p-0 underline"
-					@click="showOfflineInput = false"
-				>
-					Cancel
-				</button>
-			</div>
-			<input
-				v-model="offlineUsername"
-				type="text"
-				placeholder="e.g. Steve"
-				maxlength="16"
-				class="w-full box-border text-sm px-3 py-2 rounded-lg bg-bg text-primary border border-solid border-surface-5 focus:outline-none focus:border-brand"
-				@keyup.enter="loginOffline"
-			/>
-			<p class="m-0 text-xs text-secondary">
-				Local testing profile only. It does not prove game ownership, and cannot join online-mode
-				servers or use Mojang skins and capes.
-			</p>
-			<Button
-				type="colored"
-				color="brand"
-				class="w-full justify-center"
-				:disabled="loginDisabled || !offlineUsername.trim()"
-				@click="loginOffline"
-			>
-				<LogInIcon v-if="!loginDisabled" />
-				<SpinnerIcon v-else class="animate-spin" />
-				Sign In Offline
-			</Button>
-		</div>
+		<AlternativeAccountForms
+			offline-button-label="Use Offline Local Profile"
+			@signed-in="setAccount"
+		/>
 	</div>
 	<Accordion
 		v-else
@@ -85,7 +42,7 @@
 					<span class="truncate w-full text-left">{{
 						selectedAccount ? selectedAccount.profile.name : formatMessage(messages.selectAccount)
 					}}</span>
-					<span class="text-secondary text-xs">{{ formatMessage(messages.minecraftAccount) }}</span>
+					<span class="text-secondary text-xs">{{ accountKind(selectedAccount) }}</span>
 				</div>
 			</div>
 		</template>
@@ -135,53 +92,10 @@
 					<PlusIcon />
 					{{ formatMessage(messages.addAccount) }}
 				</Button>
-				<Button
-					v-if="!showOfflineInput"
-					type="outlined"
-					class="w-full !bg-surface-2 !text-primary border border-solid border-surface-5 hover:!bg-surface-3 cursor-pointer justify-center"
-					@click="showOfflineInput = true"
-				>
-					<PlusIcon />
-					Add Offline Local Profile
-				</Button>
-				<div
-					v-else
-					class="flex flex-col gap-2.5 p-3 bg-surface-2 rounded-xl border border-solid border-surface-5 w-full box-border"
-				>
-					<div class="flex items-center justify-between">
-						<span class="text-xs text-secondary font-semibold">Offline Username</span>
-						<button
-							type="button"
-							class="text-xs text-secondary hover:text-primary bg-transparent border-0 cursor-pointer p-0 underline"
-							@click="showOfflineInput = false"
-						>
-							Cancel
-						</button>
-					</div>
-					<input
-						v-model="offlineUsername"
-						type="text"
-						placeholder="e.g. Steve"
-						maxlength="16"
-						class="w-full box-border text-sm px-3 py-2 rounded-lg bg-bg text-primary border border-solid border-surface-5 focus:outline-none focus:border-brand"
-						@keyup.enter="loginOffline"
-					/>
-					<p class="m-0 text-xs text-secondary">
-						Local testing profile only. It does not prove game ownership, and cannot join
-						online-mode servers or use Mojang skins and capes.
-					</p>
-					<Button
-						type="colored"
-						color="brand"
-						class="w-full justify-center"
-						:disabled="loginDisabled || !offlineUsername.trim()"
-						@click="loginOffline"
-					>
-						<LogInIcon v-if="!loginDisabled" />
-						<SpinnerIcon v-else class="animate-spin" />
-						Sign In Offline
-					</Button>
-				</div>
+				<AlternativeAccountForms
+					offline-button-label="Add Offline Local Profile"
+					@signed-in="setAccount"
+				/>
 			</div>
 		</div>
 	</Accordion>
@@ -208,13 +122,13 @@ import {
 import type { Ref } from 'vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
+import AlternativeAccountForms from '@/components/ui/AlternativeAccountForms.vue'
 import { useAppEvent } from '@/composables/use-app-event'
 import { handleSevereError } from '@/composables/use-error.js'
 import { trackEvent } from '@/helpers/analytics'
 import {
 	get_default_user,
 	login as login_flow,
-	login_offline,
 	remove_user,
 	set_default_user,
 	users,
@@ -235,10 +149,15 @@ type MinecraftCredential = {
 		id: string
 		name: string
 	}
+	access_token?: string
+	refresh_token?: string
 }
 
-const showOfflineInput = ref(false)
-const offlineUsername = ref('')
+function accountKind(account: MinecraftCredential | undefined) {
+	if (account?.refresh_token?.startsWith('elyby:')) return 'Ely.by account'
+	if (account?.access_token === 'OFFLINE_LOCAL_TOKEN') return 'Offline profile'
+	return formatMessage(messages.minecraftAccount)
+}
 
 async function login() {
 	loginDisabled.value = true
@@ -250,21 +169,6 @@ async function login() {
 
 	trackEvent('AccountLogIn')
 	loginDisabled.value = false
-}
-
-async function loginOffline() {
-	if (!offlineUsername.value.trim()) return
-	loginDisabled.value = true
-	try {
-		const loggedIn = await login_offline(offlineUsername.value.trim()).catch(handleError)
-		if (loggedIn) {
-			await setAccount(loggedIn)
-			showOfflineInput.value = false
-			offlineUsername.value = ''
-		}
-	} finally {
-		loginDisabled.value = false
-	}
 }
 
 const accounts: Ref<MinecraftCredential[]> = ref([])

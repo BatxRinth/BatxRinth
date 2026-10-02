@@ -20,7 +20,7 @@ pub enum OfflineProfileError {
     )]
     AcknowledgementRequired,
     #[error(
-        "This action requires a Microsoft account. Offline local profiles cannot use Mojang online services."
+        "This action requires a Microsoft account. Offline and Ely.by profiles cannot use Mojang online services."
     )]
     OnlineAccountRequired,
 }

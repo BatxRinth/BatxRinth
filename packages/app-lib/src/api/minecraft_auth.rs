@@ -58,6 +58,21 @@ pub async fn login_offline(username: &str) -> crate::Result<Credentials> {
     Ok(creds)
 }
 
+#[tracing::instrument(skip(password, totp))]
+pub async fn login_elyby(
+    username: &str,
+    password: &str,
+    totp: Option<&str>,
+) -> crate::Result<Credentials> {
+    let state = State::get().await?;
+    let creds =
+        crate::state::elyby_auth::authenticate(username, password, totp)
+            .await?;
+    creds.upsert(&state.pool).await?;
+    set_default_user(creds.offline_profile.id).await?;
+    Ok(creds)
+}
+
 #[tracing::instrument]
 pub async fn get_default_user() -> crate::Result<Option<uuid::Uuid>> {
     let state = State::get().await?;

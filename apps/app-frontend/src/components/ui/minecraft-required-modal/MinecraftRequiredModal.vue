@@ -57,49 +57,11 @@
 						{{ formatMessage(messages.signIn) }}
 					</Button>
 				</div>
-				<div v-if="!showOfflineInput" class="flex justify-center mt-1">
-					<button
-						type="button"
-						class="text-xs text-secondary hover:text-primary underline bg-transparent border-0 cursor-pointer py-1"
-						@click="showOfflineInput = true"
-					>
-						Use Offline Local Profile (No Microsoft Account)
-					</button>
-				</div>
-				<div
-					v-else
-					class="flex flex-col gap-2.5 p-3 bg-surface-2 rounded-xl border border-solid border-surface-5 mt-1 w-full box-border"
-				>
-					<div class="flex items-center justify-between">
-						<span class="text-xs text-secondary font-semibold">Offline Username</span>
-						<button
-							type="button"
-							class="text-xs text-secondary hover:text-primary bg-transparent border-0 cursor-pointer p-0 underline"
-							@click="showOfflineInput = false"
-						>
-							Cancel
-						</button>
-					</div>
-					<input
-						v-model="offlineUsername"
-						type="text"
-						placeholder="e.g. Steve"
-						maxlength="16"
-						class="w-full box-border text-sm px-3 py-2 rounded-lg bg-bg text-primary border border-solid border-surface-5 focus:outline-none focus:border-brand"
-						@keyup.enter="signInOffline"
-					/>
-					<Button
-						type="colored"
-						color="brand"
-						class="w-full justify-center"
-						:disabled="loadingSignIn || !offlineUsername.trim()"
-						@click="signInOffline"
-					>
-						<SpinnerIcon v-if="loadingSignIn" class="animate-spin" />
-						<LogInIcon v-else />
-						Sign In Offline
-					</Button>
-				</div>
+				<AlternativeAccountForms
+					class="mt-1"
+					offline-button-label="Use Offline Local Profile (No Microsoft Account)"
+					@signed-in="onAlternativeSignIn"
+				/>
 			</div>
 			<p class="m-0 text-center text-sm text-secondary">
 				{{ formatMessage(messages.dontHaveAccount) }}
@@ -115,20 +77,19 @@
 </template>
 
 <script setup lang="ts">
-import { LogInIcon, MessagesSquareIcon, SpinnerIcon } from '@modrinth/assets'
+import { MessagesSquareIcon, SpinnerIcon } from '@modrinth/assets'
 import { Button, ButtonLink, defineMessages, NewModal, useVIntl } from '@modrinth/ui'
 import { inject, type Ref, ref } from 'vue'
 
 import steveImage from '@/assets/steve-look-up-left.webp'
 import type AccountsCard from '@/components/ui/AccountsCard.vue'
+import AlternativeAccountForms from '@/components/ui/AlternativeAccountForms.vue'
 import { handleSevereError } from '@/composables/use-error.js'
 import { trackEvent } from '@/helpers/analytics'
-import { login as loginFlow, login_offline, set_default_user } from '@/helpers/auth.js'
+import { login as loginFlow, set_default_user } from '@/helpers/auth.js'
 
 const { formatMessage } = useVIntl()
 const accountsCard = inject('accountsCard') as Ref<InstanceType<typeof AccountsCard> | null>
-const showOfflineInput = ref(false)
-const offlineUsername = ref('')
 
 const messages = defineMessages({
 	header: {
@@ -186,22 +147,14 @@ async function signIn() {
 	}
 }
 
-async function signInOffline() {
-	if (!offlineUsername.value.trim()) return
-	loadingSignIn.value = true
-
+async function onAlternativeSignIn(credentials: { profile: { id: string } }) {
 	try {
-		const loggedIn = await login_offline(offlineUsername.value.trim())
-		if (!loggedIn) return
-
-		await set_default_user(loggedIn.profile.id)
+		await set_default_user(credentials.profile.id)
 		await accountsCard.value?.refreshValues()
-		await trackEvent('AccountLogIn', { source: 'MinecraftRequiredModalOffline' })
+		await trackEvent('AccountLogIn', { source: 'MinecraftRequiredModalAlternative' })
 		modal.value?.hide()
 	} catch (error) {
 		handleSevereError(error)
-	} finally {
-		loadingSignIn.value = false
 	}
 }
 

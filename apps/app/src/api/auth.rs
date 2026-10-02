@@ -10,6 +10,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             check_reachable,
             login,
             login_offline,
+            login_elyby,
             remove_user,
             get_default_user,
             set_default_user,
@@ -21,6 +22,18 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
 #[tauri::command]
 pub async fn login_offline(username: String) -> Result<Credentials> {
     Ok(minecraft_auth::login_offline(&username).await?)
+}
+
+#[tauri::command]
+pub async fn login_elyby(
+    username: String,
+    password: String,
+    totp: Option<String>,
+) -> Result<Credentials> {
+    Ok(
+        minecraft_auth::login_elyby(&username, &password, totp.as_deref())
+            .await?,
+    )
 }
 
 /// Checks if the authentication servers are reachable.

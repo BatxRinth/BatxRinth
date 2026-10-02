@@ -873,6 +873,53 @@ fn link_project_and_version(
     }
 }
 
+/// JVM arguments that depend on which kind of account is launching the game.
+async fn auth_jvm_arguments(
+    credentials: &Credentials,
+    game_version: &str,
+    state: &State,
+) -> crate::Result<Vec<String>> {
+    if credentials.is_elyby() {
+        let agent =
+            crate::state::elyby_auth::authlib_injector_path(state).await?;
+        return Ok(vec![format!("-javaagent:{}=ely.by", agent.display())]);
+    }
+
+    if credentials.is_offline() {
+        return Ok(offline_multiplayer_fix_arguments(game_version));
+    }
+
+    Ok(Vec::new())
+}
+
+/// Minecraft 1.16.4 and 1.16.5 ask Mojang whether the account may play online and
+/// disable the Multiplayer button when an offline token is rejected. Pointing authlib
+/// at hosts that can't resolve makes that check fail open instead.
+fn offline_multiplayer_fix_arguments(game_version: &str) -> Vec<String> {
+    if !matches!(game_version, "1.16.4" | "1.16.5") {
+        return Vec::new();
+    }
+
+    let mut args = vec!["-Dminecraft.api.env=custom".to_string()];
+    for host in ["auth", "account", "session", "services"] {
+        args.push(format!("-Dminecraft.api.{host}.host=https://nope.invalid"));
+    }
+    args
+}
+
+#[cfg(test)]
+mod auth_argument_tests {
+    use super::offline_multiplayer_fix_arguments;
+
+    #[test]
+    fn offline_fix_only_targets_affected_versions() {
+        assert_eq!(offline_multiplayer_fix_arguments("1.16.5").len(), 5);
+        assert_eq!(offline_multiplayer_fix_arguments("1.16.4").len(), 5);
+        assert!(offline_multiplayer_fix_arguments("1.16.3").is_empty());
+        assert!(offline_multiplayer_fix_arguments("1.20.1").is_empty());
+    }
+}
+
 #[tracing::instrument(skip_all)]
 #[allow(clippy::too_many_arguments)]
 pub async fn launch_minecraft(
@@ -1120,6 +1167,11 @@ pub async fn launch_minecraft(
             rpc_server.address(),
         )?
         .into_iter(),
+    );
+
+    command.args(
+        auth_jvm_arguments(credentials, &content_set.game_version, &state)
+            .await?,
     );
 
     // The java launcher requires access to java.lang.reflect in order to force access in to

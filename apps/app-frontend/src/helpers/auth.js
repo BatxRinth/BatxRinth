@@ -42,6 +42,16 @@ export async function login_offline(username) {
 }
 
 /**
+ * Authenticate with an Ely.by account.
+ * @param {string} username Ely.by username or email
+ * @param {string} password
+ * @param {string | null} totp Two-factor code, if the account has 2FA enabled
+ */
+export async function login_elyby(username, password, totp) {
+	return await invoke('plugin:auth|login_elyby', { username, password, totp })
+}
+
+/**
  * Retrieves the default user
  * @return {Promise<UUID | undefined>}
  */

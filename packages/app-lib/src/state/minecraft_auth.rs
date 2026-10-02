@@ -1,4 +1,5 @@
 use crate::ErrorKind;
+use crate::state::elyby_auth::{self, ELYBY_REFRESH_PREFIX};
 use crate::state::offline_auth::{OFFLINE_ACCESS_TOKEN, OfflineProfileError};
 use crate::util::fetch::INSECURE_REQWEST_CLIENT;
 use base64::Engine;
@@ -274,10 +275,20 @@ impl Credentials {
         self.access_token == OFFLINE_ACCESS_TOKEN
     }
 
-    /// Rejects offline local profiles before an operation that requires a real
+    /// Whether these credentials belong to an Ely.by account.
+    pub fn is_elyby(&self) -> bool {
+        self.refresh_token.starts_with(ELYBY_REFRESH_PREFIX)
+    }
+
+    /// Whether these credentials can talk to Mojang's services.
+    pub fn is_microsoft(&self) -> bool {
+        !self.is_offline() && !self.is_elyby()
+    }
+
+    /// Rejects offline and Ely.by profiles before an operation that requires a real
     /// Mojang token is attempted.
     pub fn require_online(&self) -> crate::Result<()> {
-        if self.is_offline() {
+        if !self.is_microsoft() {
             return Err(OfflineProfileError::OnlineAccountRequired.into());
         }
 
@@ -295,6 +306,18 @@ impl Credentials {
         // from now, and deal with some classes of clock skew
         if self.expires > Utc::now() + Duration::minutes(5) {
             return Ok(());
+        }
+
+        if self.is_elyby() {
+            return match elyby_auth::refresh(self).await {
+                Ok(()) => self.upsert(exec).await,
+                // Keep the old token when Ely.by is unreachable so offline play still works
+                Err(err) if matches!(&*err.raw, ErrorKind::FetchError(_)) => {
+                    tracing::warn!("Could not refresh Ely.by token: {err}");
+                    Ok(())
+                }
+                Err(err) => Err(err),
+            };
         }
 
         let oauth_token = oauth_refresh(&self.refresh_token).await?;
@@ -370,7 +393,7 @@ impl Credentials {
         &self,
         cache_intent: OnlineProfileCacheIntent,
     ) -> Option<Arc<MinecraftProfile>> {
-        if self.is_offline() {
+        if !self.is_microsoft() {
             return None;
         }
 
