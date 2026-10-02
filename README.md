@@ -1,64 +1,68 @@
-# BatxRinth Desktop Launcher
+<p align="center">
+  <img src="apps/app/icons/icon.png" width="128" alt="BatxRinth logo">
+</p>
 
-**BatxRinth** is an independently branded, privacy-first, advertisement-free Minecraft launcher built with Rust, Tauri v2, Vue 3, and TypeScript.
+<h1 align="center">BatxRinth</h1>
 
-> [!IMPORTANT]
-> **Legal & Non-Affiliation Disclaimer**
-> BatxRinth is an independent community fork and is not affiliated with, sponsored by, or endorsed by Modrinth, Rinth, Inc., Microsoft, Mojang, or Discord.
+<p align="center">
+  The Modrinth App with the ads and tracking taken out, plus Ely.by and offline accounts.
+</p>
 
----
+<p align="center">
+  <a href="https://github.com/BatxRinth/BatxRinth/releases/latest"><img src="https://img.shields.io/github/v/release/BatxRinth/BatxRinth?color=00E676&label=release" alt="Latest release"></a>
+  <a href="https://github.com/BatxRinth/BatxRinth/releases"><img src="https://img.shields.io/github/downloads/BatxRinth/BatxRinth/total?color=00E676" alt="Downloads"></a>
+  <a href="apps/app/LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-00E676" alt="License: GPL-3.0"></a>
+</p>
 
-## Features
+## Download
 
-- **Advertisement-Free Interface:** All paid placements, ad webviews, tracking pixels, and consent banners have been completely removed.
-- **Privacy by Default:** Zero analytics, telemetry, usage statistics, background tracking, or persistent device fingerprinting.
-- **Official Microsoft Authentication:** Full support for legitimate Microsoft/Minecraft accounts using system-browser OAuth 2.0 with PKCE.
-- **Ely.by Accounts:** Sign in with Ely.by (2FA supported). Games launch through a pinned, checksum-verified authlib-injector, so Ely.by skins and Ely.by-enabled servers just work.
-- **Offline Local Testing Profiles:** Optional offline profile mode for local development, testing, demos, and offline-compatible environments, including working multiplayer on Minecraft 1.16.4 and 1.16.5.
-- **Granular Discord Rich Presence:** Optional activity integration disabled by default with granular privacy controls.
-- **Update Notifications:** An hourly check of BatxRinth's GitHub releases with a one-click download, which you can switch off in Settings → Privacy.
-- **Kept Current With Modrinth:** Regularly merged with upstream Modrinth, with a weekly check that flags any tracking or ads code before it can land.
-- **Performance-Oriented Engine:** High-performance Rust core backend for fast instance management, JRE resolution, and parallel modpack processing.
+| Platform              | File                                                                                                                                                                                                                                                                                            |
+| :-------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Windows 10/11         | [BatxRinth_x64-setup.exe](https://github.com/BatxRinth/BatxRinth/releases/latest/download/BatxRinth_x64-setup.exe)                                                                                                                                                                              |
+| macOS (Apple + Intel) | [BatxRinth_universal.dmg](https://github.com/BatxRinth/BatxRinth/releases/latest/download/BatxRinth_universal.dmg)                                                                                                                                                                              |
+| Linux                 | [AppImage](https://github.com/BatxRinth/BatxRinth/releases/latest/download/BatxRinth_amd64.AppImage), [.deb](https://github.com/BatxRinth/BatxRinth/releases/latest/download/BatxRinth_amd64.deb), [.rpm](https://github.com/BatxRinth/BatxRinth/releases/latest/download/BatxRinth_x86_64.rpm) |
 
----
+The macOS build isn't notarized, so the first time you open it, right-click BatxRinth.app and choose Open. There's also a [download page](https://batxrinth.github.io/BatxRinth/).
 
-## Supported Platforms
+## What's different from the Modrinth App
 
-- **Windows:** Windows 10 / 11 (x64) via NSIS Installer & standalone binary.
-- **macOS:** macOS 11+ (Apple Silicon & Intel) via DMG package.
-- **Linux:** AppImage, Debian/Ubuntu (.deb), and Fedora/openSUSE (.rpm) packages.
+BatxRinth tracks upstream Modrinth closely. Browsing and installing mods and modpacks, instances, worlds, and importing from MultiMC, Prism, ATLauncher, GDLauncher and CurseForge all work the same way. The changes are about what the launcher sends home and which accounts it accepts.
 
----
+Removed outright, not hidden behind a setting:
 
-## Quick Start & Building
+- Ads, the ad webview, and the ad-consent popup
+- PostHog analytics and Sentry crash reporting
+- Tally surveys and promo banners
+- The playtime and server-join reports the app uploads to Modrinth's API
 
-For comprehensive environment setup and build instructions across all platforms, see [`BUILDING.md`](./BUILDING.md).
+[NETWORK.md](NETWORK.md) lists every host BatxRinth talks to and what triggers each request.
+
+Added:
+
+- Ely.by accounts, with 2FA. Games launch through authlib-injector 1.2.8 (pinned and checked by SHA-256), so Ely.by skins and Ely.by servers work in game.
+- Offline profiles for local play and testing. On 1.16.4 and 1.16.5 the Multiplayer button works too, where it's normally greyed out for offline accounts.
+- Discord Rich Presence that's off until you turn it on. You choose whether it shows the instance name, your play time, and whether you're idle.
+- An hourly check for new BatxRinth releases on GitHub, with an off switch in Settings → Privacy.
+- Russian and Ukrainian translations for BatxRinth's own screens.
+
+Microsoft accounts work exactly as they do in the Modrinth App. Offline profiles don't prove you own the game; if you play, buy Minecraft.
+
+## Building from source
+
+You need Node 24, pnpm 10, Rust (the version in `rust-toolchain.toml`) and a JDK 17+.
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Run frontend + Tauri desktop dev app
-pnpm app:dev
-
-# Build production bundle
-pnpm --filter=@batxrinth/app build
+pnpm app:dev                                      # run the app in dev mode
+pnpm --filter=@batxrinth/app exec tauri build     # build installers into target/release/bundle
 ```
 
----
+[BUILDING.md](BUILDING.md) covers platform setup. After merging upstream changes, run the end-to-end smoke test described there: it installs and launches a real copy of Minecraft in a throwaway folder.
 
-## Documentation Index
+## More docs
 
-- [`BUILDING.md`](./BUILDING.md) — Build prerequisites, environment setup, and packaging guide.
-- [`PRIVACY.md`](./PRIVACY.md) — Privacy guarantees and local data handling commitments.
-- [`NETWORK.md`](./NETWORK.md) — Complete outbound network request inventory.
-- [`UPDATES.md`](./UPDATES.md) — Auto-updater design, release key signing, and GitHub Releases distribution.
-- [`SECURITY.md`](./SECURITY.md) — Security model, token storage practices, and vulnerability reporting.
-- [`MIGRATION.md`](./MIGRATION.md) — Upstream compatibility, schema migration, and data import tooling.
-- [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md) — Open source licenses and legal attributions.
+[PRIVACY.md](PRIVACY.md) · [NETWORK.md](NETWORK.md) · [UPDATES.md](UPDATES.md) · [SECURITY.md](SECURITY.md) · [MIGRATION.md](MIGRATION.md) · [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 
----
+## License and credits
 
-## License
-
-BatxRinth is licensed under the **GNU General Public License v3.0 (GPL-3.0-only)**. Refer to `LICENSE` and `COPYING.md` for terms.
+BatxRinth is built on [Modrinth's open-source app](https://github.com/modrinth/code) and keeps its license, GPL-3.0-only ([apps/app/LICENSE](apps/app/LICENSE)). It's an independent fork and isn't affiliated with or endorsed by Modrinth, Microsoft, Mojang, or Ely.by.

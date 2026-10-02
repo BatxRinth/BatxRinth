@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - 'public_site/**'
     tags:
       - 'v*'
   workflow_dispatch:
