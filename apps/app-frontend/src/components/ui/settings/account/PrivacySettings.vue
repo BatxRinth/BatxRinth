@@ -34,7 +34,7 @@ const messages = defineMessages({
 	checkForUpdatesDescription: {
 		id: 'app.settings.privacy.check-for-updates.description',
 		defaultMessage:
-			'Ask GitHub once an hour whether a newer BatxRinth release exists. Only the release lookup is sent.',
+			'Ask GitHub whether a newer BatxRinth release exists. Only the release lookup is sent.',
 	},
 	discordRichPresenceTitle: {
 		id: 'app.settings.privacy.discord-rich-presence.title',
@@ -128,8 +128,8 @@ watch(
 				Live authentication directly with Microsoft endpoints.
 			</li>
 			<li>
-				<strong class="text-contrast">Application Updates:</strong> An hourly lookup of the latest
-				BatxRinth release on GitHub, which you can turn off below.
+				<strong class="text-contrast">Application Updates:</strong> Lookups of the latest BatxRinth
+				release on GitHub, which you can turn off below.
 			</li>
 			<li>
 				<strong class="text-contrast">Download Attribution:</strong> Downloads carry a header

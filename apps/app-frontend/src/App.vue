@@ -1962,6 +1962,7 @@ async function checkUpdates() {
 	}
 
 	async function performCheck() {
+		if (!appSettings.getFeatureFlag('check_for_updates')) return
 		const update = await invoke('plugin:updater|check')
 		if (!update) {
 			console.log('No update available')
@@ -2002,7 +2003,7 @@ async function checkUpdates() {
 		() => {
 			checkUpdates()
 		},
-		5 /* min */ * 60 /* sec */ * 1000 /* ms */,
+		60 /* min */ * 60 /* sec */ * 1000 /* ms */,
 	)
 }
 

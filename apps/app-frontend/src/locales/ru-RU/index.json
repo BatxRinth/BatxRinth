@@ -2745,7 +2745,7 @@
     "message": "macOS"
   },
   "app.settings.privacy.check-for-updates.description": {
-    "message": "Раз в час спрашивать GitHub, вышла ли новая версия BatxRinth. Отправляется только запрос о релизе."
+    "message": "Спрашивать GitHub, вышла ли новая версия BatxRinth. Отправляется только запрос о релизе."
   },
   "app.settings.privacy.check-for-updates.title": {
     "message": "Проверять обновления"

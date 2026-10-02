@@ -42,7 +42,7 @@ Added:
 - Ely.by accounts, with 2FA. Games launch through authlib-injector 1.2.8 (pinned and checked by SHA-256), so Ely.by skins and Ely.by servers work in game.
 - Offline profiles for local play and testing. On 1.16.4 and 1.16.5 the Multiplayer button works too, where it's normally greyed out for offline accounts.
 - Discord Rich Presence that's off until you turn it on. You choose whether it shows the instance name, your play time, and whether you're idle.
-- An hourly check for new BatxRinth releases on GitHub, with an off switch in Settings → Privacy.
+- Updates from BatxRinth's GitHub releases, signed so the app only installs builds made with the BatxRinth key. You can turn update checks off in Settings → Privacy.
 - Russian and Ukrainian translations for BatxRinth's own screens.
 
 Microsoft accounts work exactly as they do in the Modrinth App. Offline profiles don't prove you own the game; if you play, buy Minecraft.

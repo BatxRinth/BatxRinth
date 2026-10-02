@@ -2775,7 +2775,7 @@
     "message": "macOS"
   },
   "app.settings.privacy.check-for-updates.description": {
-    "message": "Ask GitHub once an hour whether a newer BatxRinth release exists. Only the release lookup is sent."
+    "message": "Ask GitHub whether a newer BatxRinth release exists. Only the release lookup is sent."
   },
   "app.settings.privacy.check-for-updates.title": {
     "message": "Check for updates"

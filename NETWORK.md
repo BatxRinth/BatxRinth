@@ -25,7 +25,7 @@ This document enumerates every outbound host contacted by **BatxRinth**, the exa
 | `api.azul.com`                     | JRE Resolution     | Automated detection & download of Java Runtime Environments | Yes (Specify manual Java path)               |
 | `authserver.ely.by`                | Ely.by Auth        | Signing in to, or refreshing, an Ely.by account             | Yes (Don't add an Ely.by account)            |
 | `github.com`                       | Ely.by Launch      | One-time download of the pinned authlib-injector 1.2.8 jar  | Yes (Don't add an Ely.by account)            |
-| `api.github.com`                   | Updates            | Hourly lookup of the latest BatxRinth release               | Yes (Settings → Privacy → Check for updates) |
+| `github.com`, `api.github.com`     | Updates            | Checking for and downloading new BatxRinth releases         | Yes (Settings → Privacy → Check for updates) |
 
 Every request above is a direct consequence of an action you took (browsing, downloading, launching, signing in), except the update lookup, which you can switch off. That lookup only asks GitHub for the newest release; nothing is sent for measurement purposes.
 
