@@ -671,9 +671,6 @@
   "app.update-popup.body.download-complete": {
     "message": "BatxRinth v{version} acabou de ser transferida. Recarrega para atualizar agora, ou automaticamente quando fechares a BatxRinth."
   },
-  "app.update-popup.body.linux": {
-    "message": "BatxRinth v{version} está disponível. Usa o teu gestor de pacotes para atualizar e receber as correções e recursos mais recentes!"
-  },
   "app.update-popup.body.metered": {
     "message": "BatxRinth v{version} está disponível! Como estás numa rede com tráfego limitado, não a transferimos automaticamente."
   },

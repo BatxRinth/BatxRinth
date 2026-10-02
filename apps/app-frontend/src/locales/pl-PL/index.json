@@ -3410,9 +3410,6 @@
   "app.update-popup.body.download-complete": {
     "message": "Wersja BatxRinth v{version} została pobrana. Załaduj ponownie, żeby zaktualizować teraz, albo automatycznie, gdy zamkniesz BatxRinth."
   },
-  "app.update-popup.body.linux": {
-    "message": "Wersja BatxRinth v{version} jest dostępna. Pobierz aktualizację poprzez menedżer pakietów, by uzyskać najnowsze funkcje i poprawki!"
-  },
   "app.update-popup.body.metered": {
     "message": "Wersja BatxRinth v{version} jest dostępna! Skoro korzystasz z sieci taryfowej, nie pobraliśmy jej automatycznie."
   },

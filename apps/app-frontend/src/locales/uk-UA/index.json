@@ -3410,9 +3410,6 @@
   "app.update-popup.body.download-complete": {
     "message": "BatxRinth v{version} завантажено. Перезапустіть, щоб оновити зараз, або це відбудеться автоматично після закриття застосунку."
   },
-  "app.update-popup.body.linux": {
-    "message": "BatxRinth v{version} вже доступно. Скористайтеся менеджером пакетів, щоб отримати найновіші функції та виправлення!"
-  },
   "app.update-popup.body.metered": {
     "message": "BatxRinth v{version} вже доступно! Оскільки ви використовуєте лімітне підключення, ми не завантажили його автоматично."
   },

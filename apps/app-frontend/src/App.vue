@@ -1823,10 +1823,14 @@ const updatePopupMessages = defineMessages({
 		id: 'app.update-popup.body.download-complete',
 		defaultMessage: `BatxRinth v{version} has finished downloading. Reload to update now, or automatically when you close BatxRinth.`,
 	},
-	linuxBody: {
-		id: 'app.update-popup.body.linux',
+	releaseBody: {
+		id: 'app.update-popup.body.release',
 		defaultMessage:
-			'BatxRinth v{version} is available. Use your package manager to update for the latest features and fixes!',
+			'BatxRinth v{version} is available. Download it to get the latest features and fixes!',
+	},
+	download: {
+		id: 'app.update-popup.download',
+		defaultMessage: 'Download',
 	},
 	reload: {
 		id: 'app.update-popup.reload',
@@ -1949,9 +1953,10 @@ async function checkUpdates() {
 		console.log('Skipping update check as updates are disabled in this build or environment')
 		updatesEnabled.value = false
 
-		if (os.value === 'Linux' && !isDevEnvironment.value) {
-			checkLinuxUpdates()
-			setInterval(checkLinuxUpdates, 5 * 60 * 1000)
+		if (!isDevEnvironment.value) {
+			checkReleaseUpdates()
+			// Hourly keeps well under GitHub's 60 requests/hour unauthenticated limit
+			setInterval(checkReleaseUpdates, 60 * 60 * 1000)
 		}
 		return
 	}
@@ -2001,25 +2006,48 @@ async function checkUpdates() {
 	)
 }
 
-async function checkLinuxUpdates() {
+const RELEASES_API_URL = 'https://api.github.com/repos/BatxRinth/BatxRinth/releases/latest'
+const RELEASES_PAGE_URL = 'https://github.com/BatxRinth/BatxRinth/releases/latest'
+
+function isNewerVersion(latest, current) {
+	const parse = (version) =>
+		version
+			.split(/[.-]/)
+			.slice(0, 3)
+			.map((part) => Number.parseInt(part, 10) || 0)
+	const [a, b] = [parse(latest), parse(current)]
+	for (let i = 0; i < 3; i++) {
+		if (a[i] !== b[i]) return a[i] > b[i]
+	}
+	return false
+}
+
+async function checkReleaseUpdates() {
 	try {
 		const [response, currentVersion] = await Promise.all([
-			fetch('https://launcher-files.modrinth.com/updates.json'),
+			tauriFetch(RELEASES_API_URL, { headers: { Accept: 'application/vnd.github+json' } }),
 			getVersion(),
 		])
-		const updates = await response.json()
-		const latestVersion = updates?.version
+		if (!response.ok) return
+		const release = await response.json()
+		const latestVersion = release?.tag_name?.replace(/^v/, '')
 
-		if (latestVersion && latestVersion !== currentVersion) {
+		if (latestVersion && isNewerVersion(latestVersion, currentVersion)) {
 			markAppUpdateActionable(latestVersion)
 			const nextPopupTime = getNextAppUpdatePopupTime(latestVersion)
 			if (nextPopupTime !== null && Date.now() >= nextPopupTime) {
 				addPopupNotification({
 					contentType: 'standard',
 					title: formatMessage(updatePopupMessages.updateAvailable),
-					text: formatMessage(updatePopupMessages.linuxBody, { version: latestVersion }),
+					text: formatMessage(updatePopupMessages.releaseBody, { version: latestVersion }),
 					type: 'info',
 					autoCloseMs: null,
+					buttons: [
+						{
+							label: formatMessage(updatePopupMessages.download),
+							action: () => openUrl(RELEASES_PAGE_URL),
+						},
+					],
 				})
 				markAppUpdatePopupShown(latestVersion)
 			}
@@ -2093,7 +2121,7 @@ async function installUpdate() {
 setAppUpdateActions({
 	download: downloadAvailableUpdate,
 	install: installUpdate,
-	changelog: () => openUrl('https://modrinth.com/news/changelog?filter=app'),
+	changelog: () => openUrl('https://github.com/BatxRinth/BatxRinth/releases'),
 })
 
 async function openModrinthProjectLinkInApp(parsed) {

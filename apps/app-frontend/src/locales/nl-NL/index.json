@@ -3014,9 +3014,6 @@
   "app.update-popup.body.download-complete": {
     "message": "BatxRinth v{version} is klaar met downloaden. Herlaad om nu te updaten, of automatisch wanneer je de BatxRinth afsluit."
   },
-  "app.update-popup.body.linux": {
-    "message": "De BatxRinth v{version} is beschikbaar. Gebruik je pakketbeheerder om bij te werken en zo de nieuwste functies en verbeteringen te krijgen!"
-  },
   "app.update-popup.body.metered": {
     "message": "BatxRinth v{version} is nu beschikbaar! Omdat je nu op een netwerk met datalimiet zit, is de download niet automatisch gestart."
   },

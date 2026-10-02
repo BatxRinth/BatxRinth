@@ -608,9 +608,6 @@
   "app.update-popup.body.download-complete": {
     "message": "Preuzimanje Modrinth aplikacije v{version} je završeno. Ponovo učitaj da bi ažurirao sada ili automatski kada zatvoriš Modrinth aplikaciju."
   },
-  "app.update-popup.body.linux": {
-    "message": "Dostupna je Modrinth aplikacija v{version}. Koristi menadžer paketa da bi ažurirao za najnovije funkcije i ispravke!"
-  },
   "app.update-popup.body.metered": {
     "message": "Modrinth aplikacija v{version} je sada dostupna! Pošto si na mreži sa ograničenjem interneta, nismo je automatski preuzeli."
   },

@@ -3419,9 +3419,6 @@
   "app.update-popup.body.download-complete": {
     "message": "BatxRinth v{version} 更新已下载完成！立即重启更新，或退出时自动安装。"
   },
-  "app.update-popup.body.linux": {
-    "message": "BatxRinth v{version} 现已发布。请使用你的软件包管理器进行更新，获取最新功能与修复！"
-  },
   "app.update-popup.body.metered": {
     "message": "BatxRinth v{version} 现已发布！由于你正在使用按流量计费的网络，该更新未自动下载。"
   },

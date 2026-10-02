@@ -3443,17 +3443,17 @@
   "app.update-popup.body.download-complete": {
     "message": "BatxRinth v{version} has finished downloading. Reload to update now, or automatically when you close BatxRinth."
   },
-  "app.update-popup.body.linux": {
-    "message": "BatxRinth v{version} is available. Use your package manager to update for the latest features and fixes!"
-  },
   "app.update-popup.body.metered": {
     "message": "BatxRinth v{version} is available now! Since you're on a metered network, we didn't automatically download it."
+  },
+  "app.update-popup.body.release": {
+    "message": "BatxRinth v{version} is available. Download it to get the latest features and fixes!"
   },
   "app.update-popup.changelog": {
     "message": "Changelog"
   },
   "app.update-popup.download": {
-    "message": "Download ({size})"
+    "message": "Download"
   },
   "app.update-popup.download-complete": {
     "message": "Download complete"

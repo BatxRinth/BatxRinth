@@ -3425,9 +3425,6 @@
   "app.update-popup.body.download-complete": {
     "message": "La descarga de la BatxRinth v{version} ha finalizado. Actualiza ahora o automáticamente al cerrar la BatxRinth."
   },
-  "app.update-popup.body.linux": {
-    "message": "La BatxRinth v{version} está disponible. ¡Usa tu gestor de paquetes para actualizarla y tener las últimas funciones y corrección de errores!"
-  },
   "app.update-popup.body.metered": {
     "message": "¡La BatxRinth v{version} ya está disponible! Al estar usando una red de datos límitada, no la hemos descargado automáticamente."
   },
