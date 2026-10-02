@@ -1,0 +1,64 @@
+name: Upstream Watch
+
+# Weekly check for new Modrinth commits. It never merges on its own: upstream
+# merges can silently bring back telemetry or ads, so it opens an issue that
+# flags tracking-related changes for review before the next manual sync.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compare with upstream
+        id: compare
+        run: |
+          git remote add upstream https://github.com/modrinth/code.git
+          git fetch --quiet upstream main
+          base=$(git merge-base HEAD upstream/main)
+          behind=$(git rev-list --count HEAD..upstream/main)
+          echo "behind=$behind" >> "$GITHUB_OUTPUT"
+          {
+            echo "Modrinth \`main\` has **$behind** commits not yet merged into BatxRinth."
+            echo
+            echo "### Privacy review"
+            flagged=$(git diff "$base" upstream/main -- apps/app apps/app-frontend packages/app-lib packages/ui \
+              | grep -E '^\+' | grep -iE 'posthog|sentry|analytics|telemetry|intercom|tally\.so|survey|ads_|plugin:ads|advert' \
+              | sort -u | head -n 40 || true)
+            if [ -n "$flagged" ]; then
+              echo "These added lines mention tracking or ads. Strip them when merging:"
+              echo '```diff'
+              echo "$flagged"
+              echo '```'
+            else
+              echo "No added lines mention tracking or ads."
+            fi
+            echo
+            echo "### Newest upstream commits"
+            git log --format='- %s (%h)' HEAD..upstream/main | head -n 30
+          } > body.md
+
+      - name: Open or update the sync issue
+        if: steps.compare.outputs.behind != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title="Upstream Modrinth has new commits"
+          number=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body-file body.md
+          else
+            gh issue create --title "$title" --body-file body.md
+          fi
