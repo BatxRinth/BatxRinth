@@ -4,8 +4,9 @@ use crate::database::{PgPool, ReadOnlyPgPool};
 use crate::file_hosting::FileHost;
 use crate::models::disclosures::ProjectDisclosureType;
 use crate::models::link_platform::LinkPlatform;
+use crate::models::pats::Scopes;
 use crate::models::projects::{
-    Link, MonetizationStatus, Project, ProjectStatus, Version,
+    Link, MonetizationStatus, Project, ProjectStatus,
 };
 use crate::models::v2::projects::{
     DonationLink, LegacyProject, LegacySideType, LegacyVersion,
@@ -15,6 +16,7 @@ use crate::queue::session::AuthQueue;
 use crate::routes::v3::projects::ProjectIds;
 use crate::routes::{ApiError, v2_reroute, v3};
 use crate::search::{SearchBackend, SearchRequest, SearchState};
+use crate::util::MinecraftMeta;
 use crate::util::error::ApiContext as _;
 use crate::util::error::Context as _;
 use actix_web::{HttpRequest, HttpResponse, delete, get, patch, post, web};
@@ -64,7 +66,6 @@ pub fn config(cfg: &mut actix_web::web::ServiceConfig) {
         ("offset" = Option<String>, Query, description = "Search result offset"),
         ("limit" = Option<String>, Query, description = "Maximum number of search results"),
         ("show_metadata" = Option<bool>, Query, description = "Whether to include search metadata"),
-        ("typesense_config" = Option<String>, Query, description = "Typesense request configuration"),
         ("new_filters" = Option<String>, Query, description = "Search filters"),
         ("filters" = Option<String>, Query, description = "Legacy search filters"),
         ("version" = Option<String>, Query, description = "Legacy search version")
@@ -191,7 +192,7 @@ pub struct RandomProjects {
 #[get("/projects_random")]
 pub async fn random_projects_get(
     web::Query(count): web::Query<RandomProjects>,
-    pool: web::Data<PgPool>,
+    ro_pool: web::Data<ReadOnlyPgPool>,
     redis: web::Data<RedisPool>,
 ) -> Result<HttpResponse, ApiError> {
     let count = v3::projects::RandomProjects {
@@ -201,7 +202,7 @@ pub async fn random_projects_get(
 
     let response = v3::projects::random_projects_get(
         web::Query(count),
-        pool.clone(),
+        ro_pool.clone(),
         redis.clone(),
     )
     .await
@@ -212,7 +213,7 @@ pub async fn random_projects_get(
     match v2_reroute::extract_ok_json::<Vec<Project>>(response).await {
         Ok(project) => {
             let legacy_projects =
-                LegacyProject::from_many(project, &pool, &redis)
+                LegacyProject::from_many(project, &ro_pool, &redis)
                     .await
                     .wrap_internal_err(
                         "executing `LegacyProject::from_many`",
@@ -237,7 +238,7 @@ pub async fn random_projects_get(
 pub async fn projects_get(
     req: HttpRequest,
     web::Query(ids): web::Query<ProjectIds>,
-    pool: web::Data<PgPool>,
+    ro_pool: web::Data<ReadOnlyPgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
@@ -247,8 +248,10 @@ pub async fn projects_get(
         &req,
         "ids",
         &project_refs,
-        pool.as_ref(),
+        &ro_pool,
         redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_READ,
     )
     .await?
     {
@@ -259,7 +262,7 @@ pub async fn projects_get(
     let response = v3::projects::projects_get(
         req,
         web::Query(ids),
-        pool.clone(),
+        ro_pool.clone(),
         redis.clone(),
         session_queue,
     )
@@ -272,7 +275,7 @@ pub async fn projects_get(
     match v2_reroute::extract_ok_json::<Vec<Project>>(response).await {
         Ok(project) => {
             let legacy_projects =
-                LegacyProject::from_many(project, &pool, &redis)
+                LegacyProject::from_many(project, &ro_pool, &redis)
                     .await
                     .wrap_internal_err(
                         "executing `LegacyProject::from_many`",
@@ -304,13 +307,19 @@ pub async fn projects_get(
 pub async fn project_get(
     req: HttpRequest,
     info: web::Path<(String,)>,
-    pool: web::Data<PgPool>,
+    ro_pool: web::Data<ReadOnlyPgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    if let Some(response) =
-        crate::routes::redirect_ref(&req, "id", pool.as_ref(), redis.as_ref())
-            .await?
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "id",
+        &ro_pool,
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_READ,
+    )
+    .await?
     {
         return Ok(response);
     }
@@ -320,7 +329,7 @@ pub async fn project_get(
     let project = match v3::projects::project_get_internal(
         req,
         info,
-        pool.clone(),
+        ro_pool.clone(),
         redis.clone(),
         session_queue,
     )
@@ -336,7 +345,7 @@ pub async fn project_get(
     // Convert response to V2 format
     let version_item = match project.versions.first() {
         Some(vid) => {
-            version_item::DBVersion::get((*vid).into(), &**pool, &redis)
+            version_item::DBVersion::get((*vid).into(), &***ro_pool, &redis)
                 .await
                 .wrap_internal_err("fetching version from database")?
         }
@@ -346,7 +355,7 @@ pub async fn project_get(
         db_models::DBProjectDisclosure::projects_with_type(
             ProjectDisclosureType::Archived,
             &[project.id.into()],
-            &**pool,
+            &***ro_pool,
         )
         .await
         .wrap_internal_err("fetching archival disclosure status")?
@@ -382,10 +391,17 @@ pub async fn project_get_check(
     info: web::Path<(String,)>,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
+    session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    if let Some(response) =
-        crate::routes::redirect_ref(&req, "id", pool.as_ref(), redis.as_ref())
-            .await?
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_READ,
+    )
+    .await?
     {
         return Ok(response);
     }
@@ -433,6 +449,8 @@ pub async fn dependency_list(
         "project_id",
         pool.as_ref(),
         redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_READ,
     )
     .await?
     {
@@ -607,6 +625,7 @@ pub struct EditProject {
 #[patch("/{id}")]
 #[allow(clippy::too_many_arguments)]
 pub async fn project_edit(
+    minecraft_meta: web::Data<MinecraftMeta>,
     req: HttpRequest,
     info: web::Path<(String,)>,
     pool: web::Data<PgPool>,
@@ -615,9 +634,15 @@ pub async fn project_edit(
     session_queue: web::Data<AuthQueue>,
     search_state: web::Data<SearchState>,
 ) -> Result<HttpResponse, ApiError> {
-    if let Some(response) =
-        crate::routes::redirect_ref(&req, "id", pool.as_ref(), redis.as_ref())
-            .await?
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_WRITE,
+    )
+    .await?
     {
         return Ok(response);
     }
@@ -732,6 +757,7 @@ pub async fn project_edit(
     // This returns 204 or failure so we don't need to do anything with it
     let project_id = info.clone().0;
     let mut response = v3::projects::project_edit_internal(
+        minecraft_meta.clone(),
         req.clone(),
         info,
         pool.clone(),
@@ -762,26 +788,37 @@ pub async fn project_edit(
                 .await
                 .wrap_internal_err("fetching versions from database")?;
         for version in versions {
-            let version = Version::from(version);
-            let mut fields = version.fields;
+            let environment = version
+                .inner
+                .components
+                .minecraft_mod
+                .as_ref()
+                .and_then(|component| component.environment);
             let (current_client_side, current_server_side) =
-                v2_reroute::convert_v3_side_types_to_v2_side_types(
-                    &fields, None,
+                v2_reroute::convert_minecraft_environment_to_v2_side_types(
+                    environment.unwrap_or(
+                        crate::models::exp::minecraft::Environment::Unknown,
+                    ),
+                    None,
                 );
-            let client_side = client_side.unwrap_or(current_client_side);
-            let server_side = server_side.unwrap_or(current_server_side);
-            fields.extend(v2_reroute::convert_v2_side_types_to_v3_side_types(
-                client_side,
-                server_side,
-            ));
+            let environment = super::version_creation::environment_from_sides(
+                client_side.unwrap_or(current_client_side),
+                server_side.unwrap_or(current_server_side),
+            );
+            let component = crate::models::exp::minecraft::ModVersionEdit {
+                game_versions: None,
+                environment: Some(Some(environment)),
+                mrpack_loaders: None,
+            };
 
             response = v3::versions::version_edit_helper(
+                minecraft_meta.clone(),
                 req.clone(),
-                (version.id,),
+                (version.inner.id.into(),),
                 pool.clone(),
                 redis.clone(),
                 v3::versions::EditVersion {
-                    fields,
+                    minecraft_mod: Some(component),
                     ..Default::default()
                 },
                 session_queue.clone(),
@@ -894,6 +931,8 @@ pub async fn projects_edit(
         &project_refs,
         pool.as_ref(),
         redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_WRITE,
     )
     .await?
     {
@@ -1041,9 +1080,15 @@ pub async fn project_icon_edit(
     session_queue: web::Data<AuthQueue>,
     search_state: web::Data<SearchState>,
 ) -> Result<HttpResponse, ApiError> {
-    if let Some(response) =
-        crate::routes::redirect_ref(&req, "id", pool.as_ref(), redis.as_ref())
-            .await?
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_WRITE,
+    )
+    .await?
     {
         return Ok(response);
     }
@@ -1093,9 +1138,15 @@ pub async fn delete_project_icon(
     session_queue: web::Data<AuthQueue>,
     search_state: web::Data<SearchState>,
 ) -> Result<HttpResponse, ApiError> {
-    if let Some(response) =
-        crate::routes::redirect_ref(&req, "id", pool.as_ref(), redis.as_ref())
-            .await?
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_WRITE,
+    )
+    .await?
     {
         return Ok(response);
     }
@@ -1176,9 +1227,15 @@ pub async fn add_gallery_item(
     session_queue: web::Data<AuthQueue>,
     search_state: web::Data<SearchState>,
 ) -> Result<HttpResponse, ApiError> {
-    if let Some(response) =
-        crate::routes::redirect_ref(&req, "id", pool.as_ref(), redis.as_ref())
-            .await?
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_WRITE,
+    )
+    .await?
     {
         return Ok(response);
     }
@@ -1263,9 +1320,15 @@ pub async fn edit_gallery_item(
     session_queue: web::Data<AuthQueue>,
     search_state: web::Data<SearchState>,
 ) -> Result<HttpResponse, ApiError> {
-    if let Some(response) =
-        crate::routes::redirect_ref(&req, "id", pool.as_ref(), redis.as_ref())
-            .await?
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_WRITE,
+    )
+    .await?
     {
         return Ok(response);
     }
@@ -1324,9 +1387,15 @@ pub async fn delete_gallery_item(
     session_queue: web::Data<AuthQueue>,
     search_state: web::Data<SearchState>,
 ) -> Result<HttpResponse, ApiError> {
-    if let Some(response) =
-        crate::routes::redirect_ref(&req, "id", pool.as_ref(), redis.as_ref())
-            .await?
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_WRITE,
+    )
+    .await?
     {
         return Ok(response);
     }
@@ -1373,9 +1442,15 @@ pub async fn project_delete(
     session_queue: web::Data<AuthQueue>,
     search_state: web::Data<SearchState>,
 ) -> Result<HttpResponse, ApiError> {
-    if let Some(response) =
-        crate::routes::redirect_ref(&req, "id", pool.as_ref(), redis.as_ref())
-            .await?
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_DELETE,
+    )
+    .await?
     {
         return Ok(response);
     }
@@ -1421,9 +1496,15 @@ pub async fn project_follow(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    if let Some(response) =
-        crate::routes::redirect_ref(&req, "id", pool.as_ref(), redis.as_ref())
-            .await?
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::USER_WRITE,
+    )
+    .await?
     {
         return Ok(response);
     }
@@ -1461,9 +1542,15 @@ pub async fn project_unfollow(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
-    if let Some(response) =
-        crate::routes::redirect_ref(&req, "id", pool.as_ref(), redis.as_ref())
-            .await?
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::USER_WRITE,
+    )
+    .await?
     {
         return Ok(response);
     }

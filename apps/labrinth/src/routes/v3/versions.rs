@@ -1,3 +1,4 @@
+use crate::util::MinecraftMeta;
 use crate::util::error::ApiContext as _;
 use std::collections::HashMap;
 
@@ -7,9 +8,6 @@ use crate::auth::checks::{
 };
 use crate::auth::get_user_from_headers;
 use crate::database;
-use crate::database::models::loader_fields::{
-    LoaderField, LoaderFieldEnumValue, VersionField,
-};
 use crate::database::models::version_item::{
     DBLoaderVersion, DependencyBuilder,
 };
@@ -20,19 +18,18 @@ use crate::models::ids::VersionId;
 use crate::models::images::ImageContext;
 use crate::models::pats::Scopes;
 use crate::models::projects::{
-    Dependency, FileType, ProjectStatus, VersionStatus, VersionType,
+    Dependency, FileType, VersionStatus, VersionType,
 };
 use crate::models::projects::{Loader, skip_nulls};
 use crate::models::teams::ProjectPermissions;
 use crate::queue::file_scan::get_files_missing_attribution;
 use crate::queue::session::AuthQueue;
-use crate::routes::internal::delphi;
+
 use crate::search::SearchState;
 use crate::util::error::Context;
 use crate::util::img;
 use actix_web::{HttpRequest, HttpResponse, delete, get, patch, web};
 use ariadne::ids::base62_impl::parse_base62;
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 use xredis::RedisPool;
@@ -68,6 +65,19 @@ pub async fn version_project_get(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "project_id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_READ | Scopes::VERSION_READ,
+    )
+    .await?
+    {
+        return Ok(response);
+    }
+
     let info = info.into_inner();
     version_project_get_helper(req, info, pool, ro_pool, redis, session_queue)
         .await
@@ -118,16 +128,24 @@ pub async fn version_project_get_helper(
         });
 
         if let Some(version) = version
-            && is_visible_version(&version.inner, &user_option, &pool, &redis)
-                .await
-                .wrap_api_err("checking version visibility")?
+            && is_visible_version(
+                &version.inner,
+                &user_option,
+                &ro_pool,
+                &redis,
+            )
+            .await
+            .wrap_api_err("checking version visibility")?
         {
             let version_id = version.inner.id;
+            let project_id = version.inner.project_id;
             let mut v = models::projects::Version::from(version);
-            let missing =
-                get_files_missing_attribution(&***ro_pool, &[version_id])
-                    .await
-                    .unwrap_or_default();
+            let missing = get_files_missing_attribution(
+                &***ro_pool,
+                &[(version_id, project_id)],
+            )
+            .await
+            .unwrap_or_default();
             v.files_missing_attribution = missing
                  .get(&version_id)
                  .map(|entries| {
@@ -222,15 +240,10 @@ pub async fn versions_get(
     .map(|x| x.1)
     .ok();
 
-    let mut versions = filter_visible_versions(
-        versions_data,
-        &user_option,
-        &pool,
-        &ro_pool,
-        &redis,
-    )
-    .await
-    .wrap_api_err("filtering visible versions")?;
+    let mut versions =
+        filter_visible_versions(versions_data, &user_option, &ro_pool, &redis)
+            .await
+            .wrap_api_err("filtering visible versions")?;
 
     if !ids.include_changelog {
         for version in &mut versions {
@@ -305,15 +318,19 @@ pub async fn version_get_helper(
     .ok();
 
     if let Some(data) = version_data
-        && is_visible_version(&data.inner, &user_option, &pool, &redis)
+        && is_visible_version(&data.inner, &user_option, &ro_pool, &redis)
             .await
             .wrap_api_err("checking version visibility")?
     {
         let version_id = data.inner.id;
+        let project_id = data.inner.project_id;
         let mut version = models::projects::Version::from(data);
-        let missing = get_files_missing_attribution(&***ro_pool, &[version_id])
-            .await
-            .unwrap_or_default();
+        let missing = get_files_missing_attribution(
+            &***ro_pool,
+            &[(version_id, project_id)],
+        )
+        .await
+        .unwrap_or_default();
         version.files_missing_attribution = missing
             .get(&version_id)
             .map(|entries| {
@@ -375,8 +392,11 @@ pub struct EditVersion {
     )]
     pub ordering: Option<Option<i32>>,
 
+    #[serde(default)]
+    pub minecraft_mod: Option<crate::models::exp::minecraft::ModVersionEdit>,
+
     // Flattened loader fields
-    // All other fields are loader-specific VersionFields
+    // All other fields are Minecraft compatibility fields
     // These are flattened during serialization
     #[serde(deserialize_with = "skip_nulls")]
     #[serde(flatten)]
@@ -394,6 +414,7 @@ pub struct EditVersionFileType {
 #[utoipa::path(
 	tag = "versions",
 	patch,
+    request_body = serde_json::Value,
 	params(
 		("id" = VersionId, Path, description = "The ID of the version")
 	),
@@ -412,15 +433,17 @@ pub struct EditVersionFileType {
 )]
 #[patch("/version/{id}")]
 pub async fn version_edit_route(
+    minecraft_meta: web::Data<MinecraftMeta>,
     req: HttpRequest,
     info: web::Path<(VersionId,)>,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
-    new_version: web::Json<serde_json::Value>,
+    new_version: web::Json<EditVersion>,
     session_queue: web::Data<AuthQueue>,
     search_state: web::Data<SearchState>,
 ) -> Result<HttpResponse, ApiError> {
     version_edit(
+        minecraft_meta.clone(),
         req,
         info,
         pool,
@@ -433,18 +456,18 @@ pub async fn version_edit_route(
 }
 
 pub async fn version_edit(
+    minecraft_meta: web::Data<MinecraftMeta>,
     req: HttpRequest,
     info: web::Path<(VersionId,)>,
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
-    new_version: web::Json<serde_json::Value>,
+    new_version: web::Json<EditVersion>,
     session_queue: web::Data<AuthQueue>,
     search_state: web::Data<SearchState>,
 ) -> Result<HttpResponse, ApiError> {
-    let new_version: EditVersion =
-        serde_json::from_value(new_version.into_inner())
-            .wrap_request_err("deserializing JSON data")?;
+    let new_version = new_version.into_inner();
     version_edit_helper(
+        minecraft_meta.clone(),
         req,
         info.into_inner(),
         pool,
@@ -456,6 +479,7 @@ pub async fn version_edit(
     .await
 }
 pub async fn version_edit_helper(
+    minecraft_meta: web::Data<MinecraftMeta>,
     req: HttpRequest,
     info: (VersionId,),
     pool: web::Data<PgPool>,
@@ -464,6 +488,62 @@ pub async fn version_edit_helper(
     session_queue: web::Data<AuthQueue>,
     search_state: web::Data<SearchState>,
 ) -> Result<HttpResponse, ApiError> {
+    let mut transaction = pool
+        .begin()
+        .await
+        .wrap_internal_err("starting database transaction")?;
+    let (version_item, user) = version_edit_in_transaction(
+        minecraft_meta.clone(),
+        req,
+        info,
+        pool.clone(),
+        redis.clone(),
+        new_version,
+        session_queue,
+        &mut transaction,
+    )
+    .await?;
+
+    super::projects::mutation::finalize_mutation(
+        version_item.inner.project_id,
+        transaction,
+        &pool,
+        &redis,
+        Some(&user),
+    )
+    .await?;
+    database::models::DBVersion::clear_cache(&version_item, &redis)
+        .await
+        .wrap_internal_err("clearing cached data from Redis")?;
+    search_state
+        .queue
+        .push_version_changes(
+            version_item.inner.project_id.into(),
+            [VersionId::from(version_item.inner.id)],
+        )
+        .await;
+    Ok(HttpResponse::NoContent().body(""))
+}
+
+/// Applies an edit without finalizing or committing the project mutation.
+/// The caller must finalize and invalidate version caches after committing, and
+/// roll back the transaction or a savepoint if the edit fails.
+pub(crate) async fn version_edit_in_transaction(
+    minecraft_meta: web::Data<MinecraftMeta>,
+    req: HttpRequest,
+    info: (VersionId,),
+    pool: web::Data<PgPool>,
+    redis: web::Data<RedisPool>,
+    new_version: EditVersion,
+    session_queue: web::Data<AuthQueue>,
+    transaction: &mut crate::database::PgTransaction<'_>,
+) -> Result<
+    (
+        database::models::version_item::VersionQueryResult,
+        crate::models::users::User,
+    ),
+    ApiError,
+> {
     let user = get_user_from_headers(
         &req,
         &**pool,
@@ -531,19 +611,14 @@ pub async fn version_edit_helper(
                 )));
             }
 
-            let mut transaction = pool
-                .begin()
-                .await
-                .wrap_internal_err("starting database transaction")?;
-
             let new_loader_ids =
                 if let Some(loaders) = &new_version.loaders {
                     let mut loader_ids = Vec::with_capacity(loaders.len());
                     for loader in loaders {
                         let loader_id =
-                            database::models::loader_fields::Loader::get_id(
+                            database::models::loader_item::Loader::get_id(
                                 &loader.0,
-                                &mut transaction,
+                                &mut *transaction,
                                 &redis,
                             )
                             .await
@@ -571,7 +646,7 @@ pub async fn version_edit_helper(
                     name.trim(),
                     version_id as database::models::ids::DBVersionId,
                 )
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await
                 .wrap_internal_err(
                     "querying database for `version_edit_helper`",
@@ -588,7 +663,7 @@ pub async fn version_edit_helper(
                     number,
                     version_id as database::models::ids::DBVersionId,
                 )
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await
                 .wrap_internal_err(
                     "querying database for `version_edit_helper`",
@@ -605,7 +680,7 @@ pub async fn version_edit_helper(
                     version_type.as_str(),
                     version_id as database::models::ids::DBVersionId,
                 )
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await
                 .wrap_internal_err("fetching version type from database")?;
             }
@@ -617,7 +692,7 @@ pub async fn version_edit_helper(
                     ",
                     version_id as database::models::ids::DBVersionId,
                 )
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await
                 .wrap_internal_err("fetching dependencies from database")?;
 
@@ -634,7 +709,7 @@ pub async fn version_edit_helper(
                 DependencyBuilder::insert_many(
                     builders,
                     version_item.inner.id,
-                    &mut transaction,
+                    &mut *transaction,
                 )
                 .await
                 .wrap_internal_err(
@@ -642,131 +717,95 @@ pub async fn version_edit_helper(
                 )?;
             }
 
-            if !new_version.fields.is_empty() {
-                let version_fields_names = new_version
-                    .fields
-                    .keys()
-                    .map(|x| x.to_string())
-                    .collect::<Vec<String>>();
-
-                let loader_ids = if let Some(loader_ids) = &new_loader_ids {
-                    loader_ids.clone()
+            if new_version.minecraft_mod.is_some()
+                || !new_version.fields.is_empty()
+            {
+                use crate::models::exp::component::ComponentEdit;
+                if new_version.minecraft_mod.is_some()
+                    && !new_version.fields.is_empty()
+                {
+                    return Err(ApiError::Request(eyre::eyre!(
+                        "cannot combine typed and flattened Minecraft fields"
+                    )));
+                }
+                let edit = match new_version.minecraft_mod {
+                    Some(edit) => edit,
+                    None => crate::models::minecraft::parse_minecraft_fields(
+                        &new_version.fields,
+                    )
+                    .wrap_request_err("parsing Minecraft fields")?,
+                };
+                let edits_mrpack_loaders = edit.mrpack_loaders.is_some();
+                let component = if let Some(mut component) =
+                    version_item.inner.components.minecraft_mod.clone()
+                {
+                    edit.apply_to(&mut component)
+                        .await
+                        .wrap_request_err("applying Minecraft version edit")?;
+                    component
+                } else {
+                    edit.create().wrap_request_err(
+                        "creating Minecraft version component",
+                    )?
+                };
+                let all_loaders = database::models::loader_item::Loader::list(
+                    &mut *transaction,
+                    &redis,
+                )
+                .await
+                .wrap_internal_err("fetching loaders")?;
+                let loader_ids = if let Some(ids) = &new_loader_ids {
+                    ids.clone()
                 } else {
                     sqlx::query!(
-                        "
+                        r#"
                         SELECT loader_id
                         FROM loaders_versions
                         WHERE version_id = $1
-                        ",
+                        "#,
                         version_id as database::models::ids::DBVersionId,
                     )
-                    .fetch_all(&mut transaction)
+                    .fetch_all(&mut *transaction)
                     .await
                     .wrap_internal_err(
                         "fetching version loaders from database",
                     )?
                     .into_iter()
                     .map(|row| database::models::ids::LoaderId(row.loader_id))
-                    .collect_vec()
+                    .collect::<Vec<_>>()
                 };
-
-                let available_loader_fields = LoaderField::get_fields(
-                    &loader_ids,
-                    &mut transaction,
-                    &redis,
-                )
-                .await
-                .wrap_internal_err("fetching loader field from Redis")?;
-
-                let mut incompatible_loader_fields = version_fields_names
-                    .iter()
-                    .filter(|field| {
-                        !available_loader_fields
-                            .iter()
-                            .any(|loader_field| &loader_field.field == *field)
-                    })
-                    .cloned()
-                    .collect_vec();
-                incompatible_loader_fields.sort_unstable();
-
-                if !incompatible_loader_fields.is_empty() {
-                    let fields = incompatible_loader_fields
-                        .iter()
-                        .map(|field| format!("`{field}`"))
-                        .join(", ");
-                    let message = if incompatible_loader_fields.len() == 1 {
-                        format!(
-                            "loader field {fields} does not exist for any loaders supplied"
-                        )
-                    } else {
-                        format!(
-                            "loader fields {fields} do not exist for any loaders supplied"
-                        )
-                    };
-                    return Err(ApiError::Request(eyre::eyre!(message)));
-                }
-
-                let loader_fields = available_loader_fields
+                let selected_loaders = all_loaders
                     .into_iter()
-                    .filter(|lf| version_fields_names.contains(&lf.field))
-                    .collect::<Vec<LoaderField>>();
-
-                let loader_field_ids = loader_fields
-                    .iter()
-                    .map(|lf| lf.id.0)
-                    .collect::<Vec<i32>>();
-                sqlx::query!(
-                    "
-                    DELETE FROM version_fields
-                    WHERE version_id = $1
-                    AND field_id = ANY($2)
-                    ",
-                    version_id as database::models::ids::DBVersionId,
-                    &loader_field_ids
-                )
-                .execute(&mut transaction)
-                .await
-                .wrap_internal_err(
-                    "querying database for `version_edit_helper`",
-                )?;
-
-                let mut loader_field_enum_values =
-                    LoaderFieldEnumValue::list_many_loader_fields(
-                        &loader_fields,
-                        &mut transaction,
-                        &redis,
-                    )
-                    .await
-                    .wrap_internal_err(
-                        "fetching loader field enum value from Redis",
-                    )?;
-
-                let mut version_fields = Vec::new();
-                for (vf_name, vf_value) in new_version.fields {
-                    let loader_field = loader_fields
+                    .filter(|loader| loader_ids.contains(&loader.id))
+                    .collect::<Vec<_>>();
+                if edits_mrpack_loaders
+                    && !selected_loaders
                         .iter()
-                        .find(|lf| lf.field == vf_name)
-                        .wrap_request_err_with(|| format!(
-                                "loader field `{vf_name}` does not exist for any loaders supplied"
-                            ))?;
-                    let enum_variants = loader_field_enum_values
-                        .remove(&loader_field.id)
-                        .unwrap_or_default();
-                    let vf: VersionField = VersionField::check_parse(
-                        version_id,
-                        loader_field.clone(),
-                        vf_value.clone(),
-                        enum_variants,
-                    )
-                    .map_err(eyre::Report::msg)
-                    .wrap_request_err("parsing version field")?;
-                    version_fields.push(vf);
+                        .any(|loader| loader.loader == "mrpack")
+                {
+                    return Err(ApiError::Request(eyre::eyre!(
+                        "`mrpack_loaders` requires the `mrpack` loader"
+                    )));
                 }
-                VersionField::insert_many(version_fields, &mut transaction)
-                    .await
-                    .wrap_internal_err(
-                        "inserting database records for `version_edit_helper`",
-                    )?;
+                super::version_creation::validate_minecraft_component(
+                    minecraft_meta.clone(),
+                    &component,
+                    &selected_loaders,
+                )
+                .await
+                .wrap_request_err("validating Minecraft version component")?;
+                sqlx::query!(
+                    r#"
+                    UPDATE versions
+                    SET components = jsonb_set(COALESCE(components, '{}'::jsonb), '{minecraft_mod}', $2::jsonb)
+                    WHERE id = $1
+                    "#,
+                    version_id as database::models::ids::DBVersionId,
+                    sqlx::types::Json(component) as _
+                )
+                .execute(&mut *transaction)
+                .await
+                .wrap_internal_err("updating Minecraft version component")?;
             }
 
             if let Some(loader_ids) = new_loader_ids {
@@ -776,7 +815,7 @@ pub async fn version_edit_helper(
                     ",
                     version_id as database::models::ids::DBVersionId,
                 )
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await
                 .wrap_internal_err("fetching loaders from database")?;
 
@@ -787,11 +826,12 @@ pub async fn version_edit_helper(
                         version_id,
                     })
                     .collect();
-                DBLoaderVersion::insert_many(loader_versions, &mut transaction)
-                    .await
-                    .wrap_internal_err(
-                        "inserting loader versions into database",
-                    )?;
+                DBLoaderVersion::insert_many(
+                    loader_versions,
+                    &mut *transaction,
+                )
+                .await
+                .wrap_internal_err("inserting loader versions into database")?;
             }
 
             if let Some(featured) = &new_version.featured {
@@ -804,7 +844,7 @@ pub async fn version_edit_helper(
                     featured,
                     version_id as database::models::ids::DBVersionId,
                 )
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await
                 .wrap_internal_err("fetching featured status from database")?;
             }
@@ -819,7 +859,7 @@ pub async fn version_edit_helper(
                     body,
                     version_id as database::models::ids::DBVersionId,
                 )
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await
                 .wrap_internal_err(
                     "querying database for `version_edit_helper`",
@@ -842,7 +882,7 @@ pub async fn version_edit_helper(
                     *downloads as i32,
                     version_id as database::models::ids::DBVersionId,
                 )
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await
                 .wrap_internal_err(
                     "querying database for `version_edit_helper`",
@@ -860,7 +900,7 @@ pub async fn version_edit_helper(
                     version_item.inner.project_id
                         as database::models::ids::DBProjectId,
                 )
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await
                 .wrap_internal_err(
                     "querying database for `version_edit_helper`",
@@ -883,7 +923,7 @@ pub async fn version_edit_helper(
                     status.as_str(),
                     version_id as database::models::ids::DBVersionId,
                 )
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await
                 .wrap_internal_err(
                     "querying database for `version_edit_helper`",
@@ -922,7 +962,7 @@ pub async fn version_edit_helper(
                         result.id,
                         file_type.file_type.as_ref().map(|x| x.as_str()),
                     )
-                    .execute(&mut transaction)
+                    .execute(&mut *transaction)
                     .await
                     .wrap_internal_err(
                         "querying database for `version_edit_helper`",
@@ -940,7 +980,7 @@ pub async fn version_edit_helper(
                     ordering.to_owned() as Option<i32>,
                     version_id as database::models::ids::DBVersionId,
                 )
-                .execute(&mut transaction)
+                .execute(&mut *transaction)
                 .await
                 .wrap_internal_err(
                     "querying database for `version_edit_helper`",
@@ -959,35 +999,13 @@ pub async fn version_edit_helper(
             img::delete_unused_images(
                 context,
                 checkable_strings,
-                &mut transaction,
+                &mut *transaction,
                 &redis,
             )
             .await
             .wrap_api_err("deleting unused images")?;
 
-            transaction
-                .commit()
-                .await
-                .wrap_internal_err("committing database transaction")?;
-            database::models::DBVersion::clear_cache(&version_item, &redis)
-                .await
-                .wrap_internal_err("clearing cached data from Redis")?;
-            database::models::DBProject::clear_cache(
-                version_item.inner.project_id,
-                None,
-                Some(true),
-                &redis,
-            )
-            .await
-            .wrap_internal_err("clearing cached data from Redis")?;
-            search_state
-                .queue
-                .push_version_changes(
-                    version_item.inner.project_id.into(),
-                    [VersionId::from(version_item.inner.id)],
-                )
-                .await;
-            Ok(HttpResponse::NoContent().body(""))
+            Ok((version_item, user))
         } else {
             Err(ApiError::Auth(eyre::eyre!(
                 "You do not have permission to edit this version!",
@@ -1039,6 +1057,7 @@ pub struct VersionListFilters {
 )]
 #[get("/{project_id}/version")]
 pub async fn version_list(
+    minecraft_meta: web::Data<MinecraftMeta>,
     req: HttpRequest,
     info: web::Path<(String,)>,
     web::Query(filters): web::Query<VersionListFilters>,
@@ -1047,7 +1066,21 @@ pub async fn version_list(
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
 ) -> Result<HttpResponse, ApiError> {
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "project_id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_READ | Scopes::VERSION_READ,
+    )
+    .await?
+    {
+        return Ok(response);
+    }
+
     version_list_internal(
+        minecraft_meta.clone(),
         req,
         info,
         web::Query(filters),
@@ -1059,7 +1092,167 @@ pub async fn version_list(
     .await
 }
 
+/// Load the shared loader/game-version pairs used by automatic featuring.
+pub(crate) async fn auto_featured_filters(
+    minecraft_meta: web::Data<MinecraftMeta>,
+    ro_pool: &ReadOnlyPgPool,
+    redis: &RedisPool,
+) -> Result<Vec<(String, String)>, ApiError> {
+    let loaders =
+        database::models::loader_item::Loader::list(&**ro_pool, redis)
+            .await
+            .wrap_internal_err("fetching automatic featured filters")?;
+    let game_versions = minecraft_meta.minecraft_versions().await;
+    Ok(game_versions
+        .iter()
+        .filter(|version| {
+            crate::models::minecraft::minecraft_version_type(version)
+                == "release"
+        })
+        .flat_map(|game_version| {
+            loaders.iter().map(|loader| {
+                (game_version.name.to_string(), loader.loader.clone())
+            })
+        })
+        .collect())
+}
+
+/// Apply project-list filters, including the legacy automatic featured fallback.
+pub(crate) async fn filter_project_versions(
+    minecraft_meta: web::Data<MinecraftMeta>,
+    versions: Vec<database::models::version_item::VersionQueryResult>,
+    filters: &VersionListFilters,
+    ro_pool: &ReadOnlyPgPool,
+    redis: &RedisPool,
+    auto_featured: Option<&[(String, String)]>,
+) -> Result<Vec<database::models::version_item::VersionQueryResult>, ApiError> {
+    let loader_field_filters = filters.loader_fields.as_ref().map(|x| {
+        serde_json::from_str::<HashMap<String, Vec<serde_json::Value>>>(x)
+            .unwrap_or_default()
+    });
+    let loader_filters = filters
+        .loaders
+        .as_ref()
+        .map(|x| serde_json::from_str::<Vec<String>>(x).unwrap_or_default());
+    let mut versions = versions
+        .into_iter()
+        .filter(|x| {
+            let mut bool = true;
+
+            if let Some(version_type) = filters.version_type {
+                bool &= &*x.inner.version_type == version_type.as_str();
+            }
+            if let Some(loaders) = &loader_filters {
+                bool &= x.loaders.iter().any(|y| loaders.contains(y));
+            }
+            if let Some(loader_fields) = &loader_field_filters {
+                for (key, values) in loader_fields {
+                    bool &= x
+                        .inner
+                        .components
+                        .minecraft_mod
+                        .as_ref()
+                        .is_none_or(|component| match key.as_str() {
+                            "game_versions" => values.iter().any(|value| {
+                                value.as_str().is_some_and(|value| {
+                                    component
+                                        .game_versions
+                                        .iter()
+                                        .any(|version| version.0 == value)
+                                })
+                            }),
+                            "environment" => component.environment.is_none_or(
+                                |environment| {
+                                    values.iter().any(|value| {
+                                        value.as_str()
+                                            == Some(environment.as_str())
+                                    })
+                                },
+                            ),
+                            "mrpack_loaders" => values.iter().any(|value| {
+                                value.as_str().is_some_and(|value| {
+                                    component
+                                        .mrpack_loaders
+                                        .iter()
+                                        .any(|loader| loader.as_str() == value)
+                                })
+                            }),
+                            _ => true,
+                        });
+                }
+            }
+            bool
+        })
+        .collect::<Vec<_>>();
+
+    // Sort before applying limit/offset so that limit=N returns the N newest versions
+    versions
+        .sort_by_key(|version| std::cmp::Reverse(version.inner.date_published));
+
+    let versions: Vec<_> = versions
+        .into_iter()
+        .skip(filters.offset.unwrap_or(0))
+        .take(filters.limit.unwrap_or(usize::MAX))
+        .collect();
+
+    let mut response = versions
+        .iter()
+        .filter(|version| {
+            filters
+                .featured
+                .is_none_or(|featured| featured == version.inner.featured)
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    // Attempt to populate versions with "auto featured" versions
+    if response.is_empty()
+        && !versions.is_empty()
+        && filters.featured.unwrap_or(false)
+    {
+        // TODO: This is a bandaid fix for detecting auto-featured versions.
+        // In the future, not all versions will have 'game_versions' fields, so this will need to be changed.
+        let loaded_filters;
+        let joined_filters = if let Some(filters) = auto_featured {
+            filters
+        } else {
+            loaded_filters =
+                auto_featured_filters(minecraft_meta.clone(), ro_pool, redis)
+                    .await?;
+            &loaded_filters
+        };
+
+        joined_filters.iter().for_each(|filter| {
+            if let Some(version) = versions.iter().find(|version| {
+                version.inner.components.minecraft_mod.as_ref().is_some_and(
+                    |component| {
+                        component
+                            .game_versions
+                            .iter()
+                            .any(|version| version.0 == filter.0)
+                    },
+                ) && version.loaders.contains(&filter.1)
+            }) {
+                response.push(version.clone());
+            }
+        });
+
+        if response.is_empty() {
+            versions
+                .into_iter()
+                .for_each(|version| response.push(version));
+        }
+    }
+
+    response
+        .sort_by_key(|version| std::cmp::Reverse(version.inner.date_published));
+    response.dedup_by(|a, b| a.inner.id == b.inner.id);
+
+    Ok(response)
+}
+
 pub async fn version_list_internal(
+    minecraft_meta: web::Data<MinecraftMeta>,
     req: HttpRequest,
     info: web::Path<(String,)>,
     web::Query(filters): web::Query<VersionListFilters>,
@@ -1093,132 +1286,27 @@ pub async fn version_list_internal(
             return Err(ApiError::NotFound(eyre::eyre!("resource not found")));
         }
 
-        let loader_field_filters = filters.loader_fields.as_ref().map(|x| {
-            serde_json::from_str::<HashMap<String, Vec<serde_json::Value>>>(x)
-                .unwrap_or_default()
-        });
-        let loader_filters = filters.loaders.as_ref().map(|x| {
-            serde_json::from_str::<Vec<String>>(x).unwrap_or_default()
-        });
-        let mut versions = database::models::DBVersion::get_many(
+        let versions = database::models::DBVersion::get_many(
             &project.versions,
             &***ro_pool,
             &redis,
         )
         .await
-        .wrap_internal_err("fetching versions from database")?
-        .into_iter()
-        .filter(|x| {
-            let mut bool = true;
-
-            if let Some(version_type) = filters.version_type {
-                bool &= &*x.inner.version_type == version_type.as_str();
-            }
-            if let Some(loaders) = &loader_filters {
-                bool &= x.loaders.iter().any(|y| loaders.contains(y));
-            }
-            if let Some(loader_fields) = &loader_field_filters {
-                for (key, values) in loader_fields {
-                    bool &= if let Some(x_vf) =
-                        x.version_fields.iter().find(|y| y.field_name == *key)
-                    {
-                        values.iter().any(|v| x_vf.value.contains_json_value(v))
-                    } else {
-                        true
-                    };
-                }
-            }
-            bool
-        })
-        .collect::<Vec<_>>();
-
-        // Sort before applying limit/offset so that limit=N returns the N newest versions
-        versions.sort_by(|a, b| {
-            b.inner.date_published.cmp(&a.inner.date_published)
-        });
-
-        let versions: Vec<_> = versions
-            .into_iter()
-            .skip(filters.offset.unwrap_or(0))
-            .take(filters.limit.unwrap_or(usize::MAX))
-            .collect();
-
-        let mut response = versions
-            .iter()
-            .filter(|version| {
-                filters
-                    .featured
-                    .is_none_or(|featured| featured == version.inner.featured)
-            })
-            .cloned()
-            .collect::<Vec<_>>();
-
-        // Attempt to populate versions with "auto featured" versions
-        if response.is_empty()
-            && !versions.is_empty()
-            && filters.featured.unwrap_or(false)
-        {
-            // TODO: This is a bandaid fix for detecting auto-featured versions.
-            // In the future, not all versions will have 'game_versions' fields, so this will need to be changed.
-            let (loaders, game_versions) = futures::future::try_join(
-                database::models::loader_fields::Loader::list(
-                    &***ro_pool,
-                    &redis,
-                ),
-                database::models::legacy_loader_fields::MinecraftGameVersion::list(
-                    None,
-                    Some(true),
-                    &***ro_pool,
-                    &redis,
-                ),
-            )
-            .await.wrap_internal_err("fetching minecraft game version from Redis")?;
-
-            let mut joined_filters = Vec::new();
-            for game_version in &game_versions {
-                for loader in &loaders {
-                    joined_filters.push((game_version, loader))
-                }
-            }
-
-            joined_filters.into_iter().for_each(|filter| {
-                if let Some(version) = versions.iter().find(|version| {
-                    // TODO: This is the bandaid fix for detecting auto-featured versions.
-                    let game_versions = version
-                        .version_fields
-                        .iter()
-                        .find(|vf| vf.field_name == "game_versions")
-                        .map(|vf| vf.value.clone())
-                        .map(|v| v.as_strings())
-                        .unwrap_or_default();
-                    game_versions.contains(&filter.0.version)
-                        && version.loaders.contains(&filter.1.loader)
-                }) {
-                    response.push(version.clone());
-                }
-            });
-
-            if response.is_empty() {
-                versions
-                    .into_iter()
-                    .for_each(|version| response.push(version));
-            }
-        }
-
-        response.sort_by(|a, b| {
-            b.inner.date_published.cmp(&a.inner.date_published)
-        });
-        response.dedup_by(|a, b| a.inner.id == b.inner.id);
-
-        let mut response = filter_visible_versions(
-            response,
-            &user_option,
-            &pool,
+        .wrap_internal_err("fetching versions from database")?;
+        let response = filter_project_versions(
+            minecraft_meta.clone(),
+            versions,
+            &filters,
             &ro_pool,
             &redis,
+            None,
         )
-        .await
-        .wrap_api_err("filtering visible versions")?;
+        .await?;
+
+        let mut response =
+            filter_visible_versions(response, &user_option, &ro_pool, &redis)
+                .await
+                .wrap_api_err("filtering visible versions")?;
 
         if !filters.include_changelog {
             for version in &mut response {
@@ -1290,15 +1378,6 @@ pub async fn version_delete(
         .wrap_request_err_with(|| {
             "the specified version does not exist!".to_string()
         })?;
-    let project = database::models::DBProject::get_id(
-        version.inner.project_id,
-        &**pool,
-        &redis,
-    )
-    .await
-    .wrap_internal_err("fetching project from database")?
-    .wrap_not_found_err("resource not found")?;
-    let validate_for_review = project.inner.status == ProjectStatus::Processing;
 
     if !user.role.is_admin() {
         let team_member =
@@ -1373,37 +1452,14 @@ pub async fn version_delete(
     .await
     .wrap_internal_err("deleting version from database")?;
 
-    delphi::tech_review_queue::sync_projects(
-        &[version.inner.project_id],
-        delphi::tech_review_queue::TechReviewRemovalReason::FileDeleted,
-        &mut transaction,
-    )
-    .await
-    .wrap_api_err("executing `tech_review_queue::sync_projects`")?;
-
-    if validate_for_review {
-        super::projects::validate::ensure_project_is_valid_for_review(
-            version.inner.project_id,
-            &pool,
-            &mut transaction,
-            &redis,
-        )
-        .await?;
-    }
-
-    transaction
-        .commit()
-        .await
-        .wrap_internal_err("committing database transaction")?;
-
-    database::models::DBProject::clear_cache(
+    super::projects::mutation::finalize_mutation(
         version.inner.project_id,
-        None,
-        Some(true),
+        transaction,
+        &pool,
         &redis,
+        Some(&user),
     )
-    .await
-    .wrap_internal_err("clearing cached data from Redis")?;
+    .await?;
     search_state
         .queue
         .push_version_changes(

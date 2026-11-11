@@ -7,6 +7,7 @@ use xredis::RedisPool;
 
 use super::{ApiError, oauth_clients::get_user_clients};
 use crate::database::{PgPool, ReadOnlyPgPool};
+use crate::routes::internal::globals::GLOBALS;
 use crate::util::error::Context;
 use crate::{
     auth::{
@@ -22,7 +23,7 @@ use crate::{
         organizations::Organization,
         pats::Scopes,
         projects::Project,
-        users::{Badges, Role, User},
+        users::{Badges, Role, User, UserRestriction},
     },
     queue::session::AuthQueue,
     util::{img::delete_old_images, routes::read_limited_from_payload},
@@ -620,6 +621,9 @@ pub async fn users_get(
                 user.moderation_notes =
                     Some(notes.get(&data.id).cloned().map(Into::into));
                 user.lock = data.lock.map(Into::into);
+                user.restriction = data.restriction.map(|restriction| {
+                    UserRestriction::from_db(restriction, true)
+                });
             }
             user
         })
@@ -666,7 +670,10 @@ pub async fn user_get(
         let is_admin = auth_user.as_ref().is_some_and(|x| x.role.is_admin());
         let is_mod = auth_user.as_ref().is_some_and(|x| x.role.is_mod());
         let user_id = data.id;
+        let is_self =
+            auth_user.as_ref().is_some_and(|x| x.id == user_id.into());
         let lock = data.lock.clone();
+        let restriction = data.restriction.clone();
 
         let mut response: crate::models::users::User = if is_admin {
             let github_id =
@@ -688,6 +695,12 @@ pub async fn user_get(
                 .wrap_internal_err("fetching moderation note from database")?;
             response.moderation_notes = Some(note.map(Into::into));
             response.lock = lock.map(Into::into);
+        }
+
+        if is_mod || is_self {
+            response.restriction = restriction.map(|restriction| {
+                UserRestriction::from_db(restriction, is_mod)
+            });
         }
 
         Ok(HttpResponse::Ok().json(response))
@@ -1225,8 +1238,14 @@ pub async fn user_icon_edit(
 
         let bytes = read_limited_from_payload(
             &mut payload,
-            524288,
-            "Icons must be smaller than 512KiB",
+            GLOBALS.max_user_icon_size,
+            format!(
+                "icons must be smaller than {}",
+                humansize::format_size(
+                    GLOBALS.max_user_icon_size,
+                    humansize::BINARY
+                )
+            ),
         )
         .await?;
 

@@ -41,3 +41,7 @@ export async function record_ads_click() {
 export async function open_ads_link() {
 	return null
 }
+
+export async function get_ads_debug_state() {
+	return null
+}

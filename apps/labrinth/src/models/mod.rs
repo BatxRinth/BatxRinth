@@ -1,6 +1,7 @@
 pub mod error;
 pub mod exp;
 pub mod link_platform;
+pub mod minecraft;
 pub mod v2;
 pub mod v3;
 
@@ -21,5 +22,6 @@ pub use v3::projects;
 pub use v3::reports;
 pub use v3::sessions;
 pub use v3::teams;
+pub use v3::thread_issues;
 pub use v3::threads;
 pub use v3::users;

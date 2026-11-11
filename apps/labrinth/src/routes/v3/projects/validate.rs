@@ -1,4 +1,4 @@
-use actix_web::{HttpRequest, get, web};
+use actix_web::{HttpRequest, HttpResponse, get, web};
 use eyre::eyre;
 use serde::Serialize;
 use xredis::RedisPool;
@@ -14,6 +14,7 @@ use crate::models::link_platform::LinkPlatform;
 use crate::models::pats::Scopes;
 use crate::models::projects::{Project, Version};
 use crate::models::teams::ProjectPermissions;
+
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
 use crate::util::error::Context as _;
@@ -104,17 +105,15 @@ pub(crate) async fn ensure_project_is_valid_for_review(
     .map(|disclosure| disclosure.disclosure)
     .collect::<Vec<_>>();
     let project = Project::from(reloaded_project.clone());
-
-    let nags = web::block(move || {
-        validate_project(
-            &project,
-            &versions,
-            &available_categories,
-            &disclosures,
-        )
-    })
-    .await
-    .wrap_internal_err("validating project for review")?;
+    let nags = validate_project(
+        project,
+        versions,
+        available_categories,
+        disclosures,
+        pool,
+        redis,
+    )
+    .await?;
     require_valid_project(nags)?;
 
     Ok(reloaded_project)
@@ -134,7 +133,20 @@ pub async fn validate(
     ro_pool: web::Data<ReadOnlyPgPool>,
     redis: web::Data<RedisPool>,
     session_queue: web::Data<AuthQueue>,
-) -> Result<web::Json<ProjectValidationResponse>, ApiError> {
+) -> Result<HttpResponse, ApiError> {
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_READ,
+    )
+    .await?
+    {
+        return Ok(response);
+    }
+
     let user = get_user_from_headers(
         &req,
         &**pool,
@@ -195,16 +207,14 @@ pub async fn validate(
     .map(|disclosure| disclosure.disclosure)
     .collect::<Vec<_>>();
     let project = Project::from(project);
-
-    let nags = web::block(move || {
-        validate_project(
-            &project,
-            &versions,
-            &available_categories,
-            &disclosures,
-        )
-    })
-    .await
-    .wrap_internal_err("validating project")?;
-    Ok(web::Json(ProjectValidationResponse { nags }))
+    let nags = validate_project(
+        project,
+        versions,
+        available_categories,
+        disclosures,
+        &ro_pool,
+        &redis,
+    )
+    .await?;
+    Ok(HttpResponse::Ok().json(ProjectValidationResponse { nags }))
 }

@@ -2,9 +2,6 @@ use super::project_creation::{CreateError, UploadedFile};
 use crate::auth::get_user_from_headers;
 use crate::database::PgPool;
 use crate::database::PgTransaction;
-use crate::database::models::loader_fields::{
-    LoaderField, LoaderFieldEnumValue, VersionField,
-};
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::version_item::{
     DependencyBuilder, VersionBuilder, VersionFileBuilder,
@@ -13,6 +10,7 @@ use crate::database::models::{self, DBOrganization, image_item};
 use crate::env::ENV;
 use crate::file_hosting::{FileHost, FileHostPublicity};
 use crate::models::exp;
+use crate::models::exp::component::ComponentEdit;
 use crate::models::ids::{ImageId, ProjectId, VersionId};
 use crate::models::images::{Image, ImageContext};
 use crate::models::notifications::NotificationBody;
@@ -24,9 +22,11 @@ use crate::models::projects::{
 };
 use crate::models::projects::{DependencyType, skip_nulls};
 use crate::models::teams::ProjectPermissions;
+use crate::models::users::User;
 use crate::models::v3::user_limits::UserLimits;
 use crate::queue::session::AuthQueue;
 use crate::search::SearchState;
+use crate::util::MinecraftMeta;
 use crate::util::kafka::KafkaClientState;
 use crate::util::routes::read_from_field;
 use crate::util::validate::validation_errors_to_string;
@@ -35,12 +35,14 @@ use actix_multipart::{Field, Multipart};
 use actix_web::web::Data;
 use actix_web::{HttpRequest, HttpResponse, post, web};
 use chrono::Utc;
+use eyre::WrapErr as _;
 use futures::stream::StreamExt;
 use hex::ToHex;
 use itertools::Itertools;
+use minecraft_meta_model::model::MinecraftVersionName;
 use serde::{Deserialize, Serialize};
 use sha1::Digest;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use validator::Validate;
 use xredis::RedisPool;
 
@@ -90,8 +92,11 @@ pub struct InitialVersionData {
     // The ordering relative to other versions
     pub ordering: Option<i32>,
 
+    #[serde(default)]
+    pub minecraft_mod: Option<crate::models::exp::minecraft::ModVersion>,
+
     // Flattened loader fields
-    // All other fields are loader-specific VersionFields
+    // All other fields are Minecraft compatibility fields
     // These are flattened during serialization
     #[serde(deserialize_with = "skip_nulls")]
     #[serde(flatten)]
@@ -125,6 +130,7 @@ struct InitialFileData {
 )]
 #[post("/version")]
 pub async fn version_create_route(
+    minecraft_meta: web::Data<MinecraftMeta>,
     req: HttpRequest,
     payload: Multipart,
     client: Data<PgPool>,
@@ -135,6 +141,7 @@ pub async fn version_create_route(
     search_state: Data<SearchState>,
 ) -> Result<HttpResponse, CreateError> {
     version_create(
+        minecraft_meta.clone(),
         req,
         payload,
         client,
@@ -148,6 +155,7 @@ pub async fn version_create_route(
 }
 
 pub async fn version_create(
+    minecraft_meta: web::Data<MinecraftMeta>,
     req: HttpRequest,
     mut payload: Multipart,
     client: Data<PgPool>,
@@ -159,74 +167,88 @@ pub async fn version_create(
 ) -> Result<HttpResponse, CreateError> {
     let mut transaction = client.begin().await?;
     let mut uploaded_files = Vec::new();
+    let mut delphi_scan_files = Vec::new();
 
-    let result = version_create_inner(
-        req,
-        &mut payload,
-        &mut transaction,
+    let user = get_user_from_headers(
+        &req,
+        &**client,
         &redis,
-        &**file_host,
-        &mut uploaded_files,
-        &client,
         &session_queue,
-        &kafka_client,
+        Scopes::VERSION_CREATE,
     )
+    .await?
+    .1;
+
+    let result = async {
+        let (response, project_id, version_id) = version_create_inner(
+            minecraft_meta.clone(),
+            &mut payload,
+            &mut transaction,
+            &redis,
+            &**file_host,
+            &mut uploaded_files,
+            &user,
+            &client,
+            &mut delphi_scan_files,
+        )
+        .await?;
+
+        let prepared = super::projects::mutation::prepare_mutations(
+            &[project_id],
+            &mut transaction,
+            &client,
+            &redis,
+            Some(&user),
+        )
+        .await?;
+        Ok::<_, CreateError>((response, project_id, version_id, prepared))
+    }
     .await;
 
-    if result.is_err() {
-        let undo_result = super::project_creation::undo_uploads(
-            &**file_host,
-            &uploaded_files,
-        )
-        .await;
-        let rollback_result = transaction.rollback().await;
-
-        undo_result?;
-        if let Err(e) = rollback_result {
-            return Err(e.into());
-        }
-    } else if let Ok((_, project_id, version_id)) = &result {
-        transaction.commit().await?;
-        models::DBProject::clear_cache(*project_id, None, Some(true), &redis)
-            .await?;
-        search_state
-            .queue
-            .push_version_changes(
-                (*project_id).into(),
-                [VersionId::from(*version_id)],
+    let (response, project_id, version_id, prepared) = match result {
+        Ok(result) => result,
+        Err(error) => {
+            let undo_result = super::project_creation::undo_uploads(
+                &**file_host,
+                &uploaded_files,
             )
             .await;
-    }
+            let rollback_result = transaction.rollback().await;
+            undo_result?;
+            rollback_result?;
+            return Err(error);
+        }
+    };
 
-    result.map(|(response, _, _)| response)
+    prepared.commit(transaction, &redis).await?;
+    crate::queue::delphi_scan::publish_new_files(
+        &kafka_client,
+        &delphi_scan_files,
+    )
+    .await;
+    search_state
+        .queue
+        .push_version_changes(project_id.into(), [VersionId::from(version_id)])
+        .await;
+    Ok(response)
 }
 
 #[allow(clippy::too_many_arguments)]
 async fn version_create_inner(
-    req: HttpRequest,
+    minecraft_meta: web::Data<MinecraftMeta>,
     payload: &mut Multipart,
     transaction: &mut PgTransaction<'_>,
     redis: &RedisPool,
     file_host: &dyn FileHost,
     uploaded_files: &mut Vec<UploadedFile>,
+    user: &User,
     pool: &PgPool,
-    session_queue: &AuthQueue,
-    kafka_client: &KafkaClientState,
+    delphi_scan_files: &mut Vec<models::DBFileId>,
 ) -> Result<(HttpResponse, models::DBProjectId, models::DBVersionId), CreateError>
 {
     let mut initial_version_data = None;
     let mut version_builder = None;
     let mut selected_loaders = None;
-
-    let user = get_user_from_headers(
-        &req,
-        pool,
-        redis,
-        session_queue,
-        Scopes::VERSION_CREATE,
-    )
-    .await?
-    .1;
 
     let mut error = None;
     while let Some(item) = payload.next().await {
@@ -322,7 +344,7 @@ async fn version_create_inner(
 
                 let project_version_limits =
                     UserLimits::get_for_versions_per_project(
-                        &user,
+                        user,
                         project_id,
                         pool,
                     )
@@ -333,7 +355,7 @@ async fn version_create_inner(
 
                 let daily_version_limits =
                     UserLimits::get_for_versions_per_day(
-                        &user,
+                        user,
                         Utc::now(),
                         pool,
                     )
@@ -345,7 +367,7 @@ async fn version_create_inner(
                 let version_id: VersionId = models::generate_version_id(transaction).await?.into();
 
                 let all_loaders =
-                    models::loader_fields::Loader::list(&mut *transaction, redis).await?;
+                    models::loader_item::Loader::list(&mut *transaction, redis).await?;
                 let loaders = version_create_data
                     .loaders
                     .iter()
@@ -360,20 +382,12 @@ async fn version_create_inner(
                 selected_loaders = Some(loaders.clone());
                 let loader_ids: Vec<models::LoaderId> = loaders.iter().map(|y| y.id).collect_vec();
 
-                let loader_fields =
-                    LoaderField::get_fields(&loader_ids, &mut *transaction, redis).await?;
-                let mut loader_field_enum_values = LoaderFieldEnumValue::list_many_loader_fields(
-                    &loader_fields,
-                    &mut *transaction,
-                    redis,
-                )
-                .await?;
-                let version_fields = try_create_version_fields(
-                    version_id,
+                let component = create_minecraft_component(
+                    minecraft_meta.clone(),
                     &version_create_data.fields,
-                    &loader_fields,
-                    &mut loader_field_enum_values,
-                )?;
+                    version_create_data.minecraft_mod.as_ref(),
+                    &loaders,
+                ).await?;
 
                 let dependencies = version_create_data
                     .dependencies
@@ -396,13 +410,15 @@ async fn version_create_inner(
                     files: Vec::new(),
                     dependencies,
                     loaders: loader_ids,
-                    version_fields,
                     version_type: version_create_data.release_channel.to_string(),
                     featured: version_create_data.featured,
                     status: version_create_data.status,
                     requested_status: None,
                     ordering: version_create_data.ordering,
-                    components: exp::VersionSerial::default(),
+                    components: exp::VersionSerial {
+                        minecraft_mod: component,
+                        ..Default::default()
+                    },
                 });
 
                 return Ok(());
@@ -425,7 +441,11 @@ async fn version_create_inner(
 
             let existing_file_names = version.files.iter().map(|x| x.filename.clone()).collect();
 
+            let game_versions = version.components.minecraft_mod.as_ref()
+                .map(|component| component.game_versions.clone()).unwrap_or_default();
+
             upload_file(
+                minecraft_meta.clone(),
                 &mut field,
                 file_host,
                 version_data.file_parts.len(),
@@ -435,7 +455,7 @@ async fn version_create_inner(
                 &content_disposition,
                 version.project_id.into(),
                 version.version_id.into(),
-                &version.version_fields,
+                &game_versions,
                 loaders,
                 version_data.primary_file.is_some(),
                 version_data.primary_file.as_deref() == Some(name),
@@ -500,12 +520,15 @@ async fn version_create_inner(
     .await?;
 
     let loader_structs = selected_loaders.unwrap_or_default();
-    let (all_project_types, all_games): (Vec<String>, Vec<String>) =
-        loader_structs.iter().fold((vec![], vec![]), |mut acc, x| {
-            acc.0.extend_from_slice(&x.supported_project_types);
-            acc.1.extend(x.supported_games.clone());
-            acc
-        });
+    let all_project_types = loader_structs
+        .iter()
+        .flat_map(|loader| loader.supported_project_types.clone())
+        .collect();
+    let all_games = if loader_structs.is_empty() {
+        Vec::new()
+    } else {
+        vec!["minecraft-java".to_owned()]
+    };
 
     let response = Version {
         id: builder.version_id.into(),
@@ -552,13 +575,16 @@ async fn version_create_inner(
         dependencies: version_data.dependencies,
         loaders: version_data.loaders,
         fields: version_data.fields,
-        components: exp::VersionQuery::default(),
+        components: exp::VersionQuery {
+            minecraft_mod: builder.components.minecraft_mod.clone(),
+            ..Default::default()
+        },
         files_missing_attribution: Vec::new(),
     };
 
     let project_id = builder.project_id;
     builder
-        .insert(transaction, redis, file_host, kafka_client)
+        .insert(transaction, redis, file_host, delphi_scan_files)
         .await?;
 
     for image_id in version_data.uploaded_images {
@@ -628,6 +654,7 @@ async fn version_create_inner(
 )]
 #[post("/version/{version_id}/file")]
 pub async fn upload_file_to_version_route(
+    minecraft_meta: web::Data<MinecraftMeta>,
     req: HttpRequest,
     url_data: web::Path<(VersionId,)>,
     payload: Multipart,
@@ -639,6 +666,7 @@ pub async fn upload_file_to_version_route(
     search_state: Data<SearchState>,
 ) -> Result<HttpResponse, CreateError> {
     upload_file_to_version(
+        minecraft_meta.clone(),
         req,
         url_data,
         payload,
@@ -653,6 +681,7 @@ pub async fn upload_file_to_version_route(
 }
 
 pub async fn upload_file_to_version(
+    minecraft_meta: web::Data<MinecraftMeta>,
     req: HttpRequest,
     url_data: web::Path<(VersionId,)>,
     mut payload: Multipart,
@@ -665,52 +694,79 @@ pub async fn upload_file_to_version(
 ) -> Result<HttpResponse, CreateError> {
     let mut transaction = client.begin().await?;
     let mut uploaded_files = Vec::new();
+    let mut delphi_scan_files = Vec::new();
 
     let version_id = url_data.into_inner().0;
     let db_version_id = models::DBVersionId::from(version_id);
 
-    let result = upload_file_to_version_inner(
-        req,
-        &mut payload,
-        client.clone(),
-        &mut transaction,
-        redis.clone(),
-        &**file_host,
-        &mut uploaded_files,
-        db_version_id,
+    let user = get_user_from_headers(
+        &req,
+        &**client,
+        &redis,
         &session_queue,
-        &kafka_client,
+        Scopes::VERSION_WRITE,
     )
+    .await?
+    .1;
+
+    let result = async {
+        let (response, project_id) = upload_file_to_version_inner(
+            minecraft_meta.clone(),
+            &mut payload,
+            client.clone(),
+            &mut transaction,
+            redis.clone(),
+            &**file_host,
+            &mut uploaded_files,
+            db_version_id,
+            &user,
+            &mut delphi_scan_files,
+        )
+        .await?;
+
+        let prepared = super::projects::mutation::prepare_mutations(
+            &[project_id],
+            &mut transaction,
+            &client,
+            &redis,
+            Some(&user),
+        )
+        .await?;
+        Ok::<_, CreateError>((response, project_id, prepared))
+    }
     .await;
 
-    if result.is_err() {
-        let undo_result = super::project_creation::undo_uploads(
-            &**file_host,
-            &uploaded_files,
-        )
-        .await;
-        let rollback_result = transaction.rollback().await;
-
-        undo_result?;
-        if let Err(e) = rollback_result {
-            return Err(e.into());
-        }
-    } else if let Ok((_, project_id)) = &result {
-        transaction.commit().await?;
-        models::DBProject::clear_cache(*project_id, None, Some(true), &redis)
-            .await?;
-        search_state
-            .queue
-            .push_version_changes((*project_id).into(), [version_id])
+    let (response, project_id, prepared) = match result {
+        Ok(result) => result,
+        Err(error) => {
+            let undo_result = super::project_creation::undo_uploads(
+                &**file_host,
+                &uploaded_files,
+            )
             .await;
-    }
+            let rollback_result = transaction.rollback().await;
+            undo_result?;
+            rollback_result?;
+            return Err(error);
+        }
+    };
 
-    result.map(|(response, _)| response)
+    prepared.commit(transaction, &redis).await?;
+    crate::queue::delphi_scan::publish_new_files(
+        &kafka_client,
+        &delphi_scan_files,
+    )
+    .await;
+    search_state
+        .queue
+        .push_version_changes(project_id.into(), [version_id])
+        .await;
+    Ok(response)
 }
 
 #[allow(clippy::too_many_arguments)]
 async fn upload_file_to_version_inner(
-    req: HttpRequest,
+    minecraft_meta: web::Data<MinecraftMeta>,
     payload: &mut Multipart,
     client: Data<PgPool>,
     transaction: &mut PgTransaction<'_>,
@@ -718,21 +774,11 @@ async fn upload_file_to_version_inner(
     file_host: &dyn FileHost,
     uploaded_files: &mut Vec<UploadedFile>,
     version_id: models::DBVersionId,
-    session_queue: &AuthQueue,
-    kafka_client: &KafkaClientState,
+    user: &User,
+    delphi_scan_files: &mut Vec<models::DBFileId>,
 ) -> Result<(HttpResponse, models::DBProjectId), CreateError> {
     let mut initial_file_data: Option<InitialFileData> = None;
     let mut file_builders: Vec<VersionFileBuilder> = Vec::new();
-
-    let user = get_user_from_headers(
-        &req,
-        &**client,
-        &redis,
-        session_queue,
-        Scopes::VERSION_WRITE,
-    )
-    .await?
-    .1;
 
     let result = models::DBVersion::get(version_id, &**client, &redis).await?;
 
@@ -743,7 +789,7 @@ async fn upload_file_to_version_inner(
     };
 
     let all_loaders =
-        models::loader_fields::Loader::list(&mut *transaction, &redis).await?;
+        models::loader_item::Loader::list(&mut *transaction, &redis).await?;
     let selected_loaders = version
         .loaders
         .iter()
@@ -864,7 +910,15 @@ async fn upload_file_to_version_inner(
                 })
                 .collect();
 
+            let game_versions = version
+                .components
+                .minecraft_mod
+                .as_ref()
+                .map(|component| component.game_versions.clone())
+                .unwrap_or_default();
+
             upload_file(
+                minecraft_meta.clone(),
                 &mut field,
                 file_host,
                 0,
@@ -874,7 +928,7 @@ async fn upload_file_to_version_inner(
                 &content_disposition,
                 project_id,
                 version_id.into(),
-                &version.version_fields,
+                &game_versions,
                 loaders,
                 true,
                 false,
@@ -912,7 +966,7 @@ async fn upload_file_to_version_inner(
                 &mut *transaction,
                 &redis,
                 file_host,
-                kafka_client,
+                delphi_scan_files,
             )
             .await?;
         }
@@ -928,6 +982,7 @@ async fn upload_file_to_version_inner(
 // files for a version, and for uploading the initial version files for a project
 #[allow(clippy::too_many_arguments)]
 pub async fn upload_file(
+    minecraft_meta: web::Data<MinecraftMeta>,
     field: &mut Field,
     file_host: &dyn FileHost,
     total_files_len: usize,
@@ -937,7 +992,7 @@ pub async fn upload_file(
     content_disposition: &actix_web::http::header::ContentDisposition,
     project_id: ProjectId,
     version_id: VersionId,
-    version_fields: &[VersionField],
+    game_versions: &[MinecraftVersionName],
     loaders: Vec<Loader>,
     ignore_primary: bool,
     force_primary: bool,
@@ -946,7 +1001,8 @@ pub async fn upload_file(
     transaction: &mut PgTransaction<'_>,
     redis: &RedisPool,
 ) -> Result<(), CreateError> {
-    let (file_name, file_extension) = get_name_ext(content_disposition)?;
+    let (file_name, file_extension) =
+        get_name_and_extension(content_disposition)?;
 
     if other_file_names.iter().any(|name| name == file_name) {
         return Err(CreateError::InvalidInput(
@@ -998,11 +1054,12 @@ pub async fn upload_file(
     let data = data.freeze();
 
     let validation_result = validate_file(
+        minecraft_meta.clone(),
         data.clone(),
         file_extension.to_string(),
         loaders.clone(),
         file_type,
-        version_fields.to_vec(),
+        game_versions.to_vec(),
         dependencies,
         &mut *transaction,
         redis,
@@ -1143,12 +1200,17 @@ pub async fn upload_file(
     Ok(())
 }
 
-pub fn get_name_ext(
+pub fn get_name_and_extension(
     content_disposition: &actix_web::http::header::ContentDisposition,
 ) -> Result<(&str, &str), CreateError> {
     let file_name = content_disposition.get_filename().ok_or_else(|| {
         CreateError::MissingValueError("Missing content file name".to_string())
     })?;
+    // trim start/end whitespace
+    // our S3 provider may not support spaces at the start/end of file names
+    // or key names
+    let file_name = file_name.trim();
+
     let file_extension = if let Some(last_period) = file_name.rfind('.') {
         file_name.get((last_period + 1)..).unwrap_or("")
     } else {
@@ -1159,52 +1221,63 @@ pub fn get_name_ext(
     Ok((file_name, file_extension))
 }
 
-// Reused functionality between project_creation and version_creation
-// Create a list of VersionFields from the fetched data, and check that all mandatory fields are present
-pub fn try_create_version_fields(
-    version_id: VersionId,
-    submitted_fields: &HashMap<String, serde_json::Value>,
-    loader_fields: &[LoaderField],
-    loader_field_enum_values: &mut HashMap<
-        models::LoaderFieldId,
-        Vec<LoaderFieldEnumValue>,
-    >,
-) -> Result<Vec<VersionField>, CreateError> {
-    let mut version_fields = vec![];
-    let mut remaining_mandatory_loader_fields = loader_fields
-        .iter()
-        .filter(|lf| !lf.optional)
-        .map(|lf| lf.field.clone())
-        .collect::<HashSet<_>>();
-    for (key, value) in submitted_fields {
-        let loader_field = loader_fields
-            .iter()
-            .find(|lf| &lf.field == key)
-            .ok_or_else(|| {
-                CreateError::InvalidInput(format!(
-                    "Loader field '{key}' does not exist for any loaders supplied,"
-                ))
-            })?;
-        remaining_mandatory_loader_fields.remove(&loader_field.field);
-        let enum_variants = loader_field_enum_values
-            .remove(&loader_field.id)
-            .unwrap_or_default();
+pub async fn validate_minecraft_component(
+    minecraft_meta: web::Data<MinecraftMeta>,
+    component: &exp::minecraft::ModVersion,
+    loaders: &[models::loader_item::Loader],
+) -> eyre::Result<()> {
+    eyre::ensure!(
+        !loaders.is_empty(),
+        "Minecraft fields do not apply to the supplied loaders"
+    );
+    eyre::ensure!(
+        !component.game_versions.is_empty(),
+        "at least one Minecraft game version is required"
+    );
+    eyre::ensure!(
+        component.mrpack_loaders.is_empty()
+            || loaders.iter().any(|loader| loader.loader == "mrpack"),
+        "`mrpack_loaders` requires the `mrpack` loader"
+    );
+    minecraft_meta
+        .validate_minecraft_versions(&component.game_versions)
+        .await
+        .wrap_err("validating minecraft game versions")
+}
 
-        let vf: VersionField = VersionField::check_parse(
-            version_id.into(),
-            loader_field.clone(),
-            value.clone(),
-            enum_variants,
+pub async fn create_minecraft_component(
+    minecraft_meta: web::Data<MinecraftMeta>,
+    fields: &HashMap<String, serde_json::Value>,
+    typed: Option<&exp::minecraft::ModVersion>,
+    loaders: &[models::loader_item::Loader],
+) -> Result<Option<exp::minecraft::ModVersion>, CreateError> {
+    let build = async {
+        eyre::ensure!(
+            typed.is_none() || fields.is_empty(),
+            "cannot combine typed and flattened Minecraft fields"
+        );
+        let applies = !loaders.is_empty();
+        if !applies && typed.is_none() && fields.is_empty() {
+            return Ok(None);
+        }
+        eyre::ensure!(
+            !fields.contains_key("mrpack_loaders")
+                || loaders.iter().any(|loader| loader.loader == "mrpack"),
+            "`mrpack_loaders` requires the `mrpack` loader"
+        );
+        let component = match typed {
+            Some(component) => component.clone(),
+            None => crate::models::minecraft::parse_minecraft_fields(fields)?
+                .create()?,
+        };
+        validate_minecraft_component(
+            minecraft_meta.clone(),
+            &component,
+            loaders,
         )
-        .map_err(CreateError::InvalidInput)?;
-        version_fields.push(vf);
+        .await?;
+        eyre::Ok(Some(component))
     }
-
-    if !remaining_mandatory_loader_fields.is_empty() {
-        return Err(CreateError::InvalidInput(format!(
-            "Missing mandatory loader fields: {}",
-            remaining_mandatory_loader_fields.iter().join(", ")
-        )));
-    }
-    Ok(version_fields)
+    .await;
+    build.map_err(|error| CreateError::InvalidInput(error.to_string()))
 }

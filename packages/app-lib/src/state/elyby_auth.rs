@@ -50,7 +50,7 @@ struct ErrorResponse {
 }
 
 fn elyby_error(message: impl Into<String>) -> crate::Error {
-    crate::ErrorKind::OtherError(format!("Ely.by: {}", message.into())).into()
+    anyhow::anyhow!("Ely.by: {}", message.into())
 }
 
 async fn post(

@@ -121,7 +121,7 @@
 									>
 										<div>
 											<span class="font-semibold text-primary"
-												>{{ formatMessage(commonMessages.sortByLabel) }}:
+												>{{ formatMessage(commonMessages.sortByLabel) }}
 											</span>
 											<span class="font-semibold text-secondary">{{ selected }}</span>
 										</div>
@@ -151,6 +151,9 @@
 									:color="result.color"
 									layout="list"
 								/>
+								<p v-if="searchProjects.length === 0" class="offline text-center">
+									{{ formatMessage(messages.noResults) }}
+								</p>
 							</div>
 						</div>
 					</div>
@@ -164,24 +167,18 @@
 						<div class="notifs-demo">
 							<h3>{{ formatMessage(commonMessages.notificationsLabel) }}</h3>
 							<div class="notifications">
-								<div
+								<nuxt-link
 									v-for="(notification, index) in notifications"
 									:key="index"
+									:to="`/${notification.project_type}/${notification.slug}`"
+									:title="notification.title"
 									class="notification gradient-border"
 								>
-									<nuxt-link
-										:to="`${notification.project_type}/${notification.slug}`"
-										:title="notification.title"
-									>
-										<Avatar size="md" :src="notification.icon_url" :alt="notification.title" />
-									</nuxt-link>
+									<Avatar size="md" :src="notification.icon_url" :alt="notification.title" />
 									<div>
-										<nuxt-link
-											:to="`${notification.project_type}/${notification.slug}`"
-											class="notif-header"
-										>
+										<span class="notif-header">
 											{{ formatMessage(messages.hasBeenUpdated, { title: notification.title }) }}
-										</nuxt-link>
+										</span>
 										<p class="notif-desc">
 											{{
 												formatMessage(messages.versionReleased, {
@@ -201,7 +198,7 @@
 											</span>
 										</div>
 									</div>
-								</div>
+								</nuxt-link>
 							</div>
 						</div>
 					</div>
@@ -537,6 +534,10 @@ const messages = defineMessages({
 	failedToLoadRandomProjects: {
 		id: 'landing.error.failedToLoadRandomProjects',
 		defaultMessage: 'Failed to load random projects :(',
+	},
+	noResults: {
+		id: 'messages.noResults',
+		defaultMessage: 'No results found for your query!',
 	},
 	forPlayersLabel: {
 		id: 'landing.section.for-players.label',

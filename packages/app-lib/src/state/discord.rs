@@ -5,9 +5,10 @@ use discord_rich_presence::{
     DiscordIpc, DiscordIpcClient,
     activity::{Activity, Assets, Timestamps},
 };
+use sqlx::SqlitePool;
 use tokio::sync::RwLock;
 
-use crate::State;
+use crate::state::ProcessManager;
 
 pub struct DiscordGuard {
     client: Arc<RwLock<DiscordIpcClient>>,
@@ -48,15 +49,15 @@ impl DiscordGuard {
     pub async fn update_presence(
         &self,
         playing: Option<(&str, DateTime<Utc>)>,
+        pool: &SqlitePool,
+        process_manager: &ProcessManager,
     ) -> crate::Result<()> {
-        let state = State::get().await?;
-        let settings = crate::state::Settings::get(&state.pool).await?;
+        let settings = crate::state::Settings::get(pool).await?;
         if !settings.discord_rpc {
             return self.clear_activity(true).await;
         }
 
-        let running = state
-            .process_manager
+        let running = process_manager
             .get_all()
             .into_iter()
             .max_by_key(|process| process.start_time);

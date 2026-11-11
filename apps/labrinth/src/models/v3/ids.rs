@@ -1,9 +1,24 @@
 use ariadne::ids::base62_id;
 
+#[derive(
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    serde::Serialize,
+    serde::Deserialize,
+    Debug,
+    Hash,
+    utoipa::ToSchema,
+)]
+#[serde(transparent)]
+pub struct GalleryImageId(pub u32);
+
 base62_id!(AttributionGroupId);
 base62_id!(ChargeId);
 base62_id!(CampaignDonationId);
 base62_id!(CollectionId);
+base62_id!(CopyrightArchiveId);
 base62_id!(FileId);
 base62_id!(ImageId);
 base62_id!(NotificationId);
@@ -22,9 +37,10 @@ base62_id!(SessionId);
 base62_id!(TeamId);
 base62_id!(TeamMemberId);
 base62_id!(ThreadId);
+base62_id!(ThreadIssueFacetId);
+base62_id!(ThreadIssueId);
 base62_id!(ThreadMessageId);
 base62_id!(UserSubscriptionId);
 base62_id!(VersionId);
-base62_id!(AffiliateCodeId);
 base62_id!(AnalyticsEventId);
 base62_id!(PasskeyId);

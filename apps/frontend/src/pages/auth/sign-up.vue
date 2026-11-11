@@ -1,6 +1,11 @@
 <template>
+	<LauncherOpening
+		v-if="launcherHandoff"
+		:localhost-url="launcherHandoff.localhostUrl"
+		:deeplink-url="launcherHandoff.deeplinkUrl"
+	/>
 	<SignUpView
-		v-if="!isCreateAccountStep"
+		v-else-if="!isCreateAccountStep"
 		v-model:email="email"
 		v-model:password="password"
 		:redirect-target="redirectTarget"
@@ -27,24 +32,27 @@ import {
 	defineMessages,
 	injectModrinthClient,
 	injectNotificationManager,
+	useGlobals,
 	useVIntl,
 } from '@modrinth/ui'
-import { useQuery } from '@tanstack/vue-query'
 import { useStorage } from '@vueuse/core'
 import type { LocationQueryValue } from 'vue-router'
 
 import CreateAccountView from '@/components/ui/auth/CreateAccount.vue'
+import LauncherOpening from '@/components/ui/auth/LauncherOpening.vue'
 import SignUpView from '@/components/ui/auth/SignUp.vue'
 import {
 	LAST_SIGN_IN_OAUTH_PROVIDER_STORAGE_KEY,
 	PENDING_SIGN_IN_OAUTH_PROVIDER_STORAGE_KEY,
 } from '@/composables/accounts.ts'
 import { promotePendingSignInOAuthProvider } from '@/composables/auth.ts'
-
-interface AuthGlobalsResponse {
-	captcha_enabled?: boolean
-	[key: string]: unknown
-}
+import {
+	createLauncherHandoff,
+	hideLauncherSessionCode,
+	isLauncherProtocolV2,
+	launcherAuthMessages,
+	type LauncherHandoff,
+} from '@/composables/launcher-auth.ts'
 
 interface ApiErrorShape {
 	data?: {
@@ -101,6 +109,9 @@ useHead({
 })
 
 const route = useNativeRoute()
+const isProtocolV2 = isLauncherProtocolV2(route)
+type LauncherCallback = Extract<LauncherHandoff, { type: 'callback' }>
+const launcherHandoff = ref<LauncherCallback | null>(null)
 const pendingSignInOAuthProvider = useStorage(
 	PENDING_SIGN_IN_OAUTH_PROVIDER_STORAGE_KEY,
 	null,
@@ -126,17 +137,7 @@ const toggleOtherOptions = () => {
 	showOtherOptions.value = !showOtherOptions.value
 }
 
-const { data: globals } = useQuery<AuthGlobalsResponse>({
-	queryKey: ['auth-globals'],
-	queryFn: async () => {
-		try {
-			return await client.labrinth.globals_internal.get()
-		} catch (err) {
-			console.error('Error fetching globals:', err)
-			return { captcha_enabled: true, tax_compliance_thresholds: {} }
-		}
-	},
-})
+const { data: globals } = useGlobals()
 
 const email = ref('')
 const password = ref('')
@@ -255,6 +256,7 @@ async function createAccount(accountConsent: boolean) {
 			challenge: token.value,
 			sign_up_newsletter: subscribe.value,
 			account_consent: accountConsent,
+			app_session: isProtocolV2,
 		})
 
 		await useAuth(res.session)
@@ -263,7 +265,21 @@ async function createAccount(accountConsent: boolean) {
 		promotePendingSignInOAuthProvider()
 
 		if (route.query.launcher) {
-			await navigateTo({ path: '/auth/sign-in', query: route.query })
+			const appSession = isProtocolV2 ? res.app_session : res.session
+			if (!appSession) {
+				throw new Error(formatMessage(launcherAuthMessages.handoffFailed))
+			}
+
+			const handoff = await createLauncherHandoff(route, appSession)
+			if (handoff.type === 'external') {
+				await navigateTo(handoff.url, { external: true })
+				return
+			}
+
+			launcherHandoff.value = handoff
+			if (isProtocolV2) {
+				hideLauncherSessionCode()
+			}
 			return
 		}
 
