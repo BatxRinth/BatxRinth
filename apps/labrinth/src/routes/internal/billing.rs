@@ -5,11 +5,9 @@ use crate::database::models::charge_item::DBCharge;
 use crate::database::models::ids::DBUserSubscriptionId;
 use crate::database::models::notification_item::NotificationBuilder;
 use crate::database::models::products_tax_identifier_item::product_info_by_product_price_id;
-use crate::database::models::users_subscriptions_affiliations::DBUsersSubscriptionsAffiliations;
 use crate::database::models::users_subscriptions_credits::DBUserSubscriptionCredit;
 use crate::database::models::{
-    DBAffiliateCodeId, charge_item, generate_charge_id, product_item,
-    user_subscription_item,
+    charge_item, generate_charge_id, product_item, user_subscription_item,
 };
 use crate::database::{PgPool, PgTransaction};
 use crate::env::ENV;
@@ -18,12 +16,12 @@ use crate::models::billing::{
     Product, ProductMetadata, ProductPrice, SubscriptionMetadata,
     SubscriptionStatus, UserSubscription,
 };
-use crate::models::ids::AffiliateCodeId;
 use crate::models::notifications::NotificationBody;
 use crate::models::pats::Scopes;
 use crate::models::users::Badges;
 use crate::queue::session::AuthQueue;
 use crate::routes::ApiError;
+use crate::util::MinecraftMeta;
 use crate::util::anrok;
 use crate::util::error::ApiContext as _;
 use crate::util::error::Context as _;
@@ -38,11 +36,10 @@ use std::str::FromStr;
 use stripe::{
     CreateRefund, CreateSetupIntent, CreateSetupIntentAutomaticPaymentMethods,
     CreateSetupIntentAutomaticPaymentMethodsAllowRedirects,
-    CustomerInvoiceSettings, CustomerPaymentMethodRetrieval, EventObject,
-    EventType, PaymentIntentId, PaymentMethodId, SetupIntent, UpdateCustomer,
-    Webhook,
+    CustomerPaymentMethodRetrieval, EventObject, EventType, PaymentIntentId,
+    PaymentMethodId, SetupIntent, Webhook, WebhookError,
 };
-use tracing::warn;
+use tracing::{error, warn};
 use xredis::RedisPool;
 
 pub fn config(cfg: &mut actix_web::web::ServiceConfig) {
@@ -682,6 +679,38 @@ pub struct SubscriptionEditQuery {
     pub dry: Option<bool>,
 }
 
+/// Returned by a dry run of resubscribing to a subscription (`cancelled: false`).
+#[derive(Serialize)]
+struct ResubscribePreview {
+    pub subtotal: i64,
+    pub tax: i64,
+    pub total: i64,
+    pub currency_code: String,
+    pub interval: Option<PriceDuration>,
+    pub due: chrono::DateTime<Utc>,
+    pub payment_method: stripe::PaymentMethod,
+}
+
+/// Recalculates the tax amount of a charge being resubscribed to, as the tax amount
+/// isn't kept up to date while the charge is cancelled or failed.
+async fn refresh_charge_tax(
+    pool: &PgPool,
+    redis: &RedisPool,
+    stripe_client: &stripe::Client,
+    anrok_client: &anrok::Client,
+    charge: &mut charge_item::DBCharge,
+) -> Result<ChargeTaxQuote, ApiError> {
+    let quote =
+        quote_charge_tax(pool, redis, stripe_client, anrok_client, charge)
+            .await
+            .wrap_api_err("calculating tax amount for resubscription")?;
+
+    charge.tax_amount = quote.tax_amount;
+    charge.tax_last_updated = Some(Utc::now());
+
+    Ok(quote)
+}
+
 /// Update a subscription.
 #[utoipa::path(
 	context_path = "/billing",
@@ -875,6 +904,8 @@ pub async fn edit_subscription(
         "could not find current product price".to_string()
     })?;
 
+    let mut resubscribe_quote = None;
+
     let maybe_intent_metadata = match edit_subscription.into_inner() {
         // Case of toggling cancellation when the next charge is a failed charge
         SubscriptionEdit {
@@ -882,16 +913,18 @@ pub async fn edit_subscription(
             ..
         } if open_charge.status == ChargeStatus::Failed => {
             if cancelled {
-                DBUsersSubscriptionsAffiliations::deactivate(
-                    subscription.id,
-                    &mut transaction,
-                )
-                .await
-                .wrap_internal_err(
-                    "updating users subscriptions affiliations in database",
-                )?;
                 open_charge.status = ChargeStatus::Cancelled;
             } else {
+                resubscribe_quote = Some(
+                    refresh_charge_tax(
+                        &pool,
+                        &redis,
+                        &stripe_client,
+                        &anrok_client,
+                        &mut open_charge,
+                    )
+                    .await?,
+                );
                 // Forces another resubscription attempt
                 open_charge.last_attempt = Some(Utc::now() - Duration::days(2));
             }
@@ -909,16 +942,18 @@ pub async fn edit_subscription(
         ) =>
         {
             open_charge.status = if cancelled {
-                DBUsersSubscriptionsAffiliations::deactivate(
-                    subscription.id,
-                    &mut transaction,
-                )
-                .await
-                .wrap_internal_err(
-                    "executing `DBUsersSubscriptionsAffiliations::deactivate`",
-                )?;
                 ChargeStatus::Cancelled
             } else {
+                resubscribe_quote = Some(
+                    refresh_charge_tax(
+                        &pool,
+                        &redis,
+                        &stripe_client,
+                        &anrok_client,
+                        &mut open_charge,
+                    )
+                    .await?,
+                );
                 ChargeStatus::Open
             };
 
@@ -1153,6 +1188,18 @@ pub async fn edit_subscription(
             )));
         }
     };
+
+    if dry && let Some(quote) = resubscribe_quote {
+        return Ok(HttpResponse::Ok().json(ResubscribePreview {
+            subtotal: open_charge.amount,
+            tax: quote.tax_amount,
+            total: open_charge.amount + quote.tax_amount,
+            currency_code: open_charge.currency_code,
+            interval: open_charge.subscription_interval,
+            due: open_charge.due,
+            payment_method: quote.payment_method,
+        }));
+    }
 
     if !dry {
         // If `?dry=true`, don't actually commit the changes.
@@ -1421,19 +1468,12 @@ pub async fn edit_payment_method(
     if payment_method.customer.is_some_and(|x| x.id() == customer)
         || user.role.is_admin()
     {
-        stripe::Customer::update(
+        set_default_payment_method(
             &stripe_client,
             &customer,
-            UpdateCustomer {
-                invoice_settings: Some(CustomerInvoiceSettings {
-                    default_payment_method: Some(payment_method.id.to_string()),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
+            &payment_method.id,
         )
-        .await
-        .wrap_failed_dependency_err("communicating with payment provider")?;
+        .await?;
 
         Ok(HttpResponse::NoContent().finish())
     } else {
@@ -1525,7 +1565,10 @@ pub async fn remove_payment_method(
         }
     }
 
-    if payment_method.customer.is_some_and(|x| x.id() == customer)
+    if payment_method
+        .customer
+        .as_ref()
+        .is_some_and(|x| x.id() == customer)
         || user.role.is_admin()
     {
         stripe::PaymentMethod::detach(&stripe_client, &payment_method_id)
@@ -1533,6 +1576,22 @@ pub async fn remove_payment_method(
             .wrap_failed_dependency_err(
                 "communicating with payment provider",
             )?;
+
+        if let Some(owner_id) = payment_method.customer.map(|x| x.id())
+            && let Err(err) = promote_default_payment_method(
+                &stripe_client,
+                &owner_id,
+                &payment_method_id,
+            )
+            .await
+        {
+            error!(
+                %err,
+                customer_id = %owner_id,
+                removed_payment_method_id = %payment_method_id,
+                "Failed to promote a default payment method"
+            );
+        }
 
         Ok(HttpResponse::NoContent().finish())
     } else {
@@ -1695,7 +1754,6 @@ pub enum ChargeRequestType {
 pub struct PaymentRequestMetadata {
     #[serde(flatten)]
     pub kind: PaymentRequestMetadataKind,
-    pub affiliate_code: Option<AffiliateCodeId>,
 }
 
 #[derive(Deserialize, Serialize, utoipa::ToSchema)]
@@ -1807,6 +1865,7 @@ pub async fn stripe_webhook(
     pool: web::Data<PgPool>,
     redis: web::Data<RedisPool>,
     stripe_client: web::Data<stripe::Client>,
+    minecraft_meta: web::Data<MinecraftMeta>,
 ) -> Result<HttpResponse, ApiError> {
     let stripe_signature = req
         .headers()
@@ -1814,11 +1873,13 @@ pub async fn stripe_webhook(
         .and_then(|x| x.to_str().ok())
         .unwrap_or_default();
 
-    if let Ok(event) = Webhook::construct_event(
+    let result = Webhook::construct_event(
         &payload,
         stripe_signature,
         &ENV.STRIPE_WEBHOOK_SECRET,
-    ) {
+    );
+
+    if let Ok(event) = result {
         struct PaymentIntentMetadata {
             pub user_item: crate::database::models::user_item::DBUser,
             pub product_price_item: product_item::DBProductPrice,
@@ -1958,9 +2019,9 @@ pub async fn stripe_webhook(
                                     subscription.price_id = charge.price_id;
                                 }
                                 ChargeType::Refund => {
-                                    return Err(ApiError::Request(
+                                    return Err(ApiError::Internal(
                                         eyre::eyre!(
-                                            "Invalid charge type: Refund",
+                                            "invalid charge type `Refund` for payment intent",
                                         ),
                                     ));
                                 }
@@ -2121,9 +2182,25 @@ pub async fn stripe_webhook(
                 });
             }
 
-            Err(ApiError::Request(eyre::eyre!(
-                "Webhook missing required webhook metadata!",
+            Err(ApiError::Internal(eyre::eyre!(
+                "payment intent is missing required metadata",
             )))
+        }
+
+        // Labrinth always attaches `modrinth_*` metadata when creating a payment
+        // intent, so one without any was created elsewhere on the Stripe account.
+        if let EventObject::PaymentIntent(payment_intent) = &event.data.object
+            && !payment_intent
+                .metadata
+                .keys()
+                .any(|key| key.starts_with("modrinth_"))
+        {
+            warn!(
+                payment_intent_id = %payment_intent.id,
+                event_type = %event.type_,
+                "Ignoring webhook for a payment intent not created by Labrinth"
+            );
+            return Ok(HttpResponse::Ok().finish());
         }
 
         match event.type_ {
@@ -2150,19 +2227,41 @@ pub async fn stripe_webhook(
                     .wrap_api_err("fetching payment intent metadata")?;
 
                     if let Some(latest_charge) = payment_intent.latest_charge {
-                        let charge = stripe::Charge::retrieve(
-                            &stripe_client,
-                            &latest_charge.id(),
-                            &["balance_transaction"],
-                        )
-                        .await
-                        .wrap_failed_dependency_err(
-                            "communicating with payment provider",
-                        )?;
+                        /// The subset of a Stripe charge that we read.
+                        ///
+                        /// `stripe::Charge` fails to deserialize when Stripe
+                        /// sends an enum value `async-stripe` doesn't know,
+                        /// such as a new 3D Secure version, so we don't parse
+                        /// fields we don't use.
+                        #[derive(Deserialize)]
+                        struct ChargeBalanceTransaction {
+                            balance_transaction: Option<BalanceTransactionNet>,
+                        }
 
-                        if let Some(balance_transaction) = charge
-                            .balance_transaction
-                            .and_then(|x| x.into_object())
+                        #[derive(Deserialize)]
+                        struct BalanceTransactionNet {
+                            net: i64,
+                        }
+
+                        #[derive(Serialize)]
+                        struct ExpandParams {
+                            expand: &'static [&'static str],
+                        }
+
+                        let charge: ChargeBalanceTransaction = stripe_client
+                            .get_query(
+                                &format!("/charges/{}", latest_charge.id()),
+                                ExpandParams {
+                                    expand: &["balance_transaction"],
+                                },
+                            )
+                            .await
+                            .wrap_failed_dependency_err(
+                                "communicating with payment provider",
+                            )?;
+
+                        if let Some(balance_transaction) =
+                            charge.balance_transaction
                         {
                             metadata.charge_item.net =
                                 Some(balance_transaction.net);
@@ -2225,7 +2324,7 @@ pub async fn stripe_webhook(
                                             let region = metadata.new_region.clone();
 
                                             if region.is_none() {
-                                                return Err(ApiError::Request(eyre::eyre!(
+                                                return Err(ApiError::Internal(eyre::eyre!(
                                                     "We attempted to promote a subscription with type=medal, which requires specifying \
                                                     a new region to move the server to. However, no new region was present in the payment \
                                                     intent metadata.".to_owned()
@@ -2302,19 +2401,16 @@ pub async fn stripe_webhook(
                                             )
                                         } else {
                                             // Create a server with the latest version of Minecraft
-                                            let minecraft_versions = crate::database::models::legacy_loader_fields::MinecraftGameVersion::list(
-                                                Some("release"),
-                                                None,
-                                                &**pool,
-                                                &redis,
-                                            ).await.wrap_internal_err("fetching minecraft versions from database")?;
+                                            let minecraft_versions = minecraft_meta
+                                                .minecraft_versions()
+                                                .await;
 
                                             (
                                                 None,
                                                 None,
                                                 serde_json::json!({
                                                     "loader": "Vanilla",
-                                                    "game_version": minecraft_versions.first().map(|x| x.version.clone()),
+                                                    "game_version": minecraft_versions.iter().find(|x| x.version_type == minecraft_meta_model::upstream::mojang::VersionType::Release).map(|x| x.name.0.clone()),
                                                     "loader_version": ""
                                                 }),
                                             )
@@ -2390,7 +2486,7 @@ pub async fn stripe_webhook(
                         let new_price = match metadata.product_price_item.prices {
                             Price::OneTime { price } => price,
                             Price::Recurring { intervals } => {
-                                *intervals.get(&subscription.interval).wrap_request_err_with(|| "could not find a valid price for the user's country"
+                                *intervals.get(&subscription.interval).wrap_internal_err_with(|| "could not find a valid price for the user's country"
                                             .to_string())?
                             }
                         };
@@ -2484,25 +2580,6 @@ pub async fn stripe_webhook(
                             .wrap_internal_err(
                                 "upserting subscription charge",
                             )?;
-
-                            if let Some(affiliate_code) = metadata
-                                .payment_metadata
-                                .as_ref()
-                                .and_then(|m| m.affiliate_code)
-                            {
-                                DBUsersSubscriptionsAffiliations {
-                                    subscription_id: subscription.id,
-                                    affiliate_code: DBAffiliateCodeId::from(
-                                        affiliate_code,
-                                    ),
-                                    deactivated_at: None,
-                                }
-                                .insert(&mut transaction)
-                                .await
-                                .wrap_internal_err(
-                                    "inserting subscription affiliation into database",
-                                )?;
-                            }
                         };
 
                         subscription.status = SubscriptionStatus::Provisioned;
@@ -2510,7 +2587,7 @@ pub async fn stripe_webhook(
                             .upsert(&mut transaction)
                             .await
                             .wrap_internal_err(
-                                "updating affiliate code id in database",
+                                "updating subscription in database",
                             )?;
                     }
 
@@ -2637,30 +2714,21 @@ pub async fn stripe_webhook(
                         .invoice_settings
                         .is_none_or(|x| x.default_payment_method.is_none())
                     {
-                        stripe::Customer::update(
+                        set_default_payment_method(
                             &stripe_client,
                             &customer_id,
-                            UpdateCustomer {
-                                invoice_settings: Some(
-                                    CustomerInvoiceSettings {
-                                        default_payment_method: Some(
-                                            payment_method.id.to_string(),
-                                        ),
-                                        ..Default::default()
-                                    },
-                                ),
-                                ..Default::default()
-                            },
+                            &payment_method.id,
                         )
-                        .await
-                        .wrap_failed_dependency_err(
-                            "communicating with payment provider",
-                        )?;
+                        .await?;
                     }
                 }
             }
             _ => {}
         }
+    } else if let Err(WebhookError::BadParse(err)) = result {
+        return Err(ApiError::Internal(
+            eyre::Report::new(err).wrap_err("parsing webhook event"),
+        ));
     } else {
         return Err(ApiError::Request(eyre::eyre!(
             "Webhook signature validation failed!",

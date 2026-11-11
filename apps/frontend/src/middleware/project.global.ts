@@ -66,18 +66,15 @@ export default defineNuxtRouteMiddleware(async (to) => {
 		// Build the canonical path
 		const canonicalPath = `/${correctType}/${encodeURIComponent(project.slug)}${remainder ? `/${remainder}` : ''}`
 
-		// Only redirect if the path actually changed
-		if (to.path !== canonicalPath) {
+		// h3 decodes the request path during SSR, so compare decoded forms
+		if (decodeURIComponent(to.path) !== decodeURIComponent(canonicalPath)) {
 			return navigateTo(
 				{
 					path: canonicalPath,
 					query: to.query,
 					hash: to.hash,
 				},
-				{
-					redirectCode: 301,
-					replace: true,
-				},
+				{ redirectCode: 301 },
 			)
 		}
 	} catch {

@@ -1,7 +1,8 @@
 import 'overlayscrollbars/overlayscrollbars.css'
 
 import { installTooltipDirective } from '@modrinth/ui'
-import { VueQueryPlugin } from '@tanstack/vue-query'
+import { focusManager, VueQueryPlugin } from '@tanstack/vue-query'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { createApp } from 'vue'
 
 import App from '@/App.vue'
@@ -13,6 +14,11 @@ import router from '@/routes'
 
 debugStartup('Frontend entry module evaluated')
 const app = createApp(App)
+
+focusManager.setEventListener((setFocused) => {
+	const unlisten = getCurrentWindow().onFocusChanged(({ payload }) => setFocused(payload))
+	return () => void unlisten.then((stop) => stop())
+})
 
 app.use(VueQueryPlugin)
 app.use(router)

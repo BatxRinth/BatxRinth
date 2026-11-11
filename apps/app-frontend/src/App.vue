@@ -1,26 +1,14 @@
 <script setup>
-import {
-	AuthFeature,
-	ModrinthApiError,
-	NodeAuthFeature,
-	nodeAuthState,
-	PanelVersionFeature,
-	TauriModrinthClient,
-	VerboseLoggingFeature,
-} from '@modrinth/api-client'
+import { ModrinthApiError } from '@modrinth/api-client'
 import {
 	ArrowLeftRightIcon,
-	ChevronLeftIcon,
-	ChevronRightIcon,
 	CompassIcon,
 	ImageIcon,
 	LogInIcon,
 	LogOutIcon,
-	NewspaperIcon,
 	PlayIcon,
 	PlusIcon,
 	RefreshCwIcon,
-	RightArrowIcon,
 	ServerStackIcon,
 	SettingsIcon,
 	ShirtIcon,
@@ -34,26 +22,32 @@ import {
 	AccountSwitchOverlay,
 	Admonition,
 	Avatar,
-	ButtonLink,
 	commonMessages,
 	commonSettingsMessages,
 	ContentInstallModal,
 	ContentUpdaterModal,
+	createServerInviteHandoff,
+	createServerOnboardingFlow,
 	CreationFlowModal,
 	defineMessages,
 	I18nDebugPanel,
 	IconButton,
 	LoadingBar,
-	NewsArticleCard,
 	NotificationPanel,
 	PopupNotificationPanel,
+	provideFileDownload,
+	provideIconCache,
+	provideLoadingState,
 	provideModalBehavior,
 	provideModrinthClient,
 	provideNotificationManager,
 	providePageContext,
 	providePopupNotificationManager,
+	provideServerInviteHandoff,
+	provideServerOnboardingFlow,
+	provideServerPlay,
+	ServerOnboardingModal,
 	TeleportOverflowMenu,
-	TextLogo,
 	TooltipDirective,
 	useDebugLogger,
 	useFormatBytes,
@@ -71,36 +65,28 @@ import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { type } from '@tauri-apps/plugin-os'
 import { saveWindowState, StateFlags } from '@tauri-apps/plugin-window-state'
-import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 
-import AccountsCard from '@/components/ui/AccountsCard.vue'
-import AppActionBar from '@/components/ui/AppActionBar.vue'
-import Breadcrumbs from '@/components/ui/Breadcrumbs.vue'
+import { useRouteLoading } from '@/app/runtime/use-route-loading'
+import AppSidebar from '@/app/shell/sidebar/index.vue'
+import AppTitleBar from '@/app/shell/title-bar/index.vue'
+import { trackExternalFileDownload } from '@/components/ui/download-manager/external-file-downloads'
 import ErrorModal from '@/components/ui/ErrorModal.vue'
-import FriendsList from '@/components/ui/friends/FriendsList.vue'
 import HostingUpdateRequired from '@/components/ui/HostingUpdateRequired.vue'
 import AddServerToInstanceModal from '@/components/ui/install_flow/AddServerToInstanceModal.vue'
 import UnknownPackWarningModal from '@/components/ui/install_flow/UnknownPackWarningModal.vue'
-import IconEditorModal from '@/components/ui/instance_settings/icon-editor-modal/index.vue'
+import IconEditorModal from '@/components/ui/instance_settings/InstanceIconEditorModal.vue'
 import MinecraftAuthErrorModal from '@/components/ui/minecraft-auth-error-modal/MinecraftAuthErrorModal.vue'
 import MinecraftRequiredModal from '@/components/ui/minecraft-required-modal/MinecraftRequiredModal.vue'
-import AppSettingsModal from '@/components/ui/modal/AppSettingsModal.vue'
 import InstallToPlayModal from '@/components/ui/modal/InstallToPlayModal.vue'
 import ModpackAlreadyInstalledModal from '@/components/ui/modal/ModpackAlreadyInstalledModal.vue'
 import ModrinthAccountRequiredModal from '@/components/ui/modal/ModrinthAccountRequiredModal.vue'
 import UpdateToPlayModal from '@/components/ui/modal/UpdateToPlayModal.vue'
 import NavButton from '@/components/ui/NavButton.vue'
-import OnboardingChecklist from '@/components/ui/onboarding-checklist/index.vue'
 import QuickInstanceSwitcher from '@/components/ui/QuickInstanceSwitcher.vue'
 import SharedInstanceInviteHandler from '@/components/ui/shared-instances/shared-instance-invite-handler/index.vue'
 import SplashScreen from '@/components/ui/SplashScreen.vue'
-import SyncInstancesUpdateModal from '@/components/ui/sync-instances-update-modal/index.vue'
-import {
-	markSyncInstancesUpdateNotificationShown,
-	shouldShowSyncInstancesUpdateNotification,
-} from '@/components/ui/sync-instances-update-modal/show-notification'
-import WindowControls from '@/components/ui/WindowControls.vue'
 import { useCheckDisableMouseover } from '@/composables/macCssFix.js'
 import { useAppEvent } from '@/composables/use-app-event'
 import { useAppSettings } from '@/composables/use-app-settings.ts'
@@ -109,6 +95,18 @@ import { useInstanceMetadataRefresh } from '@/composables/use-instance-metadata-
 import { useQuickInstanceLimit } from '@/composables/use-quick-instance-limit.ts'
 import { isDarkTheme, useTheme } from '@/composables/use-theme.ts'
 import { config } from '@/config'
+import ServerPlayHandler from '@/features/hosting/play-handler.vue'
+import { prefetchHostingData } from '@/features/hosting/prefetch'
+import InstanceActionModals from '@/features/instances/instance-actions/instance-action-modals.vue'
+import {
+	createInstanceLaunchState,
+	provideInstanceLaunchState,
+} from '@/features/instances/launch-state'
+import SharedInstanceModals from '@/features/library/shared-instances/shared-instance-modals.vue'
+import { provideMinecraftAccounts } from '@/features/minecraft-accounts/context'
+import AppSettingsModal from '@/features/settings/app-settings-modal/index.vue'
+import { provideSettingsActions } from '@/features/settings/settings-actions'
+import NewUpdateModal from '@/features/updates/new-update-modal/index.vue'
 import { getAccountAppearance, rememberAccountAppearance } from '@/helpers/account-appearance.ts'
 import {
 	hide_ads_window,
@@ -174,6 +172,9 @@ import {
 	instanceListQueryOptions,
 	screenshotKeys,
 } from '@/pages/instance/query-options'
+import { createFileDownload } from '@/platform/adapters/file-download'
+import { createIconCache } from '@/platform/adapters/icon-cache'
+import { createAppClient } from '@/platform/modrinth-client'
 import {
 	appUpdateState,
 	downloadAvailableAppUpdate,
@@ -184,7 +185,6 @@ import {
 	openAppUpdateChangelog,
 	setAppUpdateActions,
 } from '@/providers/app-update.ts'
-import { createBreadcrumbManager, provideBreadcrumbManager } from '@/providers/breadcrumbs'
 import { createContentInstall, provideContentInstall } from '@/providers/content-install'
 import {
 	provideAppUpdateDownloadProgress,
@@ -194,16 +194,12 @@ import { createServerInstall, provideServerInstall } from '@/providers/server-in
 import { setupProviders } from '@/providers/setup'
 import { setupAppEventsProvider } from '@/providers/setup/app-events'
 import { setupAuthProvider } from '@/providers/setup/auth'
-import { setupLoadingStateProvider } from '@/providers/setup/loading-state'
 import { setupAppUserPreferencesProvider } from '@/providers/setup/user-preferences.ts'
+import { createBreadcrumbManager, provideBreadcrumbManager } from '@/shared/breadcrumbs'
 import { appMessages } from '@/utils/app-messages'
 
 import { AppNotificationManager } from './providers/app-notifications'
 import { AppPopupNotificationManager } from './providers/app-popup-notifications'
-import {
-	appSettingsModalOpenProfileKey,
-	appSettingsModalOpenSyncedOptionsKey,
-} from './providers/app-settings-modal'
 
 debugStartup('App setup entered')
 const appSettings = useAppSettings()
@@ -215,15 +211,6 @@ const { channel: appEventChannel, events: appEvents } = setupAppEventsProvider()
 useInstanceMetadataRefresh(appEvents)
 const breadcrumbManager = createBreadcrumbManager()
 provideBreadcrumbManager(breadcrumbManager)
-const canNavigateBack = ref(false)
-const canNavigateForward = ref(false)
-
-function updateHistoryNavigationState() {
-	const historyState = window.history.state
-	canNavigateBack.value = historyState?.back != null
-	canNavigateForward.value = historyState?.forward != null
-}
-
 let fullscreenAdsWindowHold = false
 
 async function handleFullscreenChange() {
@@ -242,8 +229,6 @@ async function handleFullscreenChange() {
 		handleError(error)
 	}
 }
-
-updateHistoryNavigationState()
 
 const APP_LEFT_NAV_WIDTH = '4rem'
 const APP_SIDEBAR_WIDTH = 300
@@ -313,29 +298,22 @@ const { addPopupNotification } = popupNotificationManager
 let adsConsentPopupId = null
 useAppEvent('ads_consent_required', handleAdsConsentRequired, appEvents)
 
-const appVersion = getVersion()
-const tauriApiClient = new TauriModrinthClient({
-	userAgent: async () => `modrinth/theseus/${await appVersion} (support@modrinth.com)`,
-	labrinthBaseUrl: config.labrinthBaseUrl,
-	archonBaseUrl: config.archonBaseUrl,
-	sharedInstancesBaseUrl: config.sharedInstancesBaseUrl,
-	features: [
-		new NodeAuthFeature({
-			getAuth: () => nodeAuthState.getAuth?.() ?? null,
-			refreshAuth: async () => {
-				if (nodeAuthState.refreshAuth) {
-					await nodeAuthState.refreshAuth()
-				}
-			},
-		}),
-		new AuthFeature({
-			token: async () => (await getCreds())?.session,
-		}),
-		new PanelVersionFeature(),
-		new VerboseLoggingFeature(),
-	],
-})
+const tauriApiClient = createAppClient()
 provideModrinthClient(tauriApiClient)
+provideServerOnboardingFlow(createServerOnboardingFlow())
+provideServerInviteHandoff(createServerInviteHandoff())
+provideFileDownload(createFileDownload(tauriApiClient, trackExternalFileDownload))
+const iconCache = createIconCache()
+provideIconCache(iconCache)
+provideInstanceLaunchState(createInstanceLaunchState())
+const serverPlayHandler = ref()
+const serverPlay = {
+	async play(target) {
+		if (!serverPlayHandler.value) throw new Error('Server play handler is not ready.')
+		await serverPlayHandler.value.play(target)
+	},
+}
+provideServerPlay(serverPlay)
 const { data: authenticatedModrinthUser } = useQuery({
 	queryKey: computed(() => ['authenticated-user', 'campaigns', credentials.value?.user?.id]),
 	queryFn: () => tauriApiClient.labrinth.users_v3.getAuthenticated(),
@@ -409,8 +387,6 @@ const {
 	(iconPath) =>
 		creationGeneratedIcon.value?.path === iconPath ? creationGeneratedIcon.value.config : null,
 )
-const { hasLoggedIntoMinecraft, hasLoggedIntoModrinth, showChecklist } = onboardingChecklist
-const showFriendsList = computed(() => !showChecklist.value || hasLoggedIntoModrinth.value)
 
 async function randomizeCreationIcon() {
 	const generated = await creationIconEditorModal.value?.randomizeAndSave()
@@ -448,7 +424,6 @@ function onCreationIconSaved(iconPath, config) {
 	context.instanceIconPath.value = iconPath
 }
 
-const news = ref([])
 const displayedServerInviteNotifications = new Set()
 const serverInvitePopupNotificationIds = new Set()
 let liveNotificationGeneration = 0
@@ -571,27 +546,7 @@ const { formatMessage } = useVIntl()
 const formatBytes = useFormatBytes()
 
 const messages = defineMessages({
-	syncUpdateTitle: {
-		id: 'app.sync-instances-update.notification.title',
-		defaultMessage: 'Sync your instances',
-	},
-	syncUpdateDescription: {
-		id: 'app.sync-instances-update.notification.description',
-		defaultMessage:
-			'Keep game settings, servers, resource packs, and more in sync across your instances.',
-	},
-	syncUpdateView: {
-		id: 'app.sync-instances-update.notification.view-update',
-		defaultMessage: 'View update',
-	},
-	syncUpdateDismiss: {
-		id: 'app.sync-instances-update.notification.dismiss',
-		defaultMessage: 'Dismiss',
-	},
 	warning: { id: 'app.notification.warning', defaultMessage: 'Warning' },
-	goBack: { id: 'app.navigation.go-back', defaultMessage: 'Go back' },
-	goForward: { id: 'app.navigation.go-forward', defaultMessage: 'Go forward' },
-	nextImage: { id: 'app.navigation.next-image', defaultMessage: 'Next image' },
 	updateDownloadMissingVersion: {
 		id: 'app.update.download-error.missing-version',
 		defaultMessage: 'Failed to download update: no version available',
@@ -689,18 +644,6 @@ const messages = defineMessages({
 	upgradeToModrinthPlus: {
 		id: 'app.nav.upgrade-to-modrinth-plus',
 		defaultMessage: 'Upgrade to Modrinth+',
-	},
-	news: {
-		id: 'app.news.title',
-		defaultMessage: 'News',
-	},
-	viewAllNews: {
-		id: 'app.news.view-all',
-		defaultMessage: 'View all news',
-	},
-	playingAs: {
-		id: 'app.sidebar.playing-as',
-		defaultMessage: 'Playing as',
 	},
 })
 
@@ -843,22 +786,7 @@ async function setupApp() {
 	stateInitialized.value = true
 	debugStartup('App state initialized')
 	await traceStartupStep('Render initialized app', nextTick)
-	const isSyncUpdateVersion = version.startsWith('0.20.')
-	if (isSyncUpdateVersion && pending_update_toast_for_version !== version) {
-		markSyncInstancesUpdateNotificationShown()
-	}
-	if (
-		appSettings.getFeatureFlag('show_sync_instances_update_modal') ||
-		(isSyncUpdateVersion &&
-			pending_update_toast_for_version === version &&
-			(
-				await traceStartupStep('Load instances for update notification', () =>
-					queryClient.fetchQuery(instanceListQueryOptions()),
-				)
-			).length > 0)
-	) {
-		showSyncInstancesUpdateNotification()
-	}
+	await newUpdateModal.value?.notifyForVersion(version, pending_update_toast_for_version)
 
 	await traceStartupStep('Register window resize listener', () =>
 		getCurrentWindow().onResized(async () => {
@@ -893,22 +821,6 @@ async function setupApp() {
 			)
 		})
 
-	fetch(`https://modrinth.com/news/feed/articles.json`)
-		.then((response) => response.json())
-		.then((res) => {
-			if (res && res.articles) {
-				news.value = res.articles
-					.map((article) => ({
-						...article,
-						path: article.link,
-					}))
-					.slice(0, 4)
-			}
-		})
-		.catch((error) => {
-			console.error('Failed to fetch news articles', error)
-		})
-
 	traceStartupStep('Read opening command', get_opening_command).then(handleCommand)
 	traceStartupStep('Refresh startup credentials', fetchCredentials)
 
@@ -923,6 +835,16 @@ async function setupApp() {
 }
 
 const stateFailed = ref(false)
+const {
+	loading,
+	canNavigateBack,
+	canNavigateForward,
+	onboardingPageReady,
+	onSuspensePending,
+	onSuspenseResolve,
+} = useRouteLoading({ stateInitialized, stateFailed })
+provideLoadingState(loading)
+
 traceStartupStep('Initialize backend state', () => initialize_state(appEventChannel))
 	.then(() => {
 		traceStartupStep('Initialize frontend state', setupApp).catch((err) => {
@@ -942,128 +864,21 @@ const handleClose = async () => {
 	await getCurrentWindow().close()
 }
 
-const loading = setupLoadingStateProvider(() => ({
-	stateInitialized: stateInitialized.value,
-	stateFailed: stateFailed.value,
-	initialStatePending: !!initialLoadToken,
-	navigationPending: !!routerToken,
-	routeSuspensePending: !!suspenseToken,
-	route: route.path,
-}))
-loading.setEnabled(false)
-let initialLoadToken = loading.begin('Initial app state')
-let routerToken = null
-let suspenseToken = null
-
-let suspensePending = false
-
-const sidebarOverlayScrollbarsOptions = Object.freeze({
-	overflow: {
-		x: 'hidden',
-		y: 'scroll',
-	},
-})
-
-router.beforeEach((to, from) => {
-	debugStartup('Route navigation started', { to: to.path, from: from.path })
-	suspensePending = false
-	if (routerToken) loading.end(routerToken)
-	routerToken = loading.begin(`Route navigation: ${to.path}`)
-})
-router.afterEach((to, from, failure) => {
-	debugStartup('Route navigation settled', { to: to.path, failed: !!failure })
-	updateHistoryNavigationState()
-	trackEvent('PageView', {
-		path: to.path,
-		fromPath: from.path,
-		failed: !!failure,
-	})
-	setTimeout(() => {
-		debugStartup('Route loading release check', {
-			route: to.path,
-			suspensePending,
-			stateInitialized: stateInitialized.value,
-		})
-		if (!suspensePending && stateInitialized.value) {
-			if (initialLoadToken) {
-				loading.end(initialLoadToken)
-				initialLoadToken = null
-			}
-			if (routerToken) {
-				loading.end(routerToken)
-				routerToken = null
-			}
-		}
-	}, 100)
-})
-
-function onSuspensePending() {
-	debugStartup('Route Suspense pending', { route: route.path })
-	suspensePending = true
-	if (suspenseToken) loading.end(suspenseToken)
-	suspenseToken = loading.begin(`Route Suspense: ${route.path}`)
-}
-
-function onSuspenseResolve() {
-	debugStartup('Route Suspense resolved', { route: route.path })
-	if (suspenseToken) {
-		loading.end(suspenseToken)
-		suspenseToken = null
-	}
-	if (routerToken) {
-		loading.end(routerToken)
-		routerToken = null
-	}
-}
-
 const queryClient = useQueryClient()
 
-watch(stateInitialized, (ready) => {
-	debugStartup('State readiness changed', { ready })
-	if (ready) {
-		if (initialLoadToken) {
-			loading.end(initialLoadToken)
-			initialLoadToken = null
-		}
-		if (routerToken) {
-			loading.end(routerToken)
-			routerToken = null
-		}
+watch(
+	() => stateInitialized.value && credentials.value?.session,
+	(session) => {
+		if (!session) return
 
-		queryClient.prefetchQuery({
-			queryKey: ['servers'],
-			queryFn: async () => {
-				const response = await tauriApiClient.archon.servers_v0.list({ limit: 100 })
-				const hasMedalServers = response.servers.some((s) => s.is_medal)
-				if (hasMedalServers) {
-					const subscriptions = await tauriApiClient.labrinth.billing_internal.getSubscriptions()
-					for (const server of response.servers) {
-						if (server.is_medal) {
-							const sub = subscriptions.find((s) => s.metadata?.id === server.server_id)
-							if (sub) {
-								server.medal_expires = new Date(
-									new Date(sub.created).getTime() + 5 * 86400000,
-								).toISOString()
-							}
-						}
-					}
-				}
-				return response
-			},
-			staleTime: 30_000,
-		})
-		queryClient.prefetchQuery({
-			queryKey: ['billing', 'subscriptions'],
-			queryFn: () => tauriApiClient.labrinth.billing_internal.getSubscriptions(),
-			staleTime: 30_000,
-		})
-		queryClient.prefetchQuery({
-			queryKey: ['billing', 'payments'],
-			queryFn: () => tauriApiClient.labrinth.billing_internal.getPayments(),
-			staleTime: 30_000,
-		})
-	}
-})
+		void prefetchHostingData(
+			queryClient,
+			tauriApiClient,
+			iconCache,
+			() => credentials.value?.session === session,
+		)
+	},
+)
 
 const error = useError()
 const errorModal = ref()
@@ -1158,54 +973,15 @@ const updateToPlayModal = ref()
 
 const modrinthLoginModal = ref()
 const appSettingsModal = ref()
-const syncInstancesUpdateModal = ref()
-let syncInstancesUpdateNotificationId = null
+const newUpdateModal = ref()
 
-function showSyncInstancesUpdateNotification() {
-	if (
-		popupNotificationManager
-			.getNotifications()
-			.some((notification) => notification.id === syncInstancesUpdateNotificationId)
-	) {
-		return
-	}
-
-	if (!shouldShowSyncInstancesUpdateNotification()) return
-
-	const notification = addPopupNotification({
-		contentType: 'standard',
-		title: formatMessage(messages.syncUpdateTitle),
-		text: formatMessage(messages.syncUpdateDescription),
-		type: 'info',
-		hideIcon: true,
-		autoCloseMs: null,
-		buttons: [
-			{
-				label: formatMessage(messages.syncUpdateDismiss),
-				color: 'standard',
-				action: () => popupNotificationManager.removeNotification(notification.id),
-			},
-			{
-				label: formatMessage(messages.syncUpdateView),
-				color: 'brand',
-				action: () => syncInstancesUpdateModal.value?.show(),
-			},
-		],
-	})
-	syncInstancesUpdateNotificationId = notification.id
-}
-
-provide(appSettingsModalOpenProfileKey, () => appSettingsModal.value?.showProfile())
-provide(appSettingsModalOpenSyncedOptionsKey, () => appSettingsModal.value?.showSyncedOptions())
-
-watch(
-	() => appSettings.getFeatureFlag('show_sync_instances_update_modal'),
-	(enabled) => {
-		if (enabled && stateInitialized.value) {
-			showSyncInstancesUpdateNotification()
-		}
-	},
-)
+const settingsActions = provideSettingsActions({
+	openSettings: () => appSettingsModal.value?.show(),
+	openProfile: () => appSettingsModal.value?.showProfile(),
+	openFeatureFlags: () => appSettingsModal.value?.showFeatureFlags(),
+	openSyncedOptions: () => appSettingsModal.value?.showSyncedOptions(),
+	openInstanceDefaults: (tab) => appSettingsModal.value?.showInstanceDefaults(tab),
+})
 
 watch(incompatibilityWarningModal, (modal) => {
 	if (modal) {
@@ -1393,11 +1169,7 @@ async function signIn(flow = 'sign-in', addAccount = false) {
 		await login(flow, addAccount)
 		await fetchCredentials()
 	} catch (error) {
-		if (
-			typeof error === 'object' &&
-			typeof error['message'] === 'string' &&
-			error.message.includes('Login canceled')
-		) {
+		if (error?.code === 'login_canceled') {
 			// user closed the login window
 		} else {
 			handleError(error)
@@ -1544,14 +1316,14 @@ const modrinthAccountMenuOptions = computed(() => [
 		id: 'add-friend',
 		label: formatMessage(messages.addFriend),
 		icon: UserPlusIcon,
-		action: () => friendsList.value?.showAddFriendModal(),
+		action: () => sidebar.value?.showAddFriendModal(),
 	},
 	{
 		id: 'flags',
 		label: formatMessage(commonSettingsMessages.featureFlags),
 		icon: ToggleRightIcon,
 		shown: appSettings.devMode,
-		action: () => appSettingsModal.value?.showFeatureFlags(),
+		action: settingsActions.openFeatureFlags,
 	},
 	{
 		type: 'divider',
@@ -1632,9 +1404,8 @@ onMounted(() => {
 	setServerUpdateToPlayModal(updateToPlayModal.value)
 })
 
-const accounts = ref(null)
-const friendsList = ref(null)
-provide('accountsCard', accounts)
+const sidebar = ref(null)
+provideMinecraftAccounts(computed(() => sidebar.value?.minecraftAccounts ?? null))
 
 useAppEvent('command', handleCommand, appEvents)
 useAppEvent('notification', handleLiveNotification, appEvents)
@@ -1768,6 +1539,8 @@ async function handleCommand(e) {
 		} else {
 			await run(e.id).catch(handleError)
 		}
+	} else if (e.event === 'PlayHostingServer') {
+		await serverPlay.play({ serverId: e.server_id, worldId: e.world_id }).catch(handleError)
 	} else if (e.event === 'InstallSharedInstanceInvite') {
 		await sharedInstanceInviteHandler.value?.installFromInviteId(e.invite_id)
 	} else if (e.event === 'InstallServer') {
@@ -2246,7 +2019,7 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 			</div>
 		</Transition>
 		<AppSettingsModal ref="appSettingsModal" />
-		<SyncInstancesUpdateModal ref="syncInstancesUpdateModal" />
+		<NewUpdateModal ref="newUpdateModal" />
 		<Suspense>
 			<ModrinthAccountRequiredModal ref="modrinthLoginModal" :request-auth="requestModrinthAuth" />
 		</Suspense>
@@ -2264,12 +2037,20 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 			@create="handleCreate"
 			@browse-modpacks="handleBrowseModpacks"
 		/>
+		<ServerOnboardingModal
+			browse-path="/browse/modpack"
+			:get-loader-manifest="getLoaderManifest"
+			:navigate="(to) => router.push(to)"
+			:page-ready="onboardingPageReady"
+		/>
 		<IconEditorModal
 			ref="creationIconEditorModal"
 			:config="creationGeneratedIcon?.config"
 			@saved="onCreationIconSaved"
 		/>
 		<UnknownPackWarningModal ref="unknownPackWarningModal" />
+		<InstanceActionModals ref="instanceActionModals" />
+		<SharedInstanceModals ref="sharedInstanceModals" />
 		<div
 			class="app-grid-navbar bg-bg-raised flex flex-col p-[0.5rem] pt-0 gap-[0.25rem] w-[--left-bar-width]"
 		>
@@ -2333,7 +2114,7 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 			</suspense>
 			<NavButton
 				v-tooltip.right="formatMessage(commonMessages.settingsLabel)"
-				:to="() => appSettingsModal?.show()"
+				:to="settingsActions.openSettings"
 			>
 				<SettingsIcon />
 			</NavButton>
@@ -2402,56 +2183,13 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 				<LogInIcon class="text-brand" />
 			</NavButton>
 		</div>
-		<div data-tauri-drag-region class="app-grid-statusbar bg-bg-raised h-[--top-bar-height] flex">
-			<div data-tauri-drag-region class="flex min-w-0 flex-1 items-center overflow-hidden p-2">
-				<TextLogo class="h-7 w-auto shrink-0 text-contrast pointer-events-none" />
-				<div data-tauri-drag-region class="ml-2 flex shrink-0 items-center gap-2">
-					<IconButton
-						type="outlined"
-						:label="formatMessage(messages.goBack)"
-						class="!h-7 !min-w-7 !w-7 !border !border-surface-4 !p-0 !opacity-100"
-						:disabled="!canNavigateBack"
-						@click="router.back()"
-					>
-						<ChevronLeftIcon
-							class="!size-4 !text-primary"
-							:class="{ 'opacity-20': !canNavigateBack }"
-						/>
-					</IconButton>
-					<IconButton
-						type="outlined"
-						:label="formatMessage(messages.goForward)"
-						class="!h-7 !min-w-7 !w-7 !border !border-surface-4 !p-0 !opacity-100"
-						:disabled="!canNavigateForward"
-						@click="router.forward()"
-					>
-						<ChevronRightIcon
-							class="!size-4 !text-primary"
-							:class="{ 'opacity-20': !canNavigateForward }"
-						/>
-					</IconButton>
-				</div>
-				<Breadcrumbs />
-			</div>
-			<section data-tauri-drag-region class="flex shrink-0 ml-auto items-center">
-				<IconButton
-					v-if="!forceSidebar && appSettings.toggleSidebar"
-					:type="sidebarToggled ? 'base' : 'quiet'"
-					:label="formatMessage(messages.nextImage)"
-					class="mr-3 transition-transform"
-					:class="{ 'rotate-180': !sidebarToggled }"
-					@click="sidebarToggled = !sidebarToggled"
-				>
-					<RightArrowIcon />
-				</IconButton>
-				<div class="flex mr-3">
-					<Suspense>
-						<AppActionBar />
-					</Suspense>
-				</div>
-				<WindowControls />
-			</section>
-		</div>
+		<AppTitleBar
+			:can-navigate-back="canNavigateBack"
+			:can-navigate-forward="canNavigateForward"
+			:show-sidebar-toggle="!forceSidebar && appSettings.toggleSidebar"
+			:sidebar-toggled="sidebarToggled"
+			@toggle-sidebar="sidebarToggled = !sidebarToggled"
+		/>
 	</div>
 	<div
 		v-if="stateInitialized"
@@ -2513,70 +2251,16 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 				</template>
 			</RouterView>
 		</div>
-		<div
-			class="app-sidebar mt-px shrink-0 flex flex-col border-0 border-l-[1px] border-[--brand-gradient-border] border-solid"
-		>
-			<div
-				v-overlay-scrollbars="sidebarOverlayScrollbarsOptions"
-				class="app-sidebar-scrollable flex-grow shrink relative"
-				data-overlayscrollbars-initialize
-			>
-				<OnboardingChecklist
-					@create-instance="installationModal?.show()"
-					@login-minecraft="accounts?.login()"
-					@login-modrinth="signIn"
-				/>
-				<div id="sidebar-teleport-target" class="sidebar-teleport-content"></div>
-				<div class="sidebar-default-content" :class="{ 'sidebar-enabled': sidebarVisible }">
-					<div
-						v-show="hasLoggedIntoMinecraft"
-						class="p-4 border-0 border-b-[1px] border-[--brand-gradient-border] border-solid"
-					>
-						<h3 class="text-base text-primary font-medium m-0">
-							{{ formatMessage(messages.playingAs) }}
-						</h3>
-						<suspense>
-							<AccountsCard ref="accounts" />
-						</suspense>
-					</div>
-					<div
-						v-show="showFriendsList"
-						class="p-4 border-0 border-b-[1px] border-[--brand-gradient-border] border-solid"
-					>
-						<suspense>
-							<FriendsList
-								ref="friendsList"
-								:credentials="credentials"
-								:sign-in="() => requestSignIn()"
-							/>
-						</suspense>
-					</div>
-					<div v-if="news && news.length > 0" class="p-4 flex flex-col items-center">
-						<h3 class="text-base mb-4 text-primary font-medium m-0 text-left w-full">
-							{{ formatMessage(messages.news) }}
-						</h3>
-						<div class="space-y-4 flex flex-col items-center w-full">
-							<NewsArticleCard
-								v-for="(item, index) in news"
-								:key="`news-${index}`"
-								:article="item"
-							/>
-							<ButtonLink
-								type="colored"
-								color="brand"
-								size="xl"
-								href="https://modrinth.com/news"
-								target="_blank"
-								class="my-4"
-							>
-								<NewspaperIcon />
-								{{ formatMessage(messages.viewAllNews) }}
-							</ButtonLink>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
+		<AppSidebar
+			ref="sidebar"
+			:credentials="credentials"
+			:has-plus="hasPlus"
+			:show-ad="false"
+			:visible="sidebarVisible"
+			:request-sign-in="() => requestSignIn()"
+			@create-instance="installationModal?.show()"
+			@login-modrinth="signIn"
+		/>
 	</div>
 	<I18nDebugPanel />
 	<NotificationPanel :has-sidebar="sidebarVisible" />
@@ -2629,6 +2313,7 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 		@create-anyway="handleContentInstallModpackDuplicateCreateAnyway"
 		@go-to-instance="handleContentInstallModpackDuplicateGoToInstance"
 	/>
+	<ServerPlayHandler ref="serverPlayHandler" />
 	<SharedInstanceInviteHandler ref="sharedInstanceInviteHandler" />
 	<InstallToPlayModal ref="installToPlayModal" :show-external-warnings="false" />
 	<UpdateToPlayModal ref="updateToPlayModal" :show-external-warnings="false" />
@@ -2664,13 +2349,6 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 	}
 }
 
-.app-grid-statusbar {
-	grid-area: status;
-	padding-right: var(--window-controls-width, 0px);
-	position: relative;
-	z-index: 2;
-}
-
 [data-tauri-drag-region-exclude] {
 	-webkit-app-region: no-drag;
 }
@@ -2700,30 +2378,7 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 	overflow: hidden;
 }
 
-.app-sidebar {
-	overflow: visible;
-	width: 300px;
-	position: relative;
-	height: calc(100vh - var(--top-bar-height));
-	background: var(--brand-gradient-bg);
-
-	--color-button-bg: var(--brand-gradient-button);
-	--surface-4: var(--brand-gradient-button);
-	--color-button-bg-hover: var(--brand-gradient-border);
-	--surface-5: var(--brand-gradient-border);
-	--color-divider: var(--brand-gradient-border);
-	--color-divider-dark: var(--brand-gradient-border);
-}
-
-.app-sidebar::after {
-	display: none !important;
-}
-
 .disable-advanced-rendering {
-	.app-sidebar::before {
-		box-shadow: none;
-	}
-
 	&.app-contents::before {
 		box-shadow: none;
 	}
@@ -2733,17 +2388,6 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 		box-shadow: none !important;
 		--tw-drop-shadow:;
 	}
-}
-
-.app-sidebar::before {
-	content: '';
-	box-shadow: -15px 0 15px -15px rgba(0, 0, 0, 0.1) inset;
-	top: 0;
-	bottom: 0;
-	left: -2rem;
-	width: 2rem;
-	position: absolute;
-	pointer-events: none;
 }
 
 .app-viewport {
@@ -2768,18 +2412,6 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 	border-width: 1px;
 	border-style: solid;
 	pointer-events: none;
-}
-
-.sidebar-teleport-content {
-	display: contents;
-}
-
-.sidebar-default-content {
-	display: none;
-}
-
-.sidebar-teleport-content:empty + .sidebar-default-content.sidebar-enabled {
-	display: contents;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -2843,16 +2475,6 @@ provideAppUpdateDownloadProgress(appUpdateDownload)
 	--os-handle-bg: var(--color-scrollbar) !important;
 	--os-handle-bg-hover: var(--color-scrollbar) !important;
 	--os-handle-bg-active: var(--color-scrollbar) !important;
-}
-
-.app-grid-statusbar {
-	padding-left: 0.25rem;
-}
-
-.mac-traffic-lights {
-	.app-grid-statusbar {
-		padding-left: 5rem;
-	}
 }
 
 .windows {

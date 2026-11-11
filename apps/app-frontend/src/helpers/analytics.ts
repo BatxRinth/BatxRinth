@@ -43,8 +43,11 @@ type AnalyticsEventMap = {
 export type AnalyticsEvent = keyof AnalyticsEventMap
 
 export const initAnalytics = () => {}
+
 export const debugAnalytics = () => {}
+
 export const optOutAnalytics = () => {}
+
 export const optInAnalytics = () => {}
 
 type OptionalArgs<T> = Record<string, never> extends T ? [properties?: T] : [properties: T]

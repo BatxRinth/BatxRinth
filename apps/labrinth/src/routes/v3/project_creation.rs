@@ -1,12 +1,10 @@
-use super::version_creation::{InitialVersionData, try_create_version_fields};
+use super::version_creation::{InitialVersionData, create_minecraft_component};
 use crate::auth::{
     AuthenticationError, get_user_from_headers, require_verified_email,
 };
 use crate::database::PgPool;
 use crate::database::PgTransaction;
-use crate::database::models::loader_fields::{
-    Loader, LoaderField, LoaderFieldEnumValue,
-};
+use crate::database::models::loader_item::Loader;
 use crate::database::models::thread_item::ThreadBuilder;
 use crate::database::models::{self, DBUser, image_item};
 use crate::file_hosting::{FileHost, FileHostPublicity, FileHostingError};
@@ -22,9 +20,12 @@ use crate::models::projects::{
 };
 use crate::models::teams::{OrganizationPermissions, ProjectPermissions};
 use crate::models::threads::ThreadType;
+use crate::models::users::User;
 use crate::models::v3::user_limits::UserLimits;
 use crate::queue::session::AuthQueue;
+use crate::routes::internal::globals::GLOBALS;
 use crate::search::SearchState;
+use crate::util::MinecraftMeta;
 use crate::util::guards::admin_key_guard;
 use crate::util::img::upload_image_optimized;
 use crate::util::kafka::KafkaClientState;
@@ -108,7 +109,7 @@ pub enum CreateError {
 impl From<crate::routes::ApiError> for CreateError {
     fn from(value: crate::routes::ApiError) -> Self {
         match value {
-            err if err.is_account_locked() => Self::Request(err),
+            err if err.account_standing_error().is_some() => Self::Request(err),
             crate::routes::ApiError::Auth(err) => {
                 Self::CustomAuthenticationError(format!("{err:#}"))
             }
@@ -192,7 +193,10 @@ impl actix_web::ResponseError for CreateError {
                 | CreateError::ProjectVersionLimitReached
                 | CreateError::DailyVersionLimitReached => "limit_reached",
             },
-            description: self.to_string(),
+            description: match self {
+                Self::InternalError(error) => format!("{error:#}"),
+                _ => self.to_string(),
+            },
             details: None,
         })
     }
@@ -248,7 +252,7 @@ pub struct ProjectCreateData {
     #[serde(default)]
     pub link_urls: HashMap<String, String>,
 
-    /// An optional boolean. If true, the project will be created as a draft.
+    /// Projects are always created as drafts; explicitly setting false is rejected.
     pub is_draft: Option<bool>,
 
     /// The license id that the project follows
@@ -312,6 +316,7 @@ pub async fn undo_uploads(
 )]
 #[post("")]
 pub async fn project_create(
+    minecraft_meta: web::Data<MinecraftMeta>,
     req: HttpRequest,
     payload: Multipart,
     client: Data<PgPool>,
@@ -322,6 +327,7 @@ pub async fn project_create(
     search_state: Data<SearchState>,
 ) -> Result<HttpResponse, CreateError> {
     project_create_internal(
+        minecraft_meta.clone(),
         req,
         payload,
         client,
@@ -335,6 +341,7 @@ pub async fn project_create(
 }
 
 pub async fn project_create_internal(
+    minecraft_meta: web::Data<MinecraftMeta>,
     req: HttpRequest,
     mut payload: Multipart,
     client: Data<PgPool>,
@@ -346,45 +353,66 @@ pub async fn project_create_internal(
 ) -> Result<HttpResponse, CreateError> {
     let mut transaction = client.begin().await?;
     let mut uploaded_files = Vec::new();
+    let mut delphi_scan_files = Vec::new();
 
     let project_id: ProjectId =
         models::generate_project_id(&mut transaction).await?.into();
-
-    let result = project_create_inner(
-        req,
-        &mut payload,
-        &mut transaction,
-        &**file_host,
-        &mut uploaded_files,
-        &client,
+    let current_user = get_user_from_headers(
+        &req,
+        &**client,
         &redis,
         &session_queue,
-        &kafka_client,
-        project_id,
+        Scopes::PROJECT_CREATE,
     )
-    .await;
+    .await?
+    .1;
 
-    if result.is_err() {
-        let undo_result = undo_uploads(&**file_host, &uploaded_files).await;
-        let rollback_result = transaction.rollback().await;
-
-        undo_result?;
-        if let Err(e) = rollback_result {
-            return Err(e.into());
-        }
-    } else {
-        transaction.commit().await?;
-        super::projects::clear_project_cache_and_queue_search(
+    let result = async {
+        let response = project_create_inner(
+            minecraft_meta.clone(),
+            &mut payload,
+            &mut transaction,
+            &**file_host,
+            &mut uploaded_files,
+            &client,
             &redis,
-            &search_state,
-            project_id.into(),
-            None,
-            None,
+            &mut delphi_scan_files,
+            project_id,
+            &current_user,
         )
         .await?;
-    }
 
-    result
+        let prepared = super::projects::mutation::prepare_mutations(
+            &[project_id.into()],
+            &mut transaction,
+            &client,
+            &redis,
+            Some(&current_user),
+        )
+        .await?;
+        Ok::<_, CreateError>((response, prepared))
+    }
+    .await;
+
+    let (response, prepared) = match result {
+        Ok(result) => result,
+        Err(error) => {
+            let undo_result = undo_uploads(&**file_host, &uploaded_files).await;
+            let rollback_result = transaction.rollback().await;
+            undo_result?;
+            rollback_result?;
+            return Err(error);
+        }
+    };
+
+    prepared.commit(transaction, &redis).await?;
+    crate::queue::delphi_scan::publish_new_files(
+        &kafka_client,
+        &delphi_scan_files,
+    )
+    .await;
+    search_state.queue.push_project_change(project_id).await;
+    Ok(response)
 }
 
 /// Create a project with a specific ID.
@@ -401,6 +429,7 @@ pub async fn project_create_internal(
 )]
 #[post("/{id}", guard = "admin_key_guard")]
 pub async fn project_create_with_id(
+    minecraft_meta: web::Data<MinecraftMeta>,
     req: HttpRequest,
     mut payload: Multipart,
     client: Data<PgPool>,
@@ -413,44 +442,65 @@ pub async fn project_create_with_id(
 ) -> Result<HttpResponse, CreateError> {
     let mut transaction = client.begin().await?;
     let mut uploaded_files = Vec::new();
+    let mut delphi_scan_files = Vec::new();
 
     let (project_id,) = path.into_inner();
-
-    let result = project_create_inner(
-        req,
-        &mut payload,
-        &mut transaction,
-        &**file_host,
-        &mut uploaded_files,
-        &client,
+    let current_user = get_user_from_headers(
+        &req,
+        &**client,
         &redis,
         &session_queue,
-        &kafka_client,
-        project_id,
+        Scopes::PROJECT_CREATE,
     )
-    .await;
+    .await?
+    .1;
 
-    if result.is_err() {
-        let undo_result = undo_uploads(&**file_host, &uploaded_files).await;
-        let rollback_result = transaction.rollback().await;
-
-        undo_result?;
-        if let Err(e) = rollback_result {
-            return Err(e.into());
-        }
-    } else {
-        transaction.commit().await?;
-        super::projects::clear_project_cache_and_queue_search(
+    let result = async {
+        let response = project_create_inner(
+            minecraft_meta.clone(),
+            &mut payload,
+            &mut transaction,
+            &**file_host,
+            &mut uploaded_files,
+            &client,
             &redis,
-            &search_state,
-            project_id.into(),
-            None,
-            None,
+            &mut delphi_scan_files,
+            project_id,
+            &current_user,
         )
         .await?;
-    }
 
-    result
+        let prepared = super::projects::mutation::prepare_mutations(
+            &[project_id.into()],
+            &mut transaction,
+            &client,
+            &redis,
+            Some(&current_user),
+        )
+        .await?;
+        Ok::<_, CreateError>((response, prepared))
+    }
+    .await;
+
+    let (response, prepared) = match result {
+        Ok(result) => result,
+        Err(error) => {
+            let undo_result = undo_uploads(&**file_host, &uploaded_files).await;
+            let rollback_result = transaction.rollback().await;
+            undo_result?;
+            rollback_result?;
+            return Err(error);
+        }
+    };
+
+    prepared.commit(transaction, &redis).await?;
+    crate::queue::delphi_scan::publish_new_files(
+        &kafka_client,
+        &delphi_scan_files,
+    )
+    .await;
+    search_state.queue.push_project_change(project_id).await;
+    Ok(response)
 }
 
 /*
@@ -487,43 +537,33 @@ Project Creation Steps:
 
 #[allow(clippy::too_many_arguments)]
 async fn project_create_inner(
-    req: HttpRequest,
+    minecraft_meta: web::Data<MinecraftMeta>,
     payload: &mut Multipart,
     transaction: &mut PgTransaction<'_>,
     file_host: &dyn FileHost,
     uploaded_files: &mut Vec<UploadedFile>,
     pool: &PgPool,
     redis: &RedisPool,
-    session_queue: &AuthQueue,
-    kafka_client: &KafkaClientState,
+    delphi_scan_files: &mut Vec<models::DBFileId>,
     project_id: ProjectId,
+    current_user: &User,
 ) -> Result<HttpResponse, CreateError> {
-    // The currently logged in user
-    let (_, current_user) = get_user_from_headers(
-        &req,
-        pool,
-        redis,
-        session_queue,
-        Scopes::PROJECT_CREATE,
-    )
-    .await?;
+    require_verified_email(current_user)?;
 
-    require_verified_email(&current_user)?;
-
-    let limits = UserLimits::get_for_projects(&current_user, pool).await?;
+    let limits = UserLimits::get_for_projects(current_user, pool).await?;
     if limits.current >= limits.max {
         return Err(CreateError::LimitReached);
     }
 
     let daily_limits =
-        UserLimits::get_for_projects_per_day(&current_user, Utc::now(), pool)
+        UserLimits::get_for_projects_per_day(current_user, Utc::now(), pool)
             .await?;
     if daily_limits.current >= daily_limits.max {
         return Err(CreateError::DailyProjectLimitReached);
     }
 
     let all_loaders =
-        models::loader_fields::Loader::list(&mut *transaction, redis).await?;
+        models::loader_item::Loader::list(&mut *transaction, redis).await?;
 
     let project_create_data: ProjectCreateData;
     let mut versions;
@@ -560,6 +600,12 @@ async fn project_create_inner(
         }
         let create_data: ProjectCreateData = serde_json::from_slice(&data)?;
 
+        if create_data.is_draft == Some(false) {
+            return Err(CreateError::InvalidInput(String::from(
+                "projects must be created as drafts; `is_draft` cannot be false",
+            )));
+        }
+
         create_data.validate().map_err(|err| {
             CreateError::InvalidInput(validation_errors_to_string(err, None))
         })?;
@@ -577,7 +623,7 @@ async fn project_create_inner(
         if versions_to_create > 0 {
             let project_version_limits =
                 UserLimits::get_for_versions_per_project(
-                    &current_user,
+                    current_user,
                     project_id.into(),
                     pool,
                 )
@@ -591,7 +637,7 @@ async fn project_create_inner(
             }
 
             let daily_version_limits = UserLimits::get_for_versions_per_day(
-                &current_user,
+                current_user,
                 Utc::now(),
                 pool,
             )
@@ -663,6 +709,7 @@ async fn project_create_inner(
             }
             versions.push(
                 create_initial_version(
+                    minecraft_meta.clone(),
                     data,
                     project_id,
                     current_user.id,
@@ -695,7 +742,7 @@ async fn project_create_inner(
             })?;
 
             let (file_name, file_extension) =
-                super::version_creation::get_name_ext(&content_disposition)?;
+                super::version_creation::get_name_and_extension(&content_disposition)?;
 
             if name == "icon" {
                 if icon_data.is_some() {
@@ -725,13 +772,13 @@ async fn project_create_inner(
                 if let Some(item) = gallery_items.iter().find(|x| x.item == name) {
                     let data = read_from_field(
                         &mut field,
-                        5 * (1 << 20),
-                        "Gallery image exceeds the maximum of 5MiB.",
+                        GLOBALS.max_gallery_image_size,
+                        format!("gallery images must be smaller than {}", humansize::format_size(GLOBALS.max_gallery_image_size, humansize::BINARY)),
                     )
                     .await?;
 
                     let (_, file_extension) =
-                        super::version_creation::get_name_ext(&content_disposition)?;
+                        super::version_creation::get_name_and_extension(&content_disposition)?;
 
                     let url = format!("data/{project_id}/images");
                     let upload_result = upload_image_optimized(
@@ -751,6 +798,7 @@ async fn project_create_inner(
                         publicity: FileHostPublicity::Public,
                     });
                     gallery_urls.push(crate::models::projects::GalleryItem {
+                        id: None,
                         url: upload_result.url,
                         raw_url: upload_result.raw_url,
                         featured: item.featured,
@@ -780,8 +828,11 @@ async fn project_create_inner(
                 .iter()
                 .map(|x| x.filename.clone())
                 .collect();
+            let game_versions = created_version.components.minecraft_mod.as_ref()
+                .map(|component| component.game_versions.clone()).unwrap_or_default();
             // Upload the new jar file
             super::version_creation::upload_file(
+                minecraft_meta.clone(),
                 &mut field,
                 file_host,
                 version_data.file_parts.len(),
@@ -791,7 +842,7 @@ async fn project_create_inner(
                 &content_disposition,
                 project_id,
                 created_version.version_id.into(),
-                &created_version.version_fields,
+                &game_versions,
                 version_data.loaders.clone(),
                 version_data.primary_file.is_some(),
                 version_data.primary_file.as_deref() == Some(name),
@@ -914,17 +965,7 @@ async fn project_create_inner(
 
         let team_id = team.insert(&mut *transaction).await?;
 
-        let status;
-        if project_create_data.is_draft.unwrap_or(false) {
-            status = ProjectStatus::Draft;
-        } else {
-            status = ProjectStatus::Processing;
-            if project_create_data.initial_versions.is_empty() {
-                return Err(CreateError::InvalidInput(String::from(
-                    "Project submitted for review with no initial versions",
-                )));
-            }
-        }
+        let status = ProjectStatus::Draft;
 
         let license_id = spdx::Expression::parse(
             &project_create_data.license_id,
@@ -973,6 +1014,7 @@ async fn project_create_inner(
             gallery_items: gallery_urls
                 .iter()
                 .map(|x| models::project_item::DBGalleryItem {
+                    id: None,
                     image_url: x.url.clone(),
                     raw_image_url: x.raw_url.clone(),
                     featured: x.featured,
@@ -991,7 +1033,7 @@ async fn project_create_inner(
         let now = Utc::now();
 
         let id = project_builder_actual
-            .insert(&mut *transaction, redis, file_host, kafka_client)
+            .insert(&mut *transaction, redis, file_host, delphi_scan_files)
             .await?;
         DBUser::clear_project_cache(&[current_user.id.into()], redis).await?;
 
@@ -1048,19 +1090,19 @@ async fn project_create_inner(
             .flat_map(|v| v.loaders.clone())
             .unique()
             .collect::<Vec<_>>();
-        let (project_types, games) = Loader::list(&mut *transaction, redis)
+        let project_types = Loader::list(&mut *transaction, redis)
             .await?
             .into_iter()
-            .fold(
-                (Vec::new(), Vec::new()),
-                |(mut project_types, mut games), loader| {
-                    if loaders.contains(&loader.id) {
-                        project_types.extend(loader.supported_project_types);
-                        games.extend(loader.supported_games);
-                    }
-                    (project_types, games)
-                },
-            );
+            .filter(|loader| loaders.contains(&loader.id))
+            .flat_map(|loader| loader.supported_project_types)
+            .collect();
+        let games = if loaders.is_empty()
+            || project_builder.components.minecraft_server.is_some()
+        {
+            Vec::new()
+        } else {
+            vec!["minecraft-java".to_owned()]
+        };
 
         let response = crate::models::projects::Project {
             id: project_id,
@@ -1118,12 +1160,13 @@ async fn project_create_inner(
 }
 
 async fn create_initial_version(
+    minecraft_meta: web::Data<MinecraftMeta>,
     version_data: &InitialVersionData,
     project_id: ProjectId,
     author: UserId,
-    all_loaders: &[models::loader_fields::Loader],
+    all_loaders: &[models::loader_item::Loader],
     transaction: &mut PgTransaction<'_>,
-    redis: &RedisPool,
+    _redis: &RedisPool,
 ) -> Result<models::version_item::VersionBuilder, CreateError> {
     if version_data.project_id.is_some() {
         return Err(CreateError::InvalidInput(String::from(
@@ -1151,22 +1194,18 @@ async fn create_initial_version(
         })
         .collect::<Result<Vec<models::LoaderId>, CreateError>>()?;
 
-    let loader_fields =
-        LoaderField::get_fields(&loaders, &mut *transaction, redis).await?;
-    let mut loader_field_enum_values =
-        LoaderFieldEnumValue::list_many_loader_fields(
-            &loader_fields,
-            &mut *transaction,
-            redis,
-        )
-        .await?;
-
-    let version_fields = try_create_version_fields(
-        version_id,
+    let selected_loaders = all_loaders
+        .iter()
+        .filter(|loader| loaders.contains(&loader.id))
+        .cloned()
+        .collect::<Vec<_>>();
+    let component = create_minecraft_component(
+        minecraft_meta.clone(),
         &version_data.fields,
-        &loader_fields,
-        &mut loader_field_enum_values,
-    )?;
+        version_data.minecraft_mod.as_ref(),
+        &selected_loaders,
+    )
+    .await?;
 
     let dependencies = version_data
         .dependencies
@@ -1189,13 +1228,15 @@ async fn create_initial_version(
         files: Vec::new(),
         dependencies,
         loaders,
-        version_fields,
         featured: version_data.featured,
         status: VersionStatus::Listed,
         version_type: version_data.release_channel.to_string(),
         requested_status: None,
         ordering: version_data.ordering,
-        components: exp::VersionSerial::default(),
+        components: exp::VersionSerial {
+            minecraft_mod: component,
+            ..Default::default()
+        },
     };
 
     Ok(version)
@@ -1210,8 +1251,14 @@ async fn process_icon_upload(
 ) -> Result<(String, String, Option<u32>), CreateError> {
     let data = read_from_field(
         &mut field,
-        524288,
-        "Icons must be smaller than 512KiB",
+        GLOBALS.max_project_icon_size,
+        format!(
+            "icons must be smaller than {}",
+            humansize::format_size(
+                GLOBALS.max_project_icon_size,
+                humansize::BINARY
+            )
+        ),
     )
     .await?;
     let upload_result = crate::util::img::upload_image_optimized(

@@ -30,6 +30,7 @@
 					@select-game-version="selectGameVersion"
 					@select-platform="selectPlatform"
 					@update:selection="updateProjectDownloadSelection"
+					@update:show-version-selector="showVersionSelector = $event"
 					@download="onDownload"
 				/>
 				<div class="flex flex-col gap-4 empty:hidden">
@@ -47,39 +48,10 @@
 				/>
 			</div>
 		</template>
-		<template v-if="showDependencyDownloadActions" #actions>
+		<template v-if="showDownloadActions" #actions>
 			<div class="flex flex-wrap justify-end gap-2 p-2">
 				<Button
-					:disabled="!!downloadingActionType || !dependencyDownloadFilesLoaded"
-					@click="downloadSelectedVersionZip"
-				>
-					<SpinnerIcon
-						v-if="downloadingActionType === 'zip'"
-						aria-hidden="true"
-						class="animate-spin"
-					/>
-					<DownloadIcon v-else aria-hidden="true" />
-					{{ formatMessage(messages.downloadAsZip) }}
-				</Button>
-				<SplitButton
-					v-if="hasRecommendedDownloadFiles"
-					type="colored"
-					color="brand"
-					:options="downloadWithRecommendedOptions"
-					:menu-label="formatMessage(messages.downloadWithRecommended)"
-					:disabled="!!downloadingActionType || !dependencyDownloadFilesLoaded"
-					@click="downloadFilesWithDependencies"
-				>
-					<SpinnerIcon
-						v-if="downloadingActionType === 'dependencies'"
-						aria-hidden="true"
-						class="animate-spin"
-					/>
-					<DownloadIcon v-else aria-hidden="true" />
-					{{ formatMessage(messages.downloadWithDependencies) }}
-				</SplitButton>
-				<Button
-					v-else
+					v-if="!showDependencyDownloadActions"
 					type="colored"
 					color="brand"
 					:disabled="!!downloadingActionType || !dependencyDownloadFilesLoaded"
@@ -91,8 +63,54 @@
 						class="animate-spin"
 					/>
 					<DownloadIcon v-else aria-hidden="true" />
-					{{ formatMessage(messages.downloadWithDependencies) }}
+					{{ formatMessage(messages.download) }}
 				</Button>
+				<template v-else>
+					<Button
+						:disabled="!!downloadingActionType || !dependencyDownloadFilesLoaded"
+						@click="downloadSelectedVersionZip"
+					>
+						<SpinnerIcon
+							v-if="downloadingActionType === 'zip'"
+							aria-hidden="true"
+							class="animate-spin"
+						/>
+						<DownloadIcon v-else aria-hidden="true" />
+						{{ formatMessage(messages.downloadAsZip) }}
+					</Button>
+					<SplitButton
+						v-if="hasRecommendedDownloadFiles"
+						type="colored"
+						color="brand"
+						:options="downloadWithRecommendedOptions"
+						:menu-label="formatMessage(messages.downloadWithRecommended)"
+						:disabled="!!downloadingActionType || !dependencyDownloadFilesLoaded"
+						@click="downloadFilesWithDependencies"
+					>
+						<SpinnerIcon
+							v-if="downloadingActionType === 'dependencies'"
+							aria-hidden="true"
+							class="animate-spin"
+						/>
+						<DownloadIcon v-else aria-hidden="true" />
+						{{ formatMessage(messages.downloadWithDependencies) }}
+					</SplitButton>
+					<Button
+						v-else
+						type="colored"
+						color="brand"
+						:disabled="!!downloadingActionType || !dependencyDownloadFilesLoaded"
+						@click="downloadFilesWithDependencies"
+					>
+						<SpinnerIcon
+							v-if="downloadingActionType === 'dependencies'"
+							aria-hidden="true"
+							class="animate-spin"
+						/>
+						<DownloadIcon v-else aria-hidden="true" />
+						{{ formatMessage(messages.downloadWithDependencies) }}
+					</Button>
+				</template>
 			</div>
 		</template>
 	</NewModal>
@@ -119,12 +137,18 @@ import {
 import type { DisplayProjectType } from '@modrinth/utils'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import dayjs from 'dayjs'
-import JSZip from 'jszip'
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 
 import { navigateTo } from '#app'
 import { saveFeatureFlags } from '~/composables/featureFlags.ts'
 import { STALE_TIME, STALE_TIME_LONG } from '~/composables/queries/project'
+import {
+	dedupeDownloadFiles,
+	type DownloadableFile,
+	downloadFiles,
+	downloadFilesAsZip,
+	versionZipFilename,
+} from '~/helpers/download-files'
 
 import { provideDownloadModalProvider } from './download-modal-provider'
 import DownloadDependencies from './DownloadDependencies.vue'
@@ -141,15 +165,6 @@ type ProjectDownloadSelection = {
 	currentPlatform: string | null
 	selectedVersion: Labrinth.Versions.v3.Version | null
 	selectedPrimaryFile: Labrinth.Versions.v3.VersionFile | null
-}
-
-type DownloadableFile = {
-	href: string
-	filename: string
-}
-
-type DownloadedFile = DownloadableFile & {
-	blob: Blob
 }
 
 type DownloadActionType = 'zip' | 'dependencies' | 'recommended'
@@ -207,14 +222,13 @@ const showProjectId = ref<string | null>(null)
 const showOptions = ref<ResolvedProjectDownloadModalShowOptions>(getDefaultShowOptions())
 const downloadProjectResetKey = ref(0)
 const projectDownloadSelection = ref<ProjectDownloadSelection>(getDefaultProjectDownloadSelection())
+const showVersionSelector = ref(false)
 const pendingRouteSelection = ref({
 	gameVersion: getStringQueryValue(route.query.version),
 	platform: getStringQueryValue(route.query.loader),
 })
 const downloadingActionType = ref<DownloadActionType | null>(null)
 const MODAL_CLOSE_STATE_RESET_MS = 350
-const DOWNLOAD_URL_REVOKE_MS = 60000
-const DOWNLOAD_STAGGER_MS = 500
 let closeStateResetTimeout: ReturnType<typeof setTimeout> | null = null
 let modalShowRequestId = 0
 let unmounted = false
@@ -350,6 +364,12 @@ const showDependencyDownloadActions = computed(
 			hasRecommendedDownloadFiles.value),
 )
 
+const showDownloadActions = computed(
+	() =>
+		selectedVersionDownloadFiles.value.length > 0 &&
+		(showVersionSelector.value || showDependencyDownloadActions.value),
+)
+
 const downloadWithRecommendedOptions = computed<ButtonMenuOption[]>(() => [
 	{
 		id: 'download-with-recommended',
@@ -372,6 +392,10 @@ watch(projectV2Error, (error) => {
 })
 
 const messages = defineMessages({
+	download: {
+		id: 'project.download.download',
+		defaultMessage: 'Download',
+	},
 	downloadTitle: {
 		id: 'project.download.title',
 		defaultMessage: 'Download {title}',
@@ -558,21 +582,7 @@ async function downloadSelectedVersionZip() {
 	])
 
 	try {
-		const zip = new JSZip()
-		const usedFilenames = new Set<string>()
-		const downloadedFiles = await downloadFileBlobs(files)
-
-		for (const file of downloadedFiles) {
-			zip.file(uniqueFilename(file.filename, usedFilenames), file.blob)
-		}
-
-		downloadBlob(
-			await zip.generateAsync({
-				type: 'blob',
-				mimeType: 'application/zip',
-			}),
-			selectedVersionZipFilename(),
-		)
+		await downloadFilesAsZip(files, selectedVersionZipFilename())
 		emit('download')
 	} catch (error) {
 		console.error('Failed to download selected version files:', error)
@@ -639,105 +649,10 @@ async function downloadFilesWithRecommended() {
 	}
 }
 
-async function downloadFileBlobs(files: DownloadableFile[]): Promise<DownloadedFile[]> {
-	return Promise.all(files.map((file) => downloadFileBlob(file)))
-}
-
-async function downloadFileBlob(file: DownloadableFile): Promise<DownloadedFile> {
-	const response = await fetch(file.href)
-
-	if (!response.ok) {
-		throw new Error(`Failed to download ${file.filename}`)
-	}
-
-	return {
-		...file,
-		blob: await response.blob(),
-	}
-}
-
-async function downloadFiles(files: DownloadableFile[]) {
-	await Promise.all(
-		files.map(async (file, index) => {
-			await delay(DOWNLOAD_STAGGER_MS * index)
-			downloadFileLink(file)
-		}),
-	)
-}
-
-function dedupeDownloadFiles(files: DownloadableFile[]) {
-	const result: DownloadableFile[] = []
-	const hrefs = new Set<string>()
-
-	for (const file of files) {
-		if (hrefs.has(file.href)) continue
-		hrefs.add(file.href)
-		result.push(file)
-	}
-
-	return result
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-	const url = URL.createObjectURL(blob)
-	const link = document.createElement('a')
-
-	link.href = url
-	link.download = filename
-	document.body.appendChild(link)
-	link.click()
-	link.remove()
-	window.setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_REVOKE_MS)
-}
-
-function downloadFileLink(file: DownloadableFile) {
-	const link = document.createElement('a')
-	link.href = file.href
-	link.download = file.filename
-	document.body.appendChild(link)
-	link.click()
-	link.remove()
-}
-
 function selectedVersionZipFilename() {
 	if (!project.value || !selectedVersion.value) return 'download.zip'
 
-	return `${sanitizeFilename(project.value.title)} ${sanitizeFilename(
-		selectedVersion.value.version_number,
-	)}-EXTRACT_ME.zip`
-}
-
-function sanitizeFilename(value: string) {
-	const sanitized = value
-		.replace(/[<>:"/\\|?*]/g, '')
-		.replace(/\s+/g, ' ')
-		.trim()
-
-	return sanitized || 'download'
-}
-
-function uniqueFilename(filename: string, usedFilenames: Set<string>) {
-	const sanitizedFilename = sanitizeFilename(filename)
-
-	if (!usedFilenames.has(sanitizedFilename)) {
-		usedFilenames.add(sanitizedFilename)
-		return sanitizedFilename
-	}
-
-	const extensionIndex = sanitizedFilename.lastIndexOf('.')
-	const basename =
-		extensionIndex > 0 ? sanitizedFilename.slice(0, extensionIndex) : sanitizedFilename
-	const extension = extensionIndex > 0 ? sanitizedFilename.slice(extensionIndex) : ''
-	let index = 2
-	let candidate = `${basename} (${index})${extension}`
-
-	while (usedFilenames.has(candidate)) {
-		index += 1
-		candidate = `${basename} (${index})${extension}`
-	}
-
-	usedFilenames.add(candidate)
-	return candidate
+	return versionZipFilename(project.value.title, selectedVersion.value.version_number)
 }
 
 function getDefaultProjectDownloadSelection(): ProjectDownloadSelection {

@@ -1,7 +1,12 @@
 <template>
-	<div v-if="subtleLauncherRedirectUri">
+	<LauncherOpening
+		v-if="launcherHandoff?.deeplinkUrl"
+		:localhost-url="launcherHandoff.localhostUrl ?? undefined"
+		:deeplink-url="launcherHandoff.deeplinkUrl"
+	/>
+	<div v-else-if="launcherHandoff?.localhostUrl">
 		<iframe
-			:src="subtleLauncherRedirectUri"
+			:src="launcherHandoff.localhostUrl"
 			class="fixed left-0 top-0 z-[9999] m-0 h-full w-full border-0 p-0"
 		></iframe>
 	</div>
@@ -24,30 +29,28 @@ import {
 	defineMessages,
 	injectModrinthClient,
 	injectNotificationManager,
+	useGlobals,
 	useVIntl,
 } from '@modrinth/ui'
-import { useQuery, useQueryClient } from '@tanstack/vue-query'
-import type { LocationQueryValue } from 'vue-router'
+import { useQueryClient } from '@tanstack/vue-query'
 
 import CreateAccountView from '@/components/ui/auth/CreateAccount.vue'
-import { getLauncherRedirectUrl, promotePendingSignInOAuthProvider } from '@/composables/auth.ts'
-
-interface AuthGlobalsResponse {
-	captcha_enabled?: boolean
-	[key: string]: unknown
-}
+import LauncherOpening from '@/components/ui/auth/LauncherOpening.vue'
+import { rememberStoredAccount } from '@/composables/accounts.ts'
+import { promotePendingSignInOAuthProvider } from '@/composables/auth.ts'
+import {
+	createLauncherHandoff,
+	getQueryString,
+	hideLauncherSessionCode,
+	isLauncherProtocolV2,
+	launcherAuthMessages,
+	type LauncherHandoff,
+} from '@/composables/launcher-auth.ts'
 
 interface ApiErrorShape {
 	data?: {
 		description?: string
 	}
-}
-
-const getQueryString = (
-	value: LocationQueryValue | LocationQueryValue[] | null | undefined,
-): string => {
-	const firstValue = Array.isArray(value) ? value[0] : value
-	return typeof firstValue === 'string' ? firstValue : ''
 }
 
 const getErrorMessage = (error: unknown): string => {
@@ -109,24 +112,16 @@ const dateOfBirth = ref('')
 const username = ref(defaultUsername.value)
 const token = ref('')
 const subscribe = ref(false)
-const subtleLauncherRedirectUri = ref<string>()
+type LauncherCallback = Extract<LauncherHandoff, { type: 'callback' }>
+const launcherHandoff = ref<LauncherCallback | null>(null)
+const isProtocolV2 = isLauncherProtocolV2(route)
 
 const captcha = ref<{ reset?: () => void } | null>(null)
 const setCaptchaRef = (captchaRef: unknown) => {
 	captcha.value = (captchaRef as { reset?: () => void } | null) ?? null
 }
 
-const { data: globals } = useQuery<AuthGlobalsResponse>({
-	queryKey: ['auth-globals'],
-	queryFn: async () => {
-		try {
-			return await client.labrinth.globals_internal.get()
-		} catch (err) {
-			console.error('Error fetching globals:', err)
-			return { captcha_enabled: true, tax_compliance_thresholds: {} }
-		}
-	},
-})
+const { data: globals } = useGlobals()
 
 async function completeOAuthSignUp(accountConsent: boolean) {
 	startLoading()
@@ -141,9 +136,10 @@ async function completeOAuthSignUp(accountConsent: boolean) {
 			challenge: token.value,
 			sign_up_newsletter: subscribe.value,
 			account_consent: accountConsent,
+			app_session: isProtocolV2,
 		})
 
-		await finishSignIn(res.session)
+		await finishSignIn(res.session, res.app_session)
 	} catch (err) {
 		addNotification({
 			title: formatMessage(commonMessages.errorNotificationTitle),
@@ -155,23 +151,69 @@ async function completeOAuthSignUp(accountConsent: boolean) {
 	stopLoading()
 }
 
-async function finishSignIn(sessionToken?: string | null) {
+async function finishSignIn(sessionToken?: string | null, appSessionToken?: string | null) {
 	if (route.query.launcher) {
-		let token = sessionToken
-		if (!token) {
-			token = auth.value.token
+		if (isProtocolV2) {
+			if (!sessionToken) return
+
+			try {
+				if (!appSessionToken) {
+					throw new Error(formatMessage(launcherAuthMessages.handoffFailed))
+				}
+
+				await useAuth(sessionToken)
+				await useUser()
+				queryClient.clear()
+				const signedIn = await useAuth()
+				if (signedIn.value.user && signedIn.value.token) {
+					rememberStoredAccount(signedIn.value.user, signedIn.value.token)
+				}
+				promotePendingSignInOAuthProvider()
+
+				const handoff = await createLauncherHandoff(route, appSessionToken)
+				if (handoff.type === 'external') {
+					await navigateTo(handoff.url, {
+						external: true,
+					})
+					return
+				}
+
+				launcherHandoff.value = handoff
+				hideLauncherSessionCode()
+			} catch (err) {
+				console.error(err)
+				addNotification({
+					title: formatMessage(commonMessages.errorNotificationTitle),
+					text: getErrorMessage(err),
+					type: 'error',
+				})
+			}
+
+			return
 		}
 
-		promotePendingSignInOAuthProvider()
+		const token = sessionToken ?? auth.value.token
+		if (!token) return
 
-		const redirectUrl = `${getLauncherRedirectUrl(route)}/?code=${token}`
+		try {
+			const handoff = await createLauncherHandoff(route, token)
+			if (handoff.type === 'external') {
+				promotePendingSignInOAuthProvider()
+				await navigateTo(handoff.url, {
+					external: true,
+				})
+				return
+			}
 
-		if (redirectUrl.startsWith('https://launcher-files.modrinth.com/')) {
-			await navigateTo(redirectUrl, {
-				external: true,
+			promotePendingSignInOAuthProvider()
+			launcherHandoff.value = handoff
+		} catch (err) {
+			console.error(err)
+			addNotification({
+				title: formatMessage(commonMessages.errorNotificationTitle),
+				text: formatMessage(launcherAuthMessages.handoffFailed),
+				type: 'error',
 			})
-		} else {
-			subtleLauncherRedirectUri.value = redirectUrl
 		}
 
 		return
@@ -186,7 +228,7 @@ async function finishSignIn(sessionToken?: string | null) {
 	}
 
 	if (route.query.redirect) {
-		const redirect = decodeURIComponent(getQueryString(route.query.redirect))
+		const redirect = decodeURIComponent(getQueryString(route.query.redirect) ?? '')
 		await navigateTo(redirect, {
 			replace: true,
 		})

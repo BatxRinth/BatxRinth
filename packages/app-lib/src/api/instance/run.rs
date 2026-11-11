@@ -1,9 +1,11 @@
+use crate::ErrorKind;
 use crate::server_address::ServerAddress;
 use crate::state::{
     Credentials, ProcessMetadata, Settings, State,
     game_options_sync_is_enabled, load_game_option_preferences,
 };
 use crate::util::io::IOError;
+use anyhow::{Context, bail};
 use tokio::process::Command;
 
 #[derive(Debug, Clone)]
@@ -25,20 +27,9 @@ pub async fn run(
     )
     .await?
     {
-        return Err(crate::ErrorKind::InputError(
-            "This instance has been quarantined".to_string(),
-        )
-        .into());
-    }
-    {
-        let _priority =
-            state.content_store.legacy_migration_priority.write().await;
-        crate::state::instances::commands::migrate_legacy_content(
-            instance_id,
-            &state,
-            false,
-        )
-        .await?;
+        bail!(ErrorKind::InputError(
+            "this instance has been quarantined".to_string(),
+        ));
     }
     super::shared::check_shared_instance_availability_before_launch(
         instance_id,
@@ -48,7 +39,7 @@ pub async fn run(
 
     let default_account = Credentials::get_default_credential(&state.pool)
         .await?
-        .ok_or_else(|| crate::ErrorKind::NoCredentialsError.as_error())?;
+        .ok_or(ErrorKind::NotLoggedIn)?;
 
     run_credentials(instance_id, &default_account, quick_play_type).await
 }
@@ -67,11 +58,9 @@ async fn run_credentials(
             &state.pool,
         )
         .await?
-        .ok_or_else(|| {
-            crate::ErrorKind::OtherError(format!(
-                "Tried to run a nonexistent instance {instance_id}!"
-            ))
-        })?;
+        .context(format!(
+            "tried to run a nonexistent instance {instance_id}"
+        ))?;
     let instance_sync_preferences =
         crate::state::instances::adapters::sqlite::instance_rows::get_instance_sync_preferences(
             instance_id,
@@ -91,10 +80,9 @@ async fn run_credentials(
     )
     .await?
     {
-        return Err(crate::ErrorKind::InputError(
-            "This instance has been quarantined".to_string(),
-        )
-        .into());
+        bail!(ErrorKind::InputError(
+            "this instance has been quarantined".to_string(),
+        ));
     }
 
     let pre_launch_hook = context
@@ -156,7 +144,7 @@ async fn run_credentials(
             .as_ref()
             .expect("hooked launches always resolve their instance path");
         let java_version =
-            crate::launcher::resolve_java_for_launch(&context).await?;
+            crate::launcher::resolve_java_for_launch(&context, &state).await?;
 
         Some(crate::launcher::hooks::HookEnvironment::from_current_env(
             &env_args,
@@ -186,11 +174,9 @@ async fn run_credentials(
     ) {
         let expanded_hook = hook_environment.expand(hook);
         let mut cmd = shlex::split(&expanded_hook)
-            .ok_or_else(|| {
-                crate::ErrorKind::LauncherError(format!(
-                    "Invalid pre-launch command: {hook}",
-                ))
-            })?
+            .ok_or(ErrorKind::LauncherError(format!(
+                "invalid pre-launch command {hook}",
+            )))?
             .into_iter();
 
         if let Some(command) = cmd.next() {
@@ -205,11 +191,10 @@ async fn run_credentials(
                 .map_err(IOError::from)?;
 
             if !result.success() {
-                return Err(crate::ErrorKind::LauncherError(format!(
-                    "Non-zero exit code for pre-launch hook: {}",
+                bail!(ErrorKind::LauncherError(format!(
+                    "non-zero exit code for pre-launch hook ({})",
                     result.code().unwrap_or(-1)
-                ))
-                .as_error());
+                )));
             }
         }
     }
@@ -248,6 +233,7 @@ async fn run_credentials(
         post_exit_hook,
         &context,
         quick_play_type,
+        &state,
     )
     .await
 }
@@ -279,11 +265,9 @@ pub async fn try_update_playtime_by_instance_id(
             &state.pool,
         )
         .await?
-        .ok_or_else(|| {
-            crate::ErrorKind::OtherError(format!(
-                "Tried to update playtime for nonexistent instance {instance_id}!"
-            ))
-        })?;
+        .context(format!(
+            "tried to update playtime for nonexistent instance {instance_id}"
+        ))?;
 
     crate::state::instances::commands::mark_instance_playtime_submitted(
         &context.instance.id,

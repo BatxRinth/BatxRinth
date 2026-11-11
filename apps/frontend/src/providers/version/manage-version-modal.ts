@@ -6,7 +6,6 @@ import {
 	defineMessage,
 	injectModrinthClient,
 	injectNotificationManager,
-	injectProjectPageContext,
 	type MessageDescriptor,
 	type MultiStageModal,
 	resolveCtxFn,
@@ -70,7 +69,15 @@ export interface PrimaryFile {
 	existing?: boolean
 }
 
+export type EditVersionStage = 'metadata' | 'add-details' | 'add-files'
+
+export interface ManageVersionHost {
+	projectV2: Ref<Labrinth.Projects.v2.Project>
+	invalidate: (projectId: string, versionId?: string) => Promise<unknown>
+}
+
 export interface ManageVersionContextValue {
+	projectV2: Ref<Labrinth.Projects.v2.Project>
 	// State
 	draftVersion: Ref<Labrinth.Versions.v3.DraftVersion>
 	filesToAdd: Ref<Labrinth.Versions.v3.DraftVersionFile[]>
@@ -209,11 +216,12 @@ export const [injectManageVersionContext, provideManageVersionContext] =
 
 export function createManageVersionContext(
 	modal: ShallowRef<ComponentExposed<typeof MultiStageModal> | null>,
+	host: ManageVersionHost,
 	onSave?: () => void,
 ): ManageVersionContextValue {
 	const { labrinth } = injectModrinthClient()
 	const { addNotification } = injectNotificationManager()
-	const { invalidate, projectV2 } = injectProjectPageContext()
+	const { invalidate, projectV2 } = host
 
 	// State
 	const draftVersion = ref<Labrinth.Versions.v3.DraftVersion>(structuredClone(EMPTY_DRAFT_VERSION))
@@ -232,7 +240,11 @@ export function createManageVersionContext(
 
 	const isSubmitting = ref(false)
 	const isUploading = ref(false)
-	const uploadProgress = ref<UploadProgress>({ loaded: 0, total: 0, progress: 0 })
+	const uploadProgress = ref<UploadProgress>({
+		loaded: 0,
+		total: 0,
+		progress: 0,
+	})
 
 	const projectType = computed<Labrinth.Projects.v2.ProjectType>(() => {
 		const primaryFile = filesToAdd.value[0]?.file
@@ -329,11 +341,13 @@ export function createManageVersionContext(
 			if (primaryFileIndex !== null) {
 				const primaryFileData = filesToAdd.value[0]?.file
 				if (primaryFileData) {
-					if (await rejectOnRedundantWrappedZip(primaryFileData)) {
+					if (
+						(await rejectOnRedundantWrappedZip(primaryFileData)) ||
+						(await addDetectedData(primaryFileData))
+					) {
 						handlingNewFiles.value = false
 						return
 					}
-					await addDetectedData(primaryFileData)
 				}
 				if (filesToAdd.value.length === 1 && primaryFileData) {
 					modal.value?.nextStage()
@@ -435,6 +449,38 @@ export function createManageVersionContext(
 			return true
 		}
 		return false
+	}
+
+	const JAR_ONLY_LOADERS = ['fabric', 'legacy-fabric', 'babric', 'ornithe']
+	const JAR_ONLY_MOD_MANIFESTS = ['fabric.mod.json', 'quilt.mod.json']
+
+	async function checkContainsJarOnlyModManifest(file: File): Promise<boolean> {
+		try {
+			const zip = await JSZip.loadAsync(file)
+			return JAR_ONLY_MOD_MANIFESTS.some((manifest) => zip.file(manifest) !== null)
+		} catch {
+			return false
+		}
+	}
+
+	async function rejectOnJarOnlyLoaderMismatch(
+		file: File,
+		loaders: string[] | undefined,
+	): Promise<boolean> {
+		if (file.name.toLowerCase().endsWith('.jar')) return false
+
+		if (!loaders?.some((l) => JAR_ONLY_LOADERS.includes(l))) return false
+
+		if (!(await checkContainsJarOnlyModManifest(file))) return false
+
+		newDraftVersion(projectV2.value.id)
+		modal.value?.setStage('add-files')
+		addNotification({
+			title: 'Invalid file type',
+			text: `"${file.name}" contains a Fabric mod. Fabric mods must be uploaded as a .jar file.`,
+			type: 'error',
+		})
+		return true
 	}
 
 	async function inferEnvironmentFromVersions(
@@ -610,14 +656,16 @@ export function createManageVersionContext(
 		return 0
 	}
 
-	const addDetectedData = async (file?: File) => {
-		if (editingVersion.value) return
+	const addDetectedData = async (file?: File): Promise<boolean> => {
+		if (editingVersion.value) return false
 
 		const primaryFileData = file ?? filesToAdd.value[0]?.file
-		if (!primaryFileData) return
+		if (!primaryFileData) return false
 
 		try {
 			const inferredData = await setInferredVersionData(primaryFileData, projectV2.value)
+			if (await rejectOnJarOnlyLoaderMismatch(primaryFileData, inferredData.loaders)) return true
+
 			const mappedInferredData: Partial<Labrinth.Versions.v3.DraftVersion> = {
 				...inferredData,
 				name: inferredData.name || '',
@@ -630,6 +678,7 @@ export function createManageVersionContext(
 		} catch (err) {
 			console.error('Error parsing version file data', err)
 		}
+		return false
 	}
 
 	// Watch draft version dependencies to fetch project/version data
@@ -694,7 +743,10 @@ export function createManageVersionContext(
 			const environment = await inferEnvironmentFromVersions(projectId, loaders)
 			if (environment && !draftVersion.value.environment) {
 				draftVersion.value.environment = environment
-				inferredVersionData.value = { ...inferredVersionData.value, environment }
+				inferredVersionData.value = {
+					...inferredVersionData.value,
+					environment,
+				}
 			}
 		},
 	)
@@ -805,7 +857,7 @@ export function createManageVersionContext(
 				text: 'The version has been successfully added to your project.',
 				type: 'success',
 			})
-			await invalidate()
+			await invalidate(version.project_id, version.version_id)
 			onSave?.()
 		} catch (err: any) {
 			addNotification({
@@ -879,7 +931,7 @@ export function createManageVersionContext(
 				text: 'The version has been successfully saved to your project.',
 				type: 'success',
 			})
-			await invalidate()
+			await invalidate(version.project_id, version.version_id)
 			onSave?.()
 		} catch (err: any) {
 			addNotification({
@@ -937,6 +989,7 @@ export function createManageVersionContext(
 	})
 
 	const contextValue: ManageVersionContextValue = {
+		projectV2,
 		// State
 		draftVersion,
 		filesToAdd,

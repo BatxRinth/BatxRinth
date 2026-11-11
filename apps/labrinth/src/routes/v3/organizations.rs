@@ -17,6 +17,7 @@ use crate::models::pats::Scopes;
 use crate::models::teams::{OrganizationPermissions, ProjectPermissions};
 use crate::models::v3::user_limits::UserLimits;
 use crate::queue::session::AuthQueue;
+use crate::routes::internal::globals::GLOBALS;
 use crate::routes::v3::project_creation::CreateError;
 use crate::search::SearchState;
 use crate::util::error::Context;
@@ -863,10 +864,14 @@ pub async fn organization_delete(
     .await
     .wrap_internal_err("fetching query results from database")?;
 
-    transaction
-        .commit()
-        .await
-        .wrap_internal_err("committing database transaction")?;
+    super::projects::mutation::finalize_mutations(
+        &organization_project_ids,
+        transaction,
+        &pool,
+        &redis,
+        Some(&user),
+    )
+    .await?;
 
     database::models::DBOrganization::clear_cache(
         organization.id,
@@ -883,17 +888,10 @@ pub async fn organization_delete(
     }
 
     for project_id in organization_project_ids {
-        super::projects::clear_project_cache_and_queue_search(
-            &redis,
-            &search_state,
-            project_id,
-            None,
-            None,
-        )
-        .await
-        .wrap_api_err(
-            "executing `projects::clear_project_cache_and_queue_search`",
-        )?;
+        search_state
+            .queue
+            .push_project_change(project_id.into())
+            .await;
     }
 
     if !organization_project_teams.is_empty() {
@@ -944,6 +942,14 @@ pub async fn organization_projects_add(
                 "the specified organization does not exist!".to_string()
             })?;
 
+    let mut project_info = project_info.into_inner();
+    crate::routes::resolve_body_refs(
+        vec![&mut project_info.project_id],
+        &Some(current_user.clone()),
+        &pool,
+        &redis,
+    )
+    .await?;
     let project_item = database::models::DBProject::get(
         &project_info.project_id,
         &**pool,
@@ -1052,10 +1058,14 @@ pub async fn organization_projects_add(
             "querying database for `organization_projects_add`",
         )?;
 
-        transaction
-            .commit()
-            .await
-            .wrap_internal_err("committing database transaction")?;
+        super::projects::mutation::finalize_mutation(
+            project_item.inner.id,
+            transaction,
+            &pool,
+            &redis,
+            Some(&current_user),
+        )
+        .await?;
 
         database::models::DBUser::clear_project_cache(
             &[current_user.id.into()],
@@ -1069,17 +1079,10 @@ pub async fn organization_projects_add(
         )
         .await
         .wrap_internal_err("clearing cached data from Redis")?;
-        super::projects::clear_project_cache_and_queue_search(
-            &redis,
-            &search_state,
-            project_item.inner.id,
-            project_item.inner.slug,
-            None,
-        )
-        .await
-        .wrap_api_err(
-            "executing `projects::clear_project_cache_and_queue_search`",
-        )?;
+        search_state
+            .queue
+            .push_project_change(project_item.inner.id.into())
+            .await;
     } else {
         return Err(ApiError::Auth(eyre::eyre!(
             "You do not have permission to add projects to this organization!",
@@ -1106,6 +1109,19 @@ pub async fn organization_projects_remove(
     session_queue: web::Data<AuthQueue>,
     search_state: web::Data<SearchState>,
 ) -> Result<HttpResponse, ApiError> {
+    if let Some(response) = crate::routes::redirect_ref(
+        &req,
+        "project_id",
+        pool.as_ref(),
+        redis.as_ref(),
+        session_queue.as_ref(),
+        Scopes::PROJECT_WRITE | Scopes::ORGANIZATION_WRITE,
+    )
+    .await?
+    {
+        return Ok(response);
+    }
+
     let (organization_id, project_id) = info.into_inner();
     let current_user = get_user_from_headers(
         &req,
@@ -1262,10 +1278,14 @@ pub async fn organization_projects_remove(
             "querying database for `organization_projects_remove`",
         )?;
 
-        transaction
-            .commit()
-            .await
-            .wrap_internal_err("committing database transaction")?;
+        super::projects::mutation::finalize_mutation(
+            project_item.inner.id,
+            transaction,
+            &pool,
+            &redis,
+            Some(&current_user),
+        )
+        .await?;
         database::models::DBUser::clear_project_cache(
             &[current_user.id.into()],
             &redis,
@@ -1278,17 +1298,10 @@ pub async fn organization_projects_remove(
         )
         .await
         .wrap_internal_err("clearing cached data from Redis")?;
-        super::projects::clear_project_cache_and_queue_search(
-            &redis,
-            &search_state,
-            project_item.inner.id,
-            project_item.inner.slug,
-            None,
-        )
-        .await
-        .wrap_api_err(
-            "executing `projects::clear_project_cache_and_queue_search`",
-        )?;
+        search_state
+            .queue
+            .push_project_change(project_item.inner.id.into())
+            .await;
     } else {
         return Err(ApiError::Auth(eyre::eyre!(
             "You do not have permission to add projects to this organization!",
@@ -1373,8 +1386,14 @@ pub async fn organization_icon_edit(
 
     let bytes = read_limited_from_payload(
         &mut payload,
-        524288,
-        "Icons must be smaller than 512KiB",
+        GLOBALS.max_organization_icon_size,
+        format!(
+            "icons must be smaller than {}",
+            humansize::format_size(
+                GLOBALS.max_organization_icon_size,
+                humansize::BINARY
+            )
+        ),
     )
     .await?;
 
