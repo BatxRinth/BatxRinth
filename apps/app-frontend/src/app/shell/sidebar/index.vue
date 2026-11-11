@@ -4,7 +4,6 @@ import { OverlayScrollbars } from 'overlayscrollbars'
 import { computed, onMounted, onScopeDispose, ref } from 'vue'
 
 import { useTheme } from '@/composables/use-theme'
-import PrideFundraiserBanner from '@/features/campaigns/pride-fundraiser-banner.vue'
 import FriendsList from '@/features/friends/friends-list/index.vue'
 import AccountsCard from '@/features/minecraft-accounts/accounts-card.vue'
 import type { MinecraftAccountsActions } from '@/features/minecraft-accounts/context'
@@ -135,9 +134,6 @@ const messages = defineMessages({
 							/>
 						</Suspense>
 					</div>
-					<PrideFundraiserBanner
-						class="p-4 border-0 border-b-[1px] border-[--brand-gradient-border] border-solid"
-					/>
 					<NewsSidebar :style="promotionPaddingStyle" />
 				</div>
 			</div>
